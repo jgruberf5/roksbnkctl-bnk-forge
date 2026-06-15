@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "blueprint": {
+    "id": "ibm-roks-bnk-roksbnkctl",
+    "version": "1.0.0",
+    "name": "IBM ROKS + BNK (roksbnkctl)",
+    "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl. Credential-backed by an IBM Cloud credential template; region and resource group inherit from the selected template."
+  },
+  "category": "bnk",
+  "cloud_provider": "ibm",
+  "icon": "server-stack",
+  "color": "blue",
+  "estimated_time": "30-45 minutes",
+  "difficulty": "intermediate",
+  "maturity": "preview",
+  "tags": ["ibm", "roks", "openshift", "bnk", "roksbnkctl"],
+  "outcomes": [
+    "IBM Cloud ROKS (OpenShift) cluster provisioned",
+    "BIG-IP Next for Kubernetes (BNK) installed",
+    "Optional testing + gateway phases deployed"
+  ],
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "label": "Resource prefix",
+        "description": "Prefix for all resource names (e.g. acme-eu).",
+        "example": "acme-eu",
+        "order": 1
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "label": "Cluster name",
+        "description": "Name of the ROKS cluster.",
+        "example": "acme-eu-roks",
+        "order": 2
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "label": "IBM Cloud region",
+        "description": "Region for the cluster. Inherits from the selected credential template.",
+        "example": "eu-de",
+        "source": "credential_template",
+        "source_field": "region",
+        "order": 3
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "label": "Resource group",
+        "description": "IBM Cloud resource group. Inherits from the selected credential template.",
+        "example": "default",
+        "source": "credential_template",
+        "source_field": "ibmcloud_resource_group",
+        "order": 4
+      }
+    ],
+    "optional": [
+      {
+        "name": "openshift_version",
+        "type": "string",
+        "label": "OpenShift version",
+        "description": "Blank = ROKS default.",
+        "default": "",
+        "order": 5
+      },
+      {
+        "name": "workers_per_zone",
+        "type": "number",
+        "label": "Workers per zone",
+        "description": "Worker nodes per zone.",
+        "default": 2,
+        "order": 6
+      },
+      {
+        "name": "target",
+        "type": "string",
+        "label": "Deploy scope",
+        "description": "'all' = cluster + BNK + testing + gateway; 'cluster' = cluster only.",
+        "default": "all",
+        "order": 7
+      }
+    ]
+  },
+  "modules": [
+    {
+      "id": "roksbnkctl-workspace",
+      "module": "roksbnkctl/workspace",
+      "version": "1.0.0",
+      "name": "roksbnkctl Workspace",
+      "optional": false,
+      "depends_on": [],
+      "inputs": {
+        "prefix": "${prefix}",
+        "cluster_name": "${cluster_name}",
+        "region": "${region}",
+        "resource_group": "${resource_group}",
+        "openshift_version": "${openshift_version}",
+        "workers_per_zone": "${workers_per_zone}",
+        "target": "${target}"
+      }
+    }
+  ],
+  "is_featured": false
+}

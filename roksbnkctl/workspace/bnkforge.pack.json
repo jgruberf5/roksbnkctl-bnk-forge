@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "module": {
+    "name": "roksbnkctl Workspace (IBM ROKS + BNK)",
+    "path": "roksbnkctl/workspace",
+    "version": "1.0.0",
+    "category": "bnk",
+    "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl, driven from a BNK Forge blueprint form. Credential-backed via an IBM Cloud credential template (the run receives IBMCLOUD_API_KEY from the project's template).",
+    "provider": "ibm",
+    "supported_platforms": ["ocp"],
+    "tags": ["ibm", "roks", "openshift", "bnk", "roksbnkctl"]
+  },
+  "deployment_pack": {
+    "engine": "ansible",
+    "runner_profile": "ansible-default",
+    "working_directory": ".",
+    "entrypoints": {
+      "playbook": "playbook.yml",
+      "destroy_playbook": "destroy.yml",
+      "outputs_file": "outputs.json"
+    },
+    "lifecycle": {
+      "supports_init": true,
+      "supports_plan": true,
+      "supports_apply": true,
+      "supports_destroy": true,
+      "supports_refresh": false,
+      "supports_drift": false
+    }
+  },
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "description": "Resource name prefix for all workspace resources (e.g. acme-eu).",
+        "source": "user"
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "description": "ROKS cluster name.",
+        "source": "user"
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "description": "IBM Cloud region (e.g. eu-de). Inherited from the credential template by default.",
+        "source": "user"
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "description": "IBM Cloud resource group. Inherited from the credential template by default.",
+        "source": "user"
+      }
+    ],
+    "optional": [
+      {
+        "name": "openshift_version",
+        "type": "string",
+        "description": "OpenShift version for the ROKS cluster (blank = ROKS default).",
+        "source": "user"
+      },
+      {
+        "name": "workers_per_zone",
+        "type": "number",
+        "description": "Worker nodes per zone (default 2).",
+        "source": "user"
+      },
+      {
+        "name": "target",
+        "type": "string",
+        "description": "What to deploy: 'all' (cluster + BNK + testing + gateway) or 'cluster' (cluster only). Default 'all'.",
+        "source": "user"
+      }
+    ]
+  },
+  "outputs": {
+    "key_outputs": [
+      { "name": "cluster_id", "type": "string", "description": "The ROKS cluster id." },
+      { "name": "cluster_name", "type": "string", "description": "The ROKS cluster name." },
+      { "name": "region", "type": "string", "description": "The cluster region." },
+      { "name": "resource_group_id", "type": "string", "description": "The resource group id." },
+      { "name": "vpc_id", "type": "string", "description": "The cluster VPC id." }
+    ]
+  },
+  "credentials": {
+    "required": [
+      {
+        "name": "ibmcloud",
+        "type": "cloud",
+        "description": "IBM Cloud API key, supplied by the project's IBM credential template as IBMCLOUD_API_KEY in the run environment."
+      }
+    ],
+    "optional": []
+  }
+}

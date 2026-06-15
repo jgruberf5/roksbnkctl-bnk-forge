@@ -1,0 +1,38 @@
+---
+# roksbnkctl workspace teardown — invoked by BNK Forge destroy.
+#
+# Requires the roksbnkctl state from the apply run. That state lives under
+# ROKSBNKCTL_HOME (pinned into the module workspace). If BNK Forge persists the
+# module workspace between apply and destroy, this works as-is. If it does NOT,
+# configure remote state in the seed (a state: block / `roksbnkctl state s3`)
+# so the terraform state survives in COS — see the repo README.
+- name: Tear down the roksbnkctl workspace
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ws: "{{ workspace_name | default('forge') }}"
+    roks_home: "{{ playbook_dir }}/.roksbnkctl-home"
+    seed_config: "{{ playbook_dir }}/seed-config.yaml"
+  environment:
+    ROKSBNKCTL_HOME: "{{ roks_home }}"
+    IBMCLOUD_API_KEY: "{{ lookup('env', 'IBMCLOUD_API_KEY') }}"
+  tasks:
+    - name: Re-render config.yaml (in case the workspace was re-materialised)
+      ansible.builtin.template:
+        src: config.yaml.j2
+        dest: "{{ seed_config }}"
+        mode: "0600"
+
+    - name: Ensure the roksbnkctl workspace exists
+      ansible.builtin.command: >-
+        roksbnkctl init -w {{ ws }}
+        --config-file {{ seed_config }}
+        --override-from-env
+      args:
+        creates: "{{ roks_home }}/{{ ws }}/config.yaml"
+
+    # NOTE: verify the exact non-interactive confirm flag for your roksbnkctl
+    # release (e.g. `down --yes` / `down --force`). Destroy must not prompt.
+    - name: Tear down all phases
+      ansible.builtin.command: roksbnkctl -w {{ ws }} down --yes

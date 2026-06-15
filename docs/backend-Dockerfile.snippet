@@ -1,0 +1,34 @@
+# =============================================================================
+# BNK Forge runner-image addition for the roksbnkctl deployment packs
+# =============================================================================
+# The roksbnkctl/* packs run on the `ansible-default` runner profile, so the
+# BNK Forge WORKER image must carry two binaries the packs shell out to:
+#
+#   1. roksbnkctl   — the deployment driver (this snippet installs it)
+#   2. ansible-core — required by the ansible engine itself (ansible-playbook)
+#
+# roksbnkctl is a static Go binary and needs `tofu`/terraform + `kubectl`, both
+# of which the worker stage already installs. Add the block below to the WORKER
+# (tooling) stage of `backend/Dockerfile`, right next to the OpenTofu / Helm /
+# kubectl install (around line 189), so it's pinned + checksum-verified like the
+# other tools. The governed runner contract forbids per-pack images and runtime
+# package installs, so the binary must be baked in here — not fetched by a pack.
+# -----------------------------------------------------------------------------
+
+# --- roksbnkctl (driver for the roksbnkctl/* ansible deployment packs) ---
+ARG ROKSBNKCTL_VERSION=1.11.4
+RUN curl --retry 3 --retry-delay 2 --retry-connrefused -fsSL \
+      "https://github.com/jgruberf5/roksbnkctl/releases/download/v${ROKSBNKCTL_VERSION}/roksbnkctl_${ROKSBNKCTL_VERSION}_linux_${TARGETARCH}.tar.gz" \
+      -o roksbnkctl.tar.gz \
+ && tar -xzf roksbnkctl.tar.gz roksbnkctl \
+ && install -m 0755 roksbnkctl /usr/local/bin/roksbnkctl \
+ && rm -f roksbnkctl.tar.gz roksbnkctl \
+ && roksbnkctl version
+# NOTE: confirm the release asset name/URL for your roksbnkctl release. If you
+# publish a bare binary (not a tarball), simplify to a single curl + chmod like
+# the kubectl install. Pin ROKSBNKCTL_VERSION to a tested release.
+
+# --- ansible-core (only if the worker doesn't already have it) ---
+# The ansible engine (ansible-default runner) needs `ansible-playbook` on PATH.
+# If the worker image doesn't already install it, add:
+#   RUN pip install --no-cache-dir ansible-core

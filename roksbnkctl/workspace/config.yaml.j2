@@ -1,0 +1,15 @@
+# Rendered by the BNK Forge blueprint form — NOT hand-edited.
+# Fed to `roksbnkctl init --config-file`. The IBM Cloud API key is NOT written
+# here: it arrives as IBMCLOUD_API_KEY in the environment (from the project's
+# IBM credential template) and `--override-from-env` maps it into the workspace.
+prefix: {{ prefix }}
+ibmcloud:
+  region: {{ region }}
+  resource_group: {{ resource_group }}
+cluster:
+  create: true
+  name: {{ cluster_name }}
+{% if openshift_version is defined and openshift_version %}  openshift_version: "{{ openshift_version }}"
+{% endif %}{% if workers_per_zone is defined and workers_per_zone %}  workers_per_zone: {{ workers_per_zone }}
+{% endif %}tf_source:
+  type: embedded

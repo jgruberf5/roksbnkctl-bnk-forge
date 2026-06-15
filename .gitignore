@@ -1,0 +1,6 @@
+# Runtime artifacts the playbook generates inside the materialized workspace —
+# never committed to the pack source.
+**/.roksbnkctl-home/
+**/seed-config.yaml
+**/outputs.json
+**/.bnk_ansible_vars_*
