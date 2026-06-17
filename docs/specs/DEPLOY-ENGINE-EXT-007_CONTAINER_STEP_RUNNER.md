@@ -60,7 +60,12 @@ itself is deployed**:
 4. **Pluggable `ContainerRunner` substrate** — a `DockerRunner` and a
    `KubernetesRunner` behind one interface, selected by deployment config. Both run
    on BNK Forge's substrate, not the target cluster.
-5. **Reuse the existing spine** — Celery task lifecycle, deployment records, task
+5. **Container Registry credential type** — a reusable, named, admin-managed
+   credential (mirroring `F5Credential`/`SSHCredential`/`CloudCredentialTemplate`
+   and the git-source REPO-AUTH-002 pattern) supporting **ghcr, quay, ecr, acr,
+   icr, gar, and F5 FAR**, matched to an image by registry host. Secrets stay in
+   the backend — never in the git-synced manifest.
+6. **Reuse the existing spine** — Celery task lifecycle, deployment records, task
    logs, `credentials_env` injection, structured-outputs artifact.
 
 ## Registry/Container component (`bnkforge.container.json`)
@@ -86,6 +91,54 @@ itself is deployed**:
   admin allowlist (`ApplicationSetting`, refuse-by-default like `fleet_targeting`);
   `signature` required by policy; reject embedded secret fields. Approval gating
   (`is_official` / admin) per (image, digest).
+- The manifest declares **only** `image@digest` + `registry_host` — never a
+  secret. Auth for a private registry comes from a separately-registered
+  Container Registry credential (below), matched by host — exactly as a private
+  git module source pairs a repo URL with a stored `auth_token` rather than
+  embedding it.
+
+## Container registry authentication
+
+The component wraps an image that must be **pulled**, and private registries need
+auth — just as private git module sources do today (`module.auth_token_encrypted`
++ the REPO-AUTH-002 normalized credential metadata). Add a first-class, reusable
+**Container Registry credential** (named, admin-managed, secrets encrypted, never
+serialized, never in synced manifest content), matched to an image by
+**registry host**:
+
+| Type | Hosts | Auth | Token exchange |
+|---|---|---|---|
+| `ghcr` | `ghcr.io` | username + PAT / GitHub App token | — (bearer) |
+| `quay` | `quay.io` | robot account user + token | — (basic) |
+| `ecr`  | `*.dkr.ecr.<region>.amazonaws.com`, `public.ecr.aws` | **derive from an AWS `CloudCredentialTemplate`** | `ecr GetAuthorizationToken` (~12 h) |
+| `acr`  | `<name>.azurecr.io` | **derive from Azure creds** (SP / managed identity), or admin user | AAD → ACR refresh token |
+| `icr`  | `icr.io`, `<region>.icr.io` | **derive from an IBM `CloudCredentialTemplate`** (the `IBMCLOUD_API_KEY` already on the project) | IAM token → `iamapikey` |
+| `gar`  | `<region>-docker.pkg.dev` | **derive from a GCP SA** (`gcp_credentials_json`) | SA → `oauth2accesstoken` |
+| `far`  | F5 Artifact Registry (`far_repo_url`) | F5 token / basic | — |
+
+Two credential shapes:
+- **Standalone** (`ghcr`, `quay`, `far`): carries its own encrypted secret (PAT /
+  robot token / F5 token).
+- **Derived** (`ecr`, `acr`, `icr`, `gar`): references an existing cloud credential
+  (the project's `CloudCredentialTemplate`, or a GCP/Azure cred) and the platform
+  **exchanges it for a short-lived registry token at pull time** — reusing the
+  existing refresh patterns (AWS session-token-with-expiry on
+  `CloudCredentialTemplate`; the IBM IAM exchange in `ibm_cloud_service`). So
+  ICR/ECR pulls often need **no new secret** — the project's cloud template already
+  authenticates them.
+
+Resolution + delivery (identical for both substrates):
+- At step launch the runner resolves the image's `registry_host` → the matching
+  registry credential → (exchange if derived) → a **dockerconfigjson**.
+- **Docker runner**: a transient `--config`/authfile (or `docker login`) scoped to
+  the pull; never persisted.
+- **Kubernetes runner**: a short-lived `kubernetes.io/dockerconfigjson`
+  **imagePullSecret** on the step Job's pod spec; deleted after.
+- The encrypted secret never leaves the backend except as a derived, short-lived
+  token in the runner's transient config; never logged.
+
+Governance: the **registry-host allowlist** (`ApplicationSetting`) gates which
+hosts are pullable at all; the credential supplies auth for an allowlisted host.
 
 ## Pipeline manifest (`deployment_pack.engine = "container"`)
 
@@ -208,13 +261,16 @@ Retention/cleanup is a runner-profile policy.
 
 ## Phased delivery
 
-1. **Registry/container component**: `bnkforge.container.json` kind + validator +
-   registry allowlist + signature/digest verification + approval gating.
+1. **Registry/container component + Container Registry credential**:
+   `bnkforge.container.json` kind + validator + registry allowlist +
+   signature/digest verification + approval gating; the credential type with
+   ghcr/quay/far (standalone) and ecr/acr/icr/gar (derived + token exchange/refresh)
+   → dockerconfigjson resolution by host.
 2. **`ContainerRunner` interface + `DockerRunner`** (socket-proxy mount, named
-   volume, env, logs, timeout) — unblocks docker-compose installs and the
-   no-cluster-yet bootstrap.
-3. **`KubernetesRunner`** (Job, PVC, Secret, NetworkPolicy, limits) + the
-   where-Jobs-run config.
+   volume, transient authfile from the resolved credential, env, logs, timeout) —
+   unblocks docker-compose installs and the no-cluster-yet bootstrap.
+3. **`KubernetesRunner`** (Job, PVC, Secret, NetworkPolicy, limits, short-lived
+   imagePullSecret from the resolved credential) + the where-Jobs-run config.
 4. **`container` EngineSpec row + manifest validator + `container_engine`**: step
    resolution, substrate dispatch, outputs normalization, Celery lifecycle,
    redaction.
@@ -230,7 +286,12 @@ Retention/cleanup is a runner-profile policy.
 2. On a **Kubernetes** BNK Forge, the same pack runs each step as a Job (PVC +
    Secret + NetworkPolicy) — **identical pack, no changes**.
 3. A floating tag, non-allowlisted registry, or failed signature is rejected; a
-   pack supplying its own image ref or host mount is rejected at validation.
+   pack/manifest supplying its own image ref, host mount, **or registry secret** is
+   rejected at validation.
+3a. A **private** image pulls on both substrates: a `ghcr`/`quay`/`far` credential
+   (standalone token) and a derived `icr`/`ecr` credential (no new secret — token
+   exchanged from the project's cloud template) each yield a working pull; the
+   secret appears in neither logs nor the synced manifest.
 4. `IBMCLOUD_API_KEY` reaches the step as env and is redacted in logs; non-zero
    exit fails the run; `outputs.json` normalizes into module outputs.
 5. `destroy` reuses the persisted workspace; air-gapped (mirror registry +
@@ -258,5 +319,9 @@ Verify the seams: `services/engine_registry.py`, `services/module_metadata.py`
 `docker-compose.yml` (worker service — add socket-proxy access for the Docker
 backend), the kubernetes client plumbing (Job backend),
 `models/system.py::ApplicationSetting` (registry allowlist), and the
-`credentials_service` path. Build the `DockerRunner` first — it's the
+`credentials_service` path. For the registry credential, mirror
+`models/{f5_credential,ssh_credential,system::CloudCredentialTemplate}.py` and the
+git-source `module.auth_token_encrypted` / REPO-AUTH-002 pattern; reuse the AWS
+session-token-expiry and `ibm_cloud_service` IAM exchange for the derived
+ecr/icr/acr/gar token refresh. Build the `DockerRunner` first — it's the
 no-cluster-yet / compose-default path.
