@@ -84,17 +84,32 @@ docs/backend-Dockerfile.snippet   # the runner-image addition (see Prerequisite)
 repo-relative directory — BNK Forge enforces this and resolves the blueprint's
 `module:` ref by that path.
 
-## Prerequisite: bake roksbnkctl into the runner image
+## Prerequisite: bake the toolchain into the worker image
 
-The `ansible-default` worker image bundles `tofu`/`helm`/`kubectl` but **not
-roksbnkctl**, and the governed runner contract forbids per-pack images / runtime
-installs — so roksbnkctl must be **baked into the BNK Forge worker image**. Apply
-`docs/backend-Dockerfile.snippet` to the worker stage of `backend/Dockerfile`
-(next to the OpenTofu/kubectl install). Confirm `ansible-core` is present there
-too (the ansible engine needs `ansible-playbook`).
+The governed runner contract forbids per-pack images / runtime installs, so
+every binary a pack uses must be **baked into the BNK Forge worker image**
+(`backend/Dockerfile`, `FROM app-base AS worker`). The worker today bundles
+`tofu`/`helm`/`kubectl` — which is **not enough**. Three binaries must be added
+(see `docs/backend-Dockerfile.snippet`):
 
-This is the only BNK Forge code/image change required — everything else is pack
-content synced from this repo.
+1. **`roksbnkctl`** — the driver (not present).
+2. **`terraform` ≥ 1.5** — roksbnkctl runs `terraform` *by name* (`exec.LookPath`);
+   the worker's `tofu` is **not** used. (≥ 1.10 only if you enable remote-S3 state.)
+3. **`ansible-core`** — the `ansible-default` runner needs `ansible-playbook`;
+   it's not in `requirements.txt` or the Dockerfile today.
+
+roksbnkctl does **not** need the `ibmcloud` CLI (it uses the IBM Go SDK, auth'd
+by `IBMCLOUD_API_KEY`) or `kubectl`/`oc`/`helm` (it installs BNK via client-go).
+terraform providers download into the existing `TF_PLUGIN_CACHE_DIR`
+(`/app/provider-cache` volume) on the first run, then cache.
+
+After editing the Dockerfile, **rebuild and roll out the worker image** — e.g.
+`./scripts/build.sh --deploy`, or `docker compose build celery-worker && docker
+compose up -d celery-worker celery-worker-2` (both worker services share
+`bnk-forge-worker:latest`). Until the rebuilt image is live, a run fails at the
+playbook's *"Verify the roksbnkctl binary is on PATH"* step. This image change is
+the only BNK Forge edit required — everything else is pack content synced from
+this repo.
 
 ## Caveats / things to verify
 

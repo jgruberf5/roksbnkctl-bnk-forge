@@ -1,21 +1,27 @@
 # =============================================================================
-# BNK Forge runner-image addition for the roksbnkctl deployment packs
+# BNK Forge worker-image additions for the roksbnkctl deployment packs
 # =============================================================================
-# The roksbnkctl/* packs run on the `ansible-default` runner profile, so the
-# BNK Forge WORKER image must carry two binaries the packs shell out to:
+# The roksbnkctl/* packs run on the `ansible-default` runner profile (the Celery
+# WORKER image: `backend/Dockerfile`, `FROM app-base AS worker`). For a pack run
+# to succeed immediately, THREE binaries must be on the worker's PATH. The
+# governed runner contract forbids per-pack images / runtime installs, so all
+# three must be BAKED IN here — a pack cannot fetch them at run time.
 #
-#   1. roksbnkctl   — the deployment driver (this snippet installs it)
-#   2. ansible-core — required by the ansible engine itself (ansible-playbook)
+#   1. roksbnkctl       — the deployment driver               (NOT present today)
+#   2. terraform >= 1.5 — roksbnkctl runs `terraform` by name (NOT present — the
+#                         worker ships `tofu`, which roksbnkctl does NOT use)
+#   3. ansible-core     — provides `ansible-playbook`         (NOT present today —
+#                         it is not in requirements.txt nor the Dockerfile)
 #
-# roksbnkctl is a static Go binary and needs `tofu`/terraform + `kubectl`, both
-# of which the worker stage already installs. Add the block below to the WORKER
-# (tooling) stage of `backend/Dockerfile`, right next to the OpenTofu / Helm /
-# kubectl install (around line 189), so it's pinned + checksum-verified like the
-# other tools. The governed runner contract forbids per-pack images and runtime
-# package installs, so the binary must be baked in here — not fetched by a pack.
+# roksbnkctl does NOT need the `ibmcloud` CLI (it uses the IBM Go SDK / direct
+# API, authenticated by IBMCLOUD_API_KEY) and does NOT need kubectl/oc/helm (it
+# installs BNK via client-go). terraform providers download into the existing
+# TF_PLUGIN_CACHE_DIR=/app/provider-cache volume on the first run, then cache.
+#
+# Add the blocks below to the WORKER stage of `backend/Dockerfile`.
 # -----------------------------------------------------------------------------
 
-# --- roksbnkctl (driver for the roksbnkctl/* ansible deployment packs) ---
+# --- 1. roksbnkctl (driver for the roksbnkctl/* ansible deployment packs) ---
 ARG ROKSBNKCTL_VERSION=1.11.4
 RUN curl --retry 3 --retry-delay 2 --retry-connrefused -fsSL \
       "https://github.com/jgruberf5/roksbnkctl/releases/download/v${ROKSBNKCTL_VERSION}/roksbnkctl_${ROKSBNKCTL_VERSION}_linux_${TARGETARCH}.tar.gz" \
@@ -24,11 +30,26 @@ RUN curl --retry 3 --retry-delay 2 --retry-connrefused -fsSL \
  && install -m 0755 roksbnkctl /usr/local/bin/roksbnkctl \
  && rm -f roksbnkctl.tar.gz roksbnkctl \
  && roksbnkctl version
-# NOTE: confirm the release asset name/URL for your roksbnkctl release. If you
-# publish a bare binary (not a tarball), simplify to a single curl + chmod like
-# the kubectl install. Pin ROKSBNKCTL_VERSION to a tested release.
+# NOTE: confirm the release asset name/URL for your roksbnkctl release.
 
-# --- ansible-core (only if the worker doesn't already have it) ---
-# The ansible engine (ansible-default runner) needs `ansible-playbook` on PATH.
-# If the worker image doesn't already install it, add:
-#   RUN pip install --no-cache-dir ansible-core
+# --- 2. terraform (roksbnkctl calls `exec.LookPath("terraform")`) ---
+# roksbnkctl needs the `terraform` binary specifically — the worker's `tofu` is
+# not used. Use >= 1.5 (1.5.7 is the last MPL/open-source release); use >= 1.10
+# only if you enable roksbnkctl's remote-S3 state (it needs the native lockfile).
+ARG TERRAFORM_VERSION=1.5.7
+RUN curl --retry 3 --retry-delay 2 --retry-connrefused -fsSL \
+      "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TARGETARCH}.zip" \
+      -o terraform.zip \
+ && unzip terraform.zip terraform -d /usr/local/bin \
+ && chmod +x /usr/local/bin/terraform \
+ && rm -f terraform.zip \
+ && terraform version
+# LIGHTER ALTERNATIVE (validate first): symlink terraform → the bundled tofu.
+# OpenTofu is CLI-compatible for init/plan/apply, but provider source/registry
+# resolution differs — test an IBM ROKS apply before relying on it:
+#   RUN ln -s /usr/local/bin/tofu /usr/local/bin/terraform
+# (A roksbnkctl enhancement to honor a TF-binary override env would remove the
+#  need for a second binary entirely — it currently hard-codes "terraform".)
+
+# --- 3. ansible-core (the ansible engine shells out to `ansible-playbook`) ---
+RUN pip install --no-cache-dir ansible-core
