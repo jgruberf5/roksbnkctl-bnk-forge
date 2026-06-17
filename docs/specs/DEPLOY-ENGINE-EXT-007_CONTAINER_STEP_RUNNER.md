@@ -140,6 +140,76 @@ Resolution + delivery (identical for both substrates):
 Governance: the **registry-host allowlist** (`ApplicationSetting`) gates which
 hosts are pullable at all; the credential supplies auth for an allowlisted host.
 
+## Credential delivery per substrate
+
+A step/task needs several credential classes — all resolved by the authorization
+layer and delivered in the form each substrate consumes:
+
+| Credential class | Source | Docker runner | Kubernetes runner |
+|---|---|---|---|
+| **Registry/repo pull auth** | Container Registry credential (above) | transient authfile / `docker login` | `kubernetes.io/dockerconfigjson` **imagePullSecret** |
+| **Deployment / cloud** (`IBMCLOUD_API_KEY`, `AWS_*`, …) | project `CloudCredentialTemplate` → `credentials_env` | `--env` | **Opaque Secret** via `envFrom` / `secretKeyRef` |
+| **Git / source-repo** (token or SSH key) | `module.auth_token_encrypted` (REPO-AUTH-002) / `SSHCredential` | `--env` / mounted tmp file | **Opaque Secret** as env or mounted volume |
+| **Other reusable** (F5 token, kubeconfig, …) | the matching credential model | env / mounted file | **Secret** (env or mounted) |
+
+For the **Kubernetes runner, every credential the task needs is materialized as a
+namespaced Kubernetes Secret** consumed by the step Job — not merely passed as
+process env (which is all the current worker-local subprocess model does, see
+`kubernetes_engine._inject_credentials`). This is what makes K8s task components
+first-class:
+
+- pull auth → a `dockerconfigjson` Secret named in the pod's `imagePullSecrets`;
+- env creds → an `Opaque` Secret consumed via `envFrom` / `env.valueFrom.secretKeyRef`;
+- file creds (SSH key, git token, kubeconfig) → an `Opaque` Secret **mounted** as a volume.
+
+Secrets are **short-lived**: created in the runner namespace just before the Job,
+`ownerReferences`-bound to the Job so the garbage collector deletes them with it
+(or finalizer-cleaned), and never logged. Reuse the existing `V1Secret` +
+`create_namespaced_secret` plumbing (`qkview_service`) and the dockerconfigjson /
+`imagePullSecrets` precedent already in `kubernetes_engine` (and the project
+`cne_pull_secret` for `repo.f5.com` / FAR).
+
+For the **Docker runner**, the same classes arrive as process env + a transient
+authfile + mounted tmp files, all scoped to the step container and removed after.
+
+This delivery applies to any K8s-task execution — the container-step
+`KubernetesRunner` here, and the same Secret mechanism is available to the
+existing `kubernetes` engine should it run workloads as Jobs rather than
+worker-local subprocesses.
+
+## Persisting run secrets to the project
+
+A run resolves credentials transiently, but the **project must own its secrets**
+for reuse and day-2 operations. On a blueprint run, the credentials the run uses
+(and that the deployed workload will keep needing) are persisted to the project's
+secret store — **`ProjectSecret`** (table `project_secrets`) — idempotently
+upserted by `(project_id, name)`:
+
+- The **image-pull credential** is written as the project's **`cne_pull_secret`**
+  (the base64 dockerconfigjson whose `auths` cover what the workload pulls — FAR
+  `repo.f5.com`, ICR, or the mirror). This is exactly where BNK image-pull auth
+  already lives: `bnk_upgrade_service` reads `cne_pull_secret` from `ProjectSecret`
+  for chart/image pulls, with `bnk.far_pull_secret_default` as the global fallback.
+  Persisting it means BNK pods and day-2 upgrades keep pulling after the run ends.
+- Other long-lived credentials the project should retain are stored as named
+  `ProjectSecret`s, optionally bound to a module variable via
+  `(target_module_path, target_variable_name)`.
+
+Durable vs transient:
+- **Durable → `ProjectSecret`** (encrypted, auditable, lifecycle-bound to the
+  project; removed on project deletion or by teardown policy). This is what "added
+  to the project" means.
+- **Transient** → the short-lived runner Secrets / authfiles from *Credential
+  delivery per substrate*, GC'd with the step. **Exchanged short-lived tokens**
+  (ECR/ICR/ACR/GAR) are **re-derived from the project's cloud credential at
+  pull/day-2 time, not persisted** — only the durable source is retained (the
+  dockerconfigjson the cluster needs, or the cloud template already on the project).
+
+Where the deployed workload needs the secret **in-cluster** (e.g. the BNK pull
+secret), the run also **pushes it as a K8s Secret into the project's target
+cluster/namespace** (reusing `create_namespaced_secret` / the dockerconfigjson
+plumbing), so the cluster holds it independently of the runner.
+
 ## Pipeline manifest (`deployment_pack.engine = "container"`)
 
 ```json
@@ -211,11 +281,12 @@ Both backends: pull/verify the pinned image, run `command+args`, mount the
 ### B. Kubernetes runner (Helm/cluster installs, or a configured runner cluster)
 
 - Launches **one Job per step** in a locked-down runner namespace: image by
-  digest; workspace = a **PVC** mounted across step Jobs; credentials via a
-  short-lived **Secret** → env; deny-by-default **NetworkPolicy** (allow only the
-  egress the tool needs); resource limits; `activeDeadlineSeconds`; pull secret for
-  the (mirrored) registry. Strong multi-tenant isolation — the right default when
-  BNK Forge runs on Kubernetes.
+  digest; workspace = a **PVC** mounted across step Jobs; **all credentials as
+  short-lived Kubernetes Secrets** (imagePullSecret + env/mounted Opaque Secrets —
+  see *Credential delivery per substrate*); deny-by-default **NetworkPolicy**
+  (allow only the egress the tool needs); resource limits; `activeDeadlineSeconds`.
+  Strong multi-tenant isolation — the right default when BNK Forge runs on
+  Kubernetes.
 
 ### Substrate selection
 
@@ -269,8 +340,12 @@ Retention/cleanup is a runner-profile policy.
 2. **`ContainerRunner` interface + `DockerRunner`** (socket-proxy mount, named
    volume, transient authfile from the resolved credential, env, logs, timeout) —
    unblocks docker-compose installs and the no-cluster-yet bootstrap.
-3. **`KubernetesRunner`** (Job, PVC, Secret, NetworkPolicy, limits, short-lived
-   imagePullSecret from the resolved credential) + the where-Jobs-run config.
+3. **`KubernetesRunner`** (Job, PVC, NetworkPolicy, limits) with **all credential
+   classes delivered as short-lived K8s Secrets** — imagePullSecret + Opaque
+   env/mounted Secrets for cloud + repo/git creds — and the where-Jobs-run config.
+3b. **Persist run secrets to the project**: upsert `ProjectSecret`s (notably
+   `cne_pull_secret`) and push the in-cluster pull Secret to the project's
+   cluster/namespace, so day-2 (BNK pulls, `bnk_upgrade_service`) keeps working.
 4. **`container` EngineSpec row + manifest validator + `container_engine`**: step
    resolution, substrate dispatch, outputs normalization, Celery lifecycle,
    redaction.
@@ -292,6 +367,14 @@ Retention/cleanup is a runner-profile policy.
    (standalone token) and a derived `icr`/`ecr` credential (no new secret — token
    exchanged from the project's cloud template) each yield a working pull; the
    secret appears in neither logs nor the synced manifest.
+3b. On the **Kubernetes** substrate, the task's registry, cloud, and repo/git
+   credentials are delivered as namespaced **Secrets** (imagePullSecret + Opaque
+   env/mounted), `ownerReferences`-bound to the Job and GC'd with it — not merely
+   process env.
+3c. After a run, the project holds its secrets: the image-pull credential is
+   persisted as the project's **`cne_pull_secret`** (`ProjectSecret`) and pushed
+   into the target cluster, so BNK pods + `bnk_upgrade_service` keep pulling
+   post-run; transient exchanged tokens are not persisted.
 4. `IBMCLOUD_API_KEY` reaches the step as env and is redacted in logs; non-zero
    exit fails the run; `outputs.json` normalizes into module outputs.
 5. `destroy` reuses the persisted workspace; air-gapped (mirror registry +
@@ -323,5 +406,9 @@ backend), the kubernetes client plumbing (Job backend),
 `models/{f5_credential,ssh_credential,system::CloudCredentialTemplate}.py` and the
 git-source `module.auth_token_encrypted` / REPO-AUTH-002 pattern; reuse the AWS
 session-token-expiry and `ibm_cloud_service` IAM exchange for the derived
-ecr/icr/acr/gar token refresh. Build the `DockerRunner` first — it's the
-no-cluster-yet / compose-default path.
+ecr/icr/acr/gar token refresh. For K8s Secret delivery reuse `V1Secret` +
+`create_namespaced_secret` (`qkview_service`) and the `kubernetes_engine`
+dockerconfigjson/`imagePullSecrets` precedent. For project persistence use
+`models/project.py::ProjectSecret` (table `project_secrets`) + `routes/project_secrets.py`,
+writing `cne_pull_secret` the way `bnk_upgrade_service` consumes it. Build the
+`DockerRunner` first — it's the no-cluster-yet / compose-default path.
