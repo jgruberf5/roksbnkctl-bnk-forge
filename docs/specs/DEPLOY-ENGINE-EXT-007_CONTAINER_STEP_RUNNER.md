@@ -227,6 +227,7 @@ plumbing), so the cluster holds it independently of the runner.
     "engine": "container",
     "runner_profile": "container-default",
     "working_directory": ".",
+    "state": { "persist": true, "mount_path": "/state", "home_env": ["ROKSBNKCTL_HOME"] },
     "containers": [ { "name": "roksbnkctl-tools-runner", "version": "1.11.4" } ],
     "steps": {
       "apply": [
@@ -304,14 +305,83 @@ Both backends: pull/verify the pinned image, run `command+args`, mount the
 - The pack/manifest is **substrate-agnostic** — the same `steps[]` run on either
   backend. Only the deployment picks the runner.
 
-## State / workspace model
+## State persistence
 
-The workspace volume (Docker named volume or K8s PVC) is mounted across **every
-step**, so a stateful tool keeps state between steps and into `destroy`. For
-roksbnkctl: set `ROKSBNKCTL_HOME` to the mounted workspace and use the `local`
-backend (all tools in the all-in-one image). Document remote state (roksbnkctl
-`state s3` → COS) as the durable-destroy fallback for ephemeral workspaces.
-Retention/cleanup is a runner-profile policy.
+State spans two scopes; both **reuse the mechanism bnk-forge already built for
+OpenTofu** rather than inventing one.
+
+- **Within a run** (step → step): the persistent workspace is mounted into every
+  step container, so a tool's state carries from `init` → `cluster up` → `bnk up`.
+- **Between runs** (day-2 re-apply, or `destroy` weeks later): the workspace is
+  **durable and keyed to the deployment instance — not the run** — and restored
+  before every run, so `destroy` gets the state `apply` wrote and a re-apply does
+  not recreate.
+
+### Reuse the existing persistent-workspace store
+
+The runner sources the workspace from bnk-forge's `WorkspaceManager` /
+`ModuleContext.workspace_path` on the durable `workspace_data` + `state_data`
+volumes — the same store the OpenTofu engine uses ("*Persist OpenTofu state files
+(critical for destroy operations!)*"). Keyed by `(deployment, component)`:
+
+- **Docker runner**: a named-volume subpath (a *named* volume, so the sibling
+  container can mount it through the host daemon).
+- **Kubernetes runner**: a per-component **PVC** (Retain reclaim), mounted into
+  each step Job.
+
+### Generalized state-home env (tool-agnostic)
+
+The runner mounts the persistent workspace at a fixed `mount_path` and sets the
+**tool's state-home env var(s) — declared by the component, not hardcoded** — so
+*any* `ctl` tool reuses the same mechanism:
+
+```json
+"deployment_pack": {
+  "...": "...",
+  "state": {
+    "persist": true,
+    "mount_path": "/state",
+    "home_env": ["ROKSBNKCTL_HOME"]
+  }
+}
+```
+
+- `home_env` is a **list** of env vars the runner sets to `mount_path` — roksbnkctl
+  → `ROKSBNKCTL_HOME`, a Terraform-style tool → `TF_DATA_DIR`, a generic tool →
+  `XDG_STATE_HOME` / `HOME`. Each tool declares only its own; the runner is
+  tool-agnostic.
+- `persist: false` for **declarative** artifacts (helm chart / manifest) — the
+  *cluster* holds their state, so no workspace is mounted.
+- May alternatively be declared on the **image/artifact component**, so the
+  state-home env is intrinsic to the tool image and every pack using it inherits it
+  (ties to the artifact-component object model).
+
+### What persists vs regenerates (roksbnkctl)
+
+| In the state-home | Persist? | If lost |
+|---|---|---|
+| `state*/terraform.tfstate` (all phases) | **must** | can't `down`; re-`up` recreates everything |
+| generated SSH private keys (testing) | **must** | jumphosts unreachable / recreated |
+| `cluster-outputs.json` | should | reconstructable via `cluster register` / tf outputs |
+| `config.yaml` | no | regenerated from the blueprint form each run |
+
+The durable unit is the whole state-home dir; only `config.yaml` is regenerable.
+
+### Security
+
+The state-home holds secrets — terraform state carries the API key + generated
+private keys in cleartext — the same sensitivity as bnk-forge's existing
+`state_data`. Use an encrypted storage class / access-controlled volume; never
+world-readable.
+
+### Ephemeral-runner hardening
+
+For stateless / parallel / replaceable runners a host-pinned volume is fragile:
+use the tool's **native remote state** where it has one (roksbnkctl `state s3` →
+COS) so state lives off-runner and `destroy` works from any runner (also the
+air-gap path). The platform-captured outputs (`outputs_file` → deployment record)
+are a reconstruction backstop for the cluster identity. Retention/cleanup of the
+persistent workspace is a runner-profile policy, released on stack teardown.
 
 ## GitHub Actions parallel
 
@@ -345,9 +415,11 @@ Retention/cleanup is a runner-profile policy.
    registry-host allowlist. **Plus** the `bnkforge.container.json` component kind +
    validator + signature/digest verification + approval gating (references a
    Container Registry by name/host).
-2. **`ContainerRunner` interface + `DockerRunner`** (socket-proxy mount, named
-   volume, transient authfile from the resolved credential, env, logs, timeout) —
-   unblocks docker-compose installs and the no-cluster-yet bootstrap.
+2. **`ContainerRunner` interface + `DockerRunner`** (socket-proxy mount, transient
+   authfile from the resolved credential, env, logs, timeout) + the **persistent
+   workspace** keyed to `(deployment, component)` via `WorkspaceManager` /
+   `workspace_data`, mounted at `state.mount_path` with the declared `state.home_env`
+   set — unblocks docker-compose installs and the no-cluster-yet bootstrap.
 3. **`KubernetesRunner`** (Job, PVC, NetworkPolicy, limits) with **all credential
    classes delivered as short-lived K8s Secrets** — imagePullSecret + Opaque
    env/mounted Secrets for cloud + repo/git creds — and the where-Jobs-run config.
@@ -387,6 +459,12 @@ Retention/cleanup is a runner-profile policy.
    exit fails the run; `outputs.json` normalizes into module outputs.
 5. `destroy` reuses the persisted workspace; air-gapped (mirror registry +
    pre-pulled digest) runs succeed with no public egress on either substrate.
+6. **State survives between runs**: a deployment's persistent workspace (keyed to
+   `(deployment, component)`) is restored on each run, so a `destroy` days after the
+   `apply` tears down what was created; the runner sets only the component-declared
+   `state.home_env` (e.g. `ROKSBNKCTL_HOME`) to `mount_path` — no tool-specific
+   hardcoding — and a second `ctl` tool declaring a different `home_env` works
+   unchanged. `persist: false` components mount no workspace.
 
 ## Worked example
 
