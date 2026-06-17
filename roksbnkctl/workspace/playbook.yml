@@ -26,6 +26,7 @@
     testing_vpc: "{{ testing_vpc | default(false) }}"
     testing_in_cluster: "{{ testing_in_cluster | default(false) }}"
     install_gateway: "{{ install_gateway | default(false) }}"
+    existing_transit_gateway: "{{ existing_transit_gateway | default('') }}"
     roks_home: "{{ playbook_dir }}/.roksbnkctl-home"
     seed_config: "{{ playbook_dir }}/seed-config.yaml"
     outputs_path: "{{ playbook_dir }}/outputs.json"

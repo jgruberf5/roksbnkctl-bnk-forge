@@ -100,6 +100,14 @@
         "order": 9
       },
       {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "label": "Existing Transit Gateway (name/ID)",
+        "description": "Adopt an existing Transit Gateway instead of creating one. Required to use 'Testing: external client VPC' against an existing cluster. Blank = create one with a new cluster.",
+        "default": "",
+        "order": 9.5
+      },
+      {
         "name": "testing_in_cluster",
         "type": "boolean",
         "label": "Testing: in-cluster jumphosts",
@@ -135,6 +143,7 @@
         "workers_per_zone": "${workers_per_zone}",
         "install_bnk": "${install_bnk}",
         "testing_vpc": "${testing_vpc}",
+        "existing_transit_gateway": "${existing_transit_gateway}",
         "testing_in_cluster": "${testing_in_cluster}",
         "install_gateway": "${install_gateway}"
       }

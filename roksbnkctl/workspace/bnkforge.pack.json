@@ -91,6 +91,12 @@
         "source": "user"
       },
       {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "description": "Adopt an existing Transit Gateway by name/ID instead of creating one (rendered as resources.transit_gateway.existing). Required to use testing_vpc against an existing cluster. Blank = create with a new cluster / none for an existing one.",
+        "source": "user"
+      },
+      {
         "name": "testing_in_cluster",
         "type": "boolean",
         "description": "Testing phase: in-cluster per-AZ jumphosts. Default false.",

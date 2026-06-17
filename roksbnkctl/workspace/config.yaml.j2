@@ -20,8 +20,12 @@ cluster:
   # Cluster-phase infra. Created with a NEW cluster (matches `roksbnkctl init`
   # defaults); assumed already present for an EXISTING cluster.
   transit_gateway:
-    create: {{ 'true' if (cluster_create | bool) else 'false' }}
-  registry_cos:
+{% if existing_transit_gateway is defined and existing_transit_gateway %}    # Adopt an existing Transit Gateway by name/ID (so the testing phase can
+    # reference it). Applies whether the cluster is new or existing.
+    create: false
+    existing: {{ existing_transit_gateway }}
+{% else %}    create: {{ 'true' if (cluster_create | bool) else 'false' }}
+{% endif %}  registry_cos:
     create: {{ 'true' if (cluster_create | bool) else 'false' }}
   cert_manager:
     create: {{ 'true' if (cluster_create | bool) else 'false' }}

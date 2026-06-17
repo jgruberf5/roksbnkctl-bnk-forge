@@ -46,6 +46,7 @@ IBM credential template ──▶ IBMCLOUD_API_KEY (env) ─────┘   cl
 | `openshift_version`, `workers_per_zone` | New-cluster sizing (ignored for an existing cluster). |
 | `install_bnk` | Install BIG-IP Next for Kubernetes (`bnk up`). |
 | `testing_vpc` | Testing phase — external client VPC + Transit Gateway jumphost. |
+| `existing_transit_gateway` | Adopt an existing Transit Gateway by name/ID (`resources.transit_gateway.existing`) instead of creating one. Required to use `testing_vpc` against an existing cluster; also lets a new cluster adopt a shared corporate TGW. |
 | `testing_in_cluster` | Testing phase — in-cluster per-AZ jumphosts. |
 | `install_gateway` | Deploy the gateway phase (`gateway up`). |
 
@@ -103,9 +104,11 @@ content synced from this repo.
   second run enabling the rest) or raise the runner timeout.
 - **Existing-cluster infra.** Attaching to an existing cluster (`cluster_create`
   off) skips creating `transit_gateway`/`registry_cos`/`cert_manager` (they're
-  assumed present). If you then enable `testing_vpc`, the testing phase needs to
-  reference the existing Transit Gateway — adopt it via the `existing:` toggle
-  fields in `config.yaml` (a v1 limitation; see the roksbnkctl docs).
+  assumed present). To run `testing_vpc` against an existing cluster, set
+  `existing_transit_gateway` to the cluster's Transit Gateway name/ID — the
+  template renders `resources.transit_gateway.{create: false, existing: …}` so the
+  testing phase finds it. (`registry_cos` adoption for an existing cluster is via
+  `cluster register --registry-cos-name`; see the playbook comment.)
 - **Destroy needs the state.** `destroy.yml` runs `roksbnkctl <phase> down`, which
   needs the terraform state from apply. State lives under `ROKSBNKCTL_HOME` (pinned into
   the module workspace). If Forge does **not** persist the module workspace between
