@@ -206,8 +206,10 @@ and Cloud Credential Templates** on the Access Methods surface (`/auth-templates
 D-020; `Sidebar` → *Access Methods*, operator role). **Global, reusable, no project
 FK**, configured **once** — like `SSHCredential` ("an access method, not a cloud
 provider"): a model + `/api/container-registries` CRUD + `/test`, secrets encrypted
-and never serialized. Blueprints/artifacts **reference** a registry by name/id (the
-`project.credential_template_id` selection pattern) — never embedding a secret.
+and never serialized. Each entry is **named**, and **multiple entries per type are
+allowed** — that is how multiple environments (several FARs, several ICRs, …) and
+multiple hosts coexist. Blueprints/artifacts **reference** a registry **by name/id**
+(the `project.credential_template_id` selection pattern) — never embedding a secret.
 
 | Type | Hosts | Auth | Token exchange |
 |---|---|---|---|
@@ -217,7 +219,7 @@ and never serialized. Blueprints/artifacts **reference** a registry by name/id (
 | `acr`  | `<name>.azurecr.io` | **reference Azure creds** (SP / managed identity), or admin user | AAD → ACR refresh token |
 | `icr`  | `icr.io`, `<region>.icr.io` | **reference an IBM Cloud Credential Template** | IAM token → `iamapikey` |
 | `gar`  | `<region>-docker.pkg.dev` | **reference a GCP SA** (`gcp_credentials_json`) | SA → `oauth2accesstoken` |
-| `far`  | F5 Artifact Registry (`far_repo_url`) | F5 token / basic | — |
+| `far`  | F5 Artifact Registry (per-env host, default `repo.f5.com`) | service-account JSON → HTTP Basic `_json_key_base64` : base64(SA) | — (static SA) |
 
 - **Standalone** (`ghcr`, `quay`, `far`): own encrypted secret.
 - **Derived** (`ecr`, `acr`, `icr`, `gar`): **references a Cloud Credential
@@ -225,9 +227,29 @@ and never serialized. Blueprints/artifacts **reference** a registry by name/id (
   time (reusing the AWS session-token-expiry / `ibm_cloud_service` IAM exchange) —
   often **no new secret**.
 
+### FAR specifics (multi-environment, named)
+
+F5 distributes a FAR token as a **gzip tarball** (`f5-cne-far-auth-key.tgz`)
+containing a **single `.json`** Google-style **service account**. The auth scheme is
+HTTP **Basic** with username `_json_key_base64` and password = **base64(the SA
+JSON)** — mechanically the **same `_json_key_base64` scheme as `gar`** (FAR is a
+GAR-backed registry at a different host). bnk-forge ingests the **`.tgz`** (or the
+raw SA JSON), extracts the first `*.json`, base64-encodes it, and on pull emits a
+`dockerconfigjson` with `{username: "_json_key_base64", password: base64(SA)}` for
+the FAR host. This mirrors roksbnkctl exactly
+(`internal/registry/source/farauth.go::ExtractServiceAccountFromTarball` + the
+`jsonKeyUser = "_json_key_base64"` Basic auth in `source.go`), and the terraform flo
+module ("untar, take the first `*.json`, read as `far_service_account_b64`").
+
+**There are multiple FAR environments, each with its own host + token**, so create
+**one named `far` Container Registry per environment** (e.g. `far-prod`,
+`far-staging`); artifacts/blueprints reference the FAR registry **by name**. (roksbnkctl
+today carries a single `bnk.far_repo_url` + `bnk.far_auth_file` per workspace; the
+Access Method generalizes that to N named environments.)
+
 An admin **registry-host allowlist** (`ApplicationSetting`) bounds which hosts any
 registry may target; resolution walks the `references` graph so every image gets a
-matching registry.
+matching named registry.
 
 ## Credential delivery per substrate
 
@@ -378,9 +400,11 @@ engine_router,task_dispatch,kubernetes_engine,opentofu_engine}.py` +
 `services/workspace_manager.py` (persistent workspace); `docker-compose.yml`
 (`state_data`/`workspace_data` volumes; worker socket-proxy for the Docker backend);
 `models/system.py::ApplicationSetting` (registry allowlist). For the registry
-Access Method mirror `routes/ssh_credentials.py` + `models/ssh_credential.py` and
-surface it on `pages/AuthTemplates.tsx`; for derived types reference a
-`CloudCredentialTemplate` like `project.credential_template_id`. For project
-persistence use `models/project.py::ProjectSecret` + `routes/project_secrets.py`
-(write `cne_pull_secret`). Build the `DockerRunner` + persistent workspace first —
+Access Method mirror `routes/ssh_credentials.py` + `models/ssh_credential.py`
+(named, multiple-per-type) and surface it on `pages/AuthTemplates.tsx`; for derived
+types reference a `CloudCredentialTemplate` like `project.credential_template_id`;
+for `far`, ingest the `*.tgz` and emit `_json_key_base64` Basic exactly as
+roksbnkctl `internal/registry/source/{farauth.go,source.go}` does (one named entry
+per FAR environment). For project persistence use `models/project.py::ProjectSecret`
++ `routes/project_secrets.py` (write `cne_pull_secret`). Build the `DockerRunner` + persistent workspace first —
 the no-cluster-yet / compose-default path.
