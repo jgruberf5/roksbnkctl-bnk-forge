@@ -1,17 +1,23 @@
 ---
 # roksbnkctl workspace teardown — invoked by BNK Forge destroy.
 #
-# Requires the roksbnkctl state from the apply run. That state lives under
-# ROKSBNKCTL_HOME (pinned into the module workspace). If BNK Forge persists the
-# module workspace between apply and destroy, this works as-is. If it does NOT,
-# configure remote state in the seed (a state: block / `roksbnkctl state s3`)
-# so the terraform state survives in COS — see the repo README.
+# Tears down the phases that were deployed, in reverse order. An EXISTING
+# (registered) cluster is NOT destroyed — only the phases roksbnkctl added.
+#
+# Requires the roksbnkctl state from apply (under ROKSBNKCTL_HOME, pinned into
+# the module workspace). If BNK Forge does not persist the module workspace
+# between apply and destroy, configure remote state so it survives — see README.
 - name: Tear down the roksbnkctl workspace
   hosts: localhost
   connection: local
   gather_facts: false
   vars:
     ws: "{{ workspace_name | default('forge') }}"
+    cluster_create: "{{ cluster_create | default(true) }}"
+    install_bnk: "{{ install_bnk | default(true) }}"
+    testing_vpc: "{{ testing_vpc | default(false) }}"
+    testing_in_cluster: "{{ testing_in_cluster | default(false) }}"
+    install_gateway: "{{ install_gateway | default(false) }}"
     roks_home: "{{ playbook_dir }}/.roksbnkctl-home"
     seed_config: "{{ playbook_dir }}/seed-config.yaml"
   environment:
@@ -32,7 +38,20 @@
       args:
         creates: "{{ roks_home }}/{{ ws }}/config.yaml"
 
-    # NOTE: verify the exact non-interactive confirm flag for your roksbnkctl
-    # release (e.g. `down --yes` / `down --force`). Destroy must not prompt.
-    - name: Tear down all phases
-      ansible.builtin.command: roksbnkctl -w {{ ws }} down --yes
+    # Reverse order: gateway → testing → bnk → cluster.
+    - name: Tear down the gateway phase
+      ansible.builtin.command: roksbnkctl -w {{ ws }} gateway down --auto
+      when: install_gateway | bool
+
+    - name: Tear down the testing phase
+      ansible.builtin.command: roksbnkctl -w {{ ws }} testing down --auto
+      when: (testing_vpc | bool) or (testing_in_cluster | bool)
+
+    - name: Tear down BNK
+      ansible.builtin.command: roksbnkctl -w {{ ws }} bnk down --auto
+      when: install_bnk | bool
+
+    # Only destroy a cluster roksbnkctl created — never an adopted existing one.
+    - name: Tear down the cluster
+      ansible.builtin.command: roksbnkctl -w {{ ws }} cluster down --auto
+      when: cluster_create | bool

@@ -2,14 +2,39 @@
 # Fed to `roksbnkctl init --config-file`. The IBM Cloud API key is NOT written
 # here: it arrives as IBMCLOUD_API_KEY in the environment (from the project's
 # IBM credential template) and `--override-from-env` maps it into the workspace.
+#
+# Booleans are rendered lowercase on purpose — roksbnkctl's YAML parser reads
+# `true`/`false`, not Jinja's `True`/`False`.
 prefix: {{ prefix }}
 ibmcloud:
   region: {{ region }}
   resource_group: {{ resource_group }}
 cluster:
-  create: true
+  # create=false ⇒ the workspace attaches to an existing cluster (cluster.name
+  # is its name/ID); the playbook runs `cluster register` instead of `cluster up`.
+  create: {{ 'true' if (cluster_create | bool) else 'false' }}
   name: {{ cluster_name }}
 {% if openshift_version is defined and openshift_version %}  openshift_version: "{{ openshift_version }}"
 {% endif %}{% if workers_per_zone is defined and workers_per_zone %}  workers_per_zone: {{ workers_per_zone }}
-{% endif %}tf_source:
+{% endif %}resources:
+  # Cluster-phase infra. Created with a NEW cluster (matches `roksbnkctl init`
+  # defaults); assumed already present for an EXISTING cluster.
+  transit_gateway:
+    create: {{ 'true' if (cluster_create | bool) else 'false' }}
+  registry_cos:
+    create: {{ 'true' if (cluster_create | bool) else 'false' }}
+  cert_manager:
+    create: {{ 'true' if (cluster_create | bool) else 'false' }}
+  # BIG-IP Next for Kubernetes.
+  bnk:
+    create: {{ 'true' if (install_bnk | bool) else 'false' }}
+  # Testing — external client VPC path (a client VPC + a TGW jumphost).
+  tgw_jumphost:
+    create: {{ 'true' if (testing_vpc | bool) else 'false' }}
+  client_vpc:
+    create: {{ 'true' if (testing_vpc | bool) else 'false' }}
+  # Testing — in-cluster path (per-AZ jumphosts in the cluster VPC).
+  cluster_jumphosts:
+    create: {{ 'true' if (testing_in_cluster | bool) else 'false' }}
+tf_source:
   type: embedded

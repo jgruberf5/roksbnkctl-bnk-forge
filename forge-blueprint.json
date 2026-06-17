@@ -32,8 +32,8 @@
       {
         "name": "cluster_name",
         "type": "string",
-        "label": "Cluster name",
-        "description": "Name of the ROKS cluster.",
+        "label": "Cluster name (or existing name/ID)",
+        "description": "Name for a new ROKS cluster, or the name/ID of an existing cluster to attach to.",
         "example": "acme-eu-roks",
         "order": 2
       },
@@ -60,28 +60,60 @@
     ],
     "optional": [
       {
+        "name": "cluster_create",
+        "type": "boolean",
+        "label": "Create a new cluster",
+        "description": "On = provision a new ROKS cluster. Off = attach to the existing cluster named above.",
+        "default": true,
+        "order": 5
+      },
+      {
         "name": "openshift_version",
         "type": "string",
         "label": "OpenShift version",
-        "description": "Blank = ROKS default.",
+        "description": "New cluster only. Blank = ROKS default.",
         "default": "",
-        "order": 5
+        "order": 6
       },
       {
         "name": "workers_per_zone",
         "type": "number",
         "label": "Workers per zone",
-        "description": "Worker nodes per zone.",
+        "description": "New cluster only. Worker nodes per zone.",
         "default": 2,
-        "order": 6
+        "order": 7
       },
       {
-        "name": "target",
-        "type": "string",
-        "label": "Deploy scope",
-        "description": "'all' = cluster + BNK + testing + gateway; 'cluster' = cluster only.",
-        "default": "all",
-        "order": 7
+        "name": "install_bnk",
+        "type": "boolean",
+        "label": "Install BNK",
+        "description": "Install BIG-IP Next for Kubernetes.",
+        "default": true,
+        "order": 8
+      },
+      {
+        "name": "testing_vpc",
+        "type": "boolean",
+        "label": "Testing: external client VPC",
+        "description": "Deploy the testing phase's external client VPC + Transit Gateway jumphost.",
+        "default": false,
+        "order": 9
+      },
+      {
+        "name": "testing_in_cluster",
+        "type": "boolean",
+        "label": "Testing: in-cluster jumphosts",
+        "description": "Deploy the testing phase's in-cluster per-AZ jumphosts.",
+        "default": false,
+        "order": 10
+      },
+      {
+        "name": "install_gateway",
+        "type": "boolean",
+        "label": "Deploy gateway phase",
+        "description": "Deploy the gateway phase.",
+        "default": false,
+        "order": 11
       }
     ]
   },
@@ -98,9 +130,13 @@
         "cluster_name": "${cluster_name}",
         "region": "${region}",
         "resource_group": "${resource_group}",
+        "cluster_create": "${cluster_create}",
         "openshift_version": "${openshift_version}",
         "workers_per_zone": "${workers_per_zone}",
-        "target": "${target}"
+        "install_bnk": "${install_bnk}",
+        "testing_vpc": "${testing_vpc}",
+        "testing_in_cluster": "${testing_in_cluster}",
+        "install_gateway": "${install_gateway}"
       }
     }
   ],

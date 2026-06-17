@@ -36,17 +36,36 @@ IBM credential template ──▶ IBMCLOUD_API_KEY (env) ─────┘   cl
 - **Outputs.** The playbook reads `cluster-outputs.json` and writes the manifest's
   `outputs_file` (`outputs.json`); Forge imports it as module outputs.
 
+## What the form controls
+
+| Field | Effect |
+|---|---|
+| `cluster_create` | **On** → provision a new ROKS cluster (`cluster up`). **Off** → attach to the existing cluster named in `cluster_name` (`cluster register`). |
+| `cluster_name` | New cluster name, or the name/ID of the existing cluster to attach to. |
+| `region`, `resource_group` | Inherit from the selected IBM credential template (overridable). |
+| `openshift_version`, `workers_per_zone` | New-cluster sizing (ignored for an existing cluster). |
+| `install_bnk` | Install BIG-IP Next for Kubernetes (`bnk up`). |
+| `testing_vpc` | Testing phase — external client VPC + Transit Gateway jumphost. |
+| `testing_in_cluster` | Testing phase — in-cluster per-AZ jumphosts. |
+| `install_gateway` | Deploy the gateway phase (`gateway up`). |
+
+Booleans render the matching `resources.*` toggles into `config.yaml` and gate the
+corresponding `roksbnkctl <phase> up --auto` task. Cluster-phase infra
+(`transit_gateway` / `registry_cos` / `cert_manager`) is created with a **new**
+cluster (matching `roksbnkctl init` defaults) and assumed already present for an
+**existing** one. Teardown runs the phases in reverse; an adopted existing cluster
+is never destroyed.
+
 ## Why one workspace pack (not per-phase packs)
 
 roksbnkctl is **workspace-stateful across phases**: cluster → BNK → testing →
 gateway share one `~/.roksbnkctl/<ws>` (config, terraform state,
-`cluster-outputs.json`), and `roksbnkctl up` owns the phase ordering + the
-BNK∥testing parallelism. BNK Forge modules are **independent runs with independent
+`cluster-outputs.json`). BNK Forge modules are **independent runs with independent
 workspaces**, so splitting the phases into separate packs would break roksbnkctl's
-shared state. The robust unit is therefore **one pack that runs the whole
-lifecycle**, with the form's `target` input choosing `cluster` vs `all`. (Finer
-per-phase modules are possible later but require solving cross-run state sharing —
-e.g. remote state + an existing-cluster handoff.)
+shared state. The robust unit is therefore **one pack** that runs the selected
+phases in one workspace, with the form's booleans choosing which phases run.
+(Finer per-phase modules are possible later but require solving cross-run state
+sharing — e.g. remote state + an existing-cluster handoff.)
 
 ## Layout
 
@@ -80,10 +99,15 @@ content synced from this repo.
 
 - **Runner timeout.** The ansible runner caps a run at **3600 s (1 h)**. A full
   ROKS create + BNK install can approach that; for slow regions, deploy in stages
-  (`target: cluster` first, then a second run for the rest) or raise the runner
-  timeout.
-- **Destroy needs the state.** `destroy.yml` runs `roksbnkctl down`, which needs
-  the terraform state from apply. State lives under `ROKSBNKCTL_HOME` (pinned into
+  (a first run with only the cluster — `install_bnk`/testing/gateway off — then a
+  second run enabling the rest) or raise the runner timeout.
+- **Existing-cluster infra.** Attaching to an existing cluster (`cluster_create`
+  off) skips creating `transit_gateway`/`registry_cos`/`cert_manager` (they're
+  assumed present). If you then enable `testing_vpc`, the testing phase needs to
+  reference the existing Transit Gateway — adopt it via the `existing:` toggle
+  fields in `config.yaml` (a v1 limitation; see the roksbnkctl docs).
+- **Destroy needs the state.** `destroy.yml` runs `roksbnkctl <phase> down`, which
+  needs the terraform state from apply. State lives under `ROKSBNKCTL_HOME` (pinned into
   the module workspace). If Forge does **not** persist the module workspace between
   apply and destroy, configure **remote state** so it survives — `roksbnkctl state
   s3 …` writes a `state:` block that keeps terraform state in IBM COS. (You can add

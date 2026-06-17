@@ -1,24 +1,31 @@
 ---
-# roksbnkctl workspace deploy — runs the full roksbnkctl lifecycle from a BNK
+# roksbnkctl workspace deploy — runs the selected roksbnkctl phases from a BNK
 # Forge blueprint.
 #
-# Inputs:  the blueprint form values arrive as Ansible --extra-vars (prefix,
-#          cluster_name, region, resource_group, openshift_version,
-#          workers_per_zone, target).
-# Secrets: IBMCLOUD_API_KEY is present in the environment, injected from the
-#          project's IBM Cloud credential template by BNK Forge — never passed
-#          as an extra-var, never written to config.yaml.
-# State:   ROKSBNKCTL_HOME is pinned inside the module workspace so the
-#          roksbnkctl state + cluster-outputs.json persist with the workspace.
-# Outputs: cluster facts are written to outputs.json (the manifest's
-#          deployment_pack.entrypoints.outputs_file) for BNK Forge to import.
+# Inputs (blueprint form → Ansible --extra-vars):
+#   prefix, cluster_name, region, resource_group        (cluster identity)
+#   cluster_create        true = provision a new ROKS cluster
+#                         false = attach to an existing cluster (register)
+#   openshift_version, workers_per_zone                 (new-cluster only)
+#   install_bnk           install BIG-IP Next for Kubernetes
+#   testing_vpc           testing: external client VPC + TGW jumphost
+#   testing_in_cluster    testing: in-cluster per-AZ jumphosts
+#   install_gateway       deploy the gateway phase
+#
+# Secrets: IBMCLOUD_API_KEY is in the environment (project IBM credential
+#          template). State persists under ROKSBNKCTL_HOME inside the workspace.
+# Outputs: cluster facts → outputs.json (the manifest's outputs_file).
 - name: Deploy IBM ROKS + BNK with roksbnkctl
   hosts: localhost
   connection: local
   gather_facts: false
   vars:
     ws: "{{ workspace_name | default('forge') }}"
-    target: "{{ target | default('all') }}"
+    cluster_create: "{{ cluster_create | default(true) }}"
+    install_bnk: "{{ install_bnk | default(true) }}"
+    testing_vpc: "{{ testing_vpc | default(false) }}"
+    testing_in_cluster: "{{ testing_in_cluster | default(false) }}"
+    install_gateway: "{{ install_gateway | default(false) }}"
     roks_home: "{{ playbook_dir }}/.roksbnkctl-home"
     seed_config: "{{ playbook_dir }}/seed-config.yaml"
     outputs_path: "{{ playbook_dir }}/outputs.json"
@@ -44,23 +51,40 @@
       args:
         creates: "{{ roks_home }}/{{ ws }}/config.yaml"
 
-    # BNK Forge "plan" maps to ansible --check. Command tasks are skipped in
-    # check mode by default, so we opt this one back in to surface a real
-    # `roksbnkctl plan` (read-only) without touching anything.
-    - name: Plan (read-only) on a BNK Forge plan
+    # --- Cluster phase: create OR attach to an existing cluster --------------
+    - name: Provision a new ROKS cluster
+      ansible.builtin.command: roksbnkctl -w {{ ws }} cluster up --auto
+      when: not ansible_check_mode and (cluster_create | bool)
+
+    - name: Register the existing ROKS cluster
+      ansible.builtin.command: roksbnkctl -w {{ ws }} cluster register {{ cluster_name }}
+      when: not ansible_check_mode and not (cluster_create | bool)
+      # For an existing cluster whose registry COS instance has a non-default
+      # name, append: --registry-cos-name <name>
+
+    # --- Optional downstream phases (gated by the form booleans) -------------
+    - name: Install BIG-IP Next for Kubernetes (BNK)
+      ansible.builtin.command: roksbnkctl -w {{ ws }} bnk up --auto
+      when: not ansible_check_mode and (install_bnk | bool)
+
+    - name: Deploy the testing phase
+      ansible.builtin.command: roksbnkctl -w {{ ws }} testing up --auto
+      when: >-
+        not ansible_check_mode and
+        ((testing_vpc | bool) or (testing_in_cluster | bool))
+
+    - name: Deploy the gateway phase
+      ansible.builtin.command: roksbnkctl -w {{ ws }} gateway up --auto
+      when: not ansible_check_mode and (install_gateway | bool)
+
+    # --- Plan (read-only) on a BNK Forge plan / ansible --check --------------
+    - name: Plan (read-only)
       ansible.builtin.command: roksbnkctl -w {{ ws }} plan
       when: ansible_check_mode
       check_mode: false
       changed_when: false
 
-    - name: Deploy the cluster phase only
-      ansible.builtin.command: roksbnkctl -w {{ ws }} cluster up
-      when: not ansible_check_mode and target == 'cluster'
-
-    - name: Deploy the full lifecycle (cluster + BNK + testing + gateway)
-      ansible.builtin.command: roksbnkctl -w {{ ws }} up
-      when: not ansible_check_mode and target == 'all'
-
+    # --- Outputs -------------------------------------------------------------
     - name: Read the recorded cluster outputs
       ansible.builtin.slurp:
         src: "{{ roks_home }}/{{ ws }}/cluster-outputs.json"
