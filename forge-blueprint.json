@@ -96,6 +96,191 @@
         "description": "Deploy the roksbnkctl gateway phase.",
         "default": false,
         "order": 8
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "label": "Existing Transit Gateway (name/ID)",
+        "description": "Adopt an existing Transit Gateway by name/ID \u2014 the new cluster + testing VPC attach to it. Blank = create one.",
+        "default": "",
+        "order": 9
+      },
+      {
+        "name": "testing_vpc_name",
+        "type": "string",
+        "label": "Testing VPC name",
+        "description": "Name for the testing client VPC to create (testing phase). Blank = prefix-derived.",
+        "default": "",
+        "order": 10
+      },
+      {
+        "name": "bigip_url",
+        "type": "string",
+        "label": "CIS BIG-IP URL",
+        "description": "BIG-IP management URL for the BNK CIS controller (optional).",
+        "default": "",
+        "order": 11
+      },
+      {
+        "name": "bigip_username",
+        "type": "string",
+        "label": "CIS BIG-IP username",
+        "description": "BIG-IP username for CIS (optional).",
+        "default": "",
+        "order": 12
+      },
+      {
+        "name": "bigip_password",
+        "type": "string",
+        "label": "CIS BIG-IP password",
+        "description": "BIG-IP password for CIS (optional).",
+        "default": "",
+        "order": 13,
+        "sensitive": true
+      },
+      {
+        "name": "zone1_ext_vlan_cidr",
+        "type": "string",
+        "label": "Zone1 Ext Vlan Cidr",
+        "description": "Zone 1: external VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 14
+      },
+      {
+        "name": "zone1_int_vlan_cidr",
+        "type": "string",
+        "label": "Zone1 Int Vlan Cidr",
+        "description": "Zone 1: internal VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 15
+      },
+      {
+        "name": "zone1_int_snat_cidr",
+        "type": "string",
+        "label": "Zone1 Int Snat Cidr",
+        "description": "Zone 1: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 16
+      },
+      {
+        "name": "zone1_int_vip_cidr",
+        "type": "string",
+        "label": "Zone1 Int Vip Cidr",
+        "description": "Zone 1: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 17
+      },
+      {
+        "name": "zone1_external_selfip",
+        "type": "string",
+        "label": "Zone1 External Selfip",
+        "description": "Zone 1: external self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 18
+      },
+      {
+        "name": "zone1_internal_selfip",
+        "type": "string",
+        "label": "Zone1 Internal Selfip",
+        "description": "Zone 1: internal self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 19
+      },
+      {
+        "name": "zone2_ext_vlan_cidr",
+        "type": "string",
+        "label": "Zone2 Ext Vlan Cidr",
+        "description": "Zone 2: external VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 20
+      },
+      {
+        "name": "zone2_int_vlan_cidr",
+        "type": "string",
+        "label": "Zone2 Int Vlan Cidr",
+        "description": "Zone 2: internal VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 21
+      },
+      {
+        "name": "zone2_int_snat_cidr",
+        "type": "string",
+        "label": "Zone2 Int Snat Cidr",
+        "description": "Zone 2: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 22
+      },
+      {
+        "name": "zone2_int_vip_cidr",
+        "type": "string",
+        "label": "Zone2 Int Vip Cidr",
+        "description": "Zone 2: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 23
+      },
+      {
+        "name": "zone2_external_selfip",
+        "type": "string",
+        "label": "Zone2 External Selfip",
+        "description": "Zone 2: external self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 24
+      },
+      {
+        "name": "zone2_internal_selfip",
+        "type": "string",
+        "label": "Zone2 Internal Selfip",
+        "description": "Zone 2: internal self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 25
+      },
+      {
+        "name": "zone3_ext_vlan_cidr",
+        "type": "string",
+        "label": "Zone3 Ext Vlan Cidr",
+        "description": "Zone 3: external VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 26
+      },
+      {
+        "name": "zone3_int_vlan_cidr",
+        "type": "string",
+        "label": "Zone3 Int Vlan Cidr",
+        "description": "Zone 3: internal VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 27
+      },
+      {
+        "name": "zone3_int_snat_cidr",
+        "type": "string",
+        "label": "Zone3 Int Snat Cidr",
+        "description": "Zone 3: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 28
+      },
+      {
+        "name": "zone3_int_vip_cidr",
+        "type": "string",
+        "label": "Zone3 Int Vip Cidr",
+        "description": "Zone 3: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 29
+      },
+      {
+        "name": "zone3_external_selfip",
+        "type": "string",
+        "label": "Zone3 External Selfip",
+        "description": "Zone 3: external self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 30
+      },
+      {
+        "name": "zone3_internal_selfip",
+        "type": "string",
+        "label": "Zone3 Internal Selfip",
+        "description": "Zone 3: internal self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 31
       }
     ]
   },
@@ -115,7 +300,30 @@
         "cluster_create": "${cluster_create}",
         "install_bnk": "${install_bnk}",
         "install_testing": "${install_testing}",
-        "install_gateway": "${install_gateway}"
+        "install_gateway": "${install_gateway}",
+        "existing_transit_gateway": "${existing_transit_gateway}",
+        "testing_vpc_name": "${testing_vpc_name}",
+        "bigip_url": "${bigip_url}",
+        "bigip_username": "${bigip_username}",
+        "bigip_password": "${bigip_password}",
+        "zone1_ext_vlan_cidr": "${zone1_ext_vlan_cidr}",
+        "zone1_int_vlan_cidr": "${zone1_int_vlan_cidr}",
+        "zone1_int_snat_cidr": "${zone1_int_snat_cidr}",
+        "zone1_int_vip_cidr": "${zone1_int_vip_cidr}",
+        "zone1_external_selfip": "${zone1_external_selfip}",
+        "zone1_internal_selfip": "${zone1_internal_selfip}",
+        "zone2_ext_vlan_cidr": "${zone2_ext_vlan_cidr}",
+        "zone2_int_vlan_cidr": "${zone2_int_vlan_cidr}",
+        "zone2_int_snat_cidr": "${zone2_int_snat_cidr}",
+        "zone2_int_vip_cidr": "${zone2_int_vip_cidr}",
+        "zone2_external_selfip": "${zone2_external_selfip}",
+        "zone2_internal_selfip": "${zone2_internal_selfip}",
+        "zone3_ext_vlan_cidr": "${zone3_ext_vlan_cidr}",
+        "zone3_int_vlan_cidr": "${zone3_int_vlan_cidr}",
+        "zone3_int_snat_cidr": "${zone3_int_snat_cidr}",
+        "zone3_int_vip_cidr": "${zone3_int_vip_cidr}",
+        "zone3_external_selfip": "${zone3_external_selfip}",
+        "zone3_internal_selfip": "${zone3_internal_selfip}"
       }
     }
   ],

@@ -47,6 +47,15 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
 | `install_testing` | Deploy the testing phase. |
 | `install_gateway` | Deploy the gateway phase. |
 
+**Advanced (all optional):**
+
+| Field | Effect |
+|---|---|
+| `existing_transit_gateway` | Adopt an existing Transit Gateway by name/ID (the new cluster + testing VPC attach to it) instead of creating one. |
+| `testing_vpc_name` | Name the testing client VPC to create (testing phase). |
+| `bigip_url` / `bigip_username` / `bigip_password` | BIG-IP target + credentials for the BNK **CIS** controller. |
+| `zone<n>_int_vip_cidr` / `zone<n>_int_snat_cidr` / `zone<n>_ext_vlan_cidr` / `zone<n>_int_vlan_cidr` / `zone<n>_external_selfip` / `zone<n>_internal_selfip` (n = 1–3) | Per-AZ TMM network mapping — **listener (VIP)** and **SNAT** CIDRs + VLAN CIDRs + self-IPs for the BNK phase. Fill all six fields of a zone for it to apply. |
+
 ## Requirements
 
 - A **BNK Forge** with the container-engine + Container Registries features

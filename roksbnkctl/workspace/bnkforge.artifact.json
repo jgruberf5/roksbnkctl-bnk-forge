@@ -7,7 +7,7 @@
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:6f7a1e80f2c62fe8c418768350f6bd1633093e0d989f1ee19ea04ffc8945e1b9"
+    "digest": "sha256:4187071789dbd4c79982f8f04b4c88527c19de75076f2b86f5fe8d106bd0a636"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -25,7 +25,10 @@
   },
   "execution": {
     "engine": "container",
-    "limits": { "cpus": "2", "memory": "2g" }
+    "limits": {
+      "cpus": "2",
+      "memory": "2g"
+    }
   },
   "steps": {
     "init": [
@@ -36,57 +39,303 @@
           "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
           "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
-          "ROKSBNKCTL_CLUSTER_CREATE": "{{inputs.cluster_create}}"
+          "ROKSBNKCTL_CLUSTER_CREATE": "{{inputs.cluster_create}}",
+          "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}",
+          "ROKSBNKCTL_TESTING_VPC_NAME": "{{inputs.testing_vpc_name}}",
+          "ROKSBNKCTL_BIGIP_URL": "{{inputs.bigip_url}}",
+          "ROKSBNKCTL_BIGIP_USERNAME": "{{inputs.bigip_username}}",
+          "ROKSBNKCTL_BIGIP_PASSWORD": "{{inputs.bigip_password}}",
+          "ROKSBNKCTL_ZONE1_EXT_VLAN_CIDR": "{{inputs.zone1_ext_vlan_cidr}}",
+          "ROKSBNKCTL_ZONE1_INT_VLAN_CIDR": "{{inputs.zone1_int_vlan_cidr}}",
+          "ROKSBNKCTL_ZONE1_INT_SNAT_CIDR": "{{inputs.zone1_int_snat_cidr}}",
+          "ROKSBNKCTL_ZONE1_INT_VIP_CIDR": "{{inputs.zone1_int_vip_cidr}}",
+          "ROKSBNKCTL_ZONE1_EXTERNAL_SELFIP": "{{inputs.zone1_external_selfip}}",
+          "ROKSBNKCTL_ZONE1_INTERNAL_SELFIP": "{{inputs.zone1_internal_selfip}}",
+          "ROKSBNKCTL_ZONE2_EXT_VLAN_CIDR": "{{inputs.zone2_ext_vlan_cidr}}",
+          "ROKSBNKCTL_ZONE2_INT_VLAN_CIDR": "{{inputs.zone2_int_vlan_cidr}}",
+          "ROKSBNKCTL_ZONE2_INT_SNAT_CIDR": "{{inputs.zone2_int_snat_cidr}}",
+          "ROKSBNKCTL_ZONE2_INT_VIP_CIDR": "{{inputs.zone2_int_vip_cidr}}",
+          "ROKSBNKCTL_ZONE2_EXTERNAL_SELFIP": "{{inputs.zone2_external_selfip}}",
+          "ROKSBNKCTL_ZONE2_INTERNAL_SELFIP": "{{inputs.zone2_internal_selfip}}",
+          "ROKSBNKCTL_ZONE3_EXT_VLAN_CIDR": "{{inputs.zone3_ext_vlan_cidr}}",
+          "ROKSBNKCTL_ZONE3_INT_VLAN_CIDR": "{{inputs.zone3_int_vlan_cidr}}",
+          "ROKSBNKCTL_ZONE3_INT_SNAT_CIDR": "{{inputs.zone3_int_snat_cidr}}",
+          "ROKSBNKCTL_ZONE3_INT_VIP_CIDR": "{{inputs.zone3_int_vip_cidr}}",
+          "ROKSBNKCTL_ZONE3_EXTERNAL_SELFIP": "{{inputs.zone3_external_selfip}}",
+          "ROKSBNKCTL_ZONE3_INTERNAL_SELFIP": "{{inputs.zone3_internal_selfip}}"
         },
-        "args": ["roksbnkctl", "init", "-w", "forge", "--override-from-env", "--non-interactive"],
+        "args": [
+          "roksbnkctl",
+          "init",
+          "-w",
+          "forge",
+          "--override-from-env",
+          "--non-interactive"
+        ],
         "timeout_seconds": 300
       }
     ],
     "apply": [
       {
         "name": "cluster-up",
-        "args": ["roksbnkctl", "-w", "forge", "cluster", "up", "--auto"],
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "forge",
+          "cluster",
+          "up",
+          "--auto"
+        ],
         "timeout_seconds": 3600
       },
       {
         "name": "bnk-up",
         "when": "{{inputs.install_bnk}}",
-        "args": ["roksbnkctl", "-w", "forge", "bnk", "up", "--auto"],
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "forge",
+          "bnk",
+          "up",
+          "--auto"
+        ],
         "timeout_seconds": 3600
       },
       {
         "name": "testing-up",
         "when": "{{inputs.install_testing}}",
-        "args": ["roksbnkctl", "-w", "forge", "testing", "up", "--auto"],
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "forge",
+          "testing",
+          "up",
+          "--auto"
+        ],
         "timeout_seconds": 2400
       },
       {
         "name": "gateway-up",
         "when": "{{inputs.install_gateway}}",
-        "args": ["roksbnkctl", "-w", "forge", "gateway", "up", "--auto"],
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "forge",
+          "gateway",
+          "up",
+          "--auto"
+        ],
         "timeout_seconds": 1800
       }
     ],
     "destroy": [
       {
         "name": "down",
-        "args": ["roksbnkctl", "-w", "forge", "down", "--auto"],
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "forge",
+          "down",
+          "--auto"
+        ],
         "timeout_seconds": 3600
       }
     ]
   },
   "inputs": {
     "required": [
-      { "name": "region",         "type": "string", "source": "user", "description": "IBM Cloud region (e.g. eu-de)." },
-      { "name": "resource_group", "type": "string", "source": "user", "description": "IBM Cloud resource group." },
-      { "name": "prefix",         "type": "string", "source": "user", "description": "Resource name prefix (e.g. acme-eu)." },
-      { "name": "cluster_name",   "type": "string", "source": "user", "description": "Cluster name (new) or existing cluster name/ID." }
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "description": "IBM Cloud region (e.g. eu-de)."
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "source": "user",
+        "description": "IBM Cloud resource group."
+      },
+      {
+        "name": "prefix",
+        "type": "string",
+        "source": "user",
+        "description": "Resource name prefix (e.g. acme-eu)."
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "source": "user",
+        "description": "Cluster name (new) or existing cluster name/ID."
+      }
     ],
     "optional": [
-      { "name": "cluster_create",       "type": "boolean", "source": "user", "default": true,  "description": "On = provision a NEW ROKS cluster. Off = attach to the existing cluster named in cluster_name." },
-      { "name": "install_bnk",          "type": "boolean", "source": "user", "default": true,  "description": "Install BIG-IP Next for Kubernetes." },
-      { "name": "install_testing",      "type": "boolean", "source": "user", "default": false, "description": "Deploy the testing phase." },
-      { "name": "install_gateway",      "type": "boolean", "source": "user", "default": false, "description": "Deploy the gateway phase." }
+      {
+        "name": "cluster_create",
+        "type": "boolean",
+        "source": "user",
+        "default": true,
+        "description": "On = provision a NEW ROKS cluster. Off = attach to the existing cluster named in cluster_name."
+      },
+      {
+        "name": "install_bnk",
+        "type": "boolean",
+        "source": "user",
+        "default": true,
+        "description": "Install BIG-IP Next for Kubernetes."
+      },
+      {
+        "name": "install_testing",
+        "type": "boolean",
+        "source": "user",
+        "default": false,
+        "description": "Deploy the testing phase."
+      },
+      {
+        "name": "install_gateway",
+        "type": "boolean",
+        "source": "user",
+        "default": false,
+        "description": "Deploy the gateway phase."
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "source": "user",
+        "description": "Adopt an existing Transit Gateway by name/ID \u2014 the new cluster + testing VPC attach to it. Blank = create one."
+      },
+      {
+        "name": "testing_vpc_name",
+        "type": "string",
+        "source": "user",
+        "description": "Name for the testing client VPC to create (testing phase). Blank = prefix-derived."
+      },
+      {
+        "name": "bigip_url",
+        "type": "string",
+        "source": "user",
+        "description": "BIG-IP management URL for the BNK CIS controller (optional)."
+      },
+      {
+        "name": "bigip_username",
+        "type": "string",
+        "source": "user",
+        "description": "BIG-IP username for CIS (optional)."
+      },
+      {
+        "name": "bigip_password",
+        "type": "string",
+        "source": "user",
+        "description": "BIG-IP password for CIS (optional)."
+      },
+      {
+        "name": "zone1_ext_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: external VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_int_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_int_snat_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_int_vip_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_external_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: external self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_internal_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_ext_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: external VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_int_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_int_snat_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_int_vip_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_external_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: external self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_internal_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_ext_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: external VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_int_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_int_snat_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_int_vip_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_external_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: external self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_internal_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal self-IP (all 6 zone fields required for the zone to apply)."
+      }
     ]
   },
   "references": []
