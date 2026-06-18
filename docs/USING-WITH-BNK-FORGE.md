@@ -35,8 +35,9 @@ you mirror the image to a private registry.)
 3. Name: `roksbnkctl-bnk-forge`. URL:
    `https://github.com/jgruberf5/roksbnkctl-bnk-forge.git`. Branch: `main`.
 4. Save and let it **sync**. The sync ingests:
-   - the **artifact** `roksbnkctl-workspace` (`kind: container_image`), and
-   - the **blueprint** *IBM ROKS + BNK (roksbnkctl)*.
+   - the four phase **artifacts** `roksbnkctl-cluster` / `roksbnkctl-bnk` /
+     `roksbnkctl-testing` / `roksbnkctl-gateway` (each `kind: container_image`), and
+   - the **blueprint** *IBM ROKS + BNK (roksbnkctl)* that composes them.
 
 ## 4. Put the credential template on a project
 
@@ -54,32 +55,43 @@ you mirror the image to a private registry.)
    - `cluster_create` — **on** for a new cluster (off = attach to the existing `cluster_name`)
    - `install_bnk` — **on**
    - `install_testing` / `install_gateway` — off for a first run
-3. **Deploy.** The container engine runs each roksbnkctl phase as a governed
-   Docker sibling container:
-   `init --non-interactive` → `cluster up --auto` → `bnk up --auto`.
+3. **Deploy.** The blueprint creates one module per phase and runs them in
+   dependency order (`cluster → bnk → testing / gateway`). Each phase is a
+   governed Docker sibling container whose `apply` runs `[init --non-interactive,
+   <phase> up --auto]`. A disabled phase (`install_*` off) runs `init` and skips
+   its `up`.
+   - **Re-run a single phase** later by deploying just that module from the
+     project's module list — the shared workspace means it sees the rest of the
+     deployment's state.
 
 ## 6. Watch + verify
 
 - The deployment log streams each step (the `init` step prints
   `✓ Applied N field(s) from environment …`).
 - State (terraform state, generated keys, `cluster-outputs.json`) persists on the
-  per-deployment `/work` volume — so a later **Destroy** can tear it down.
-- On success the artifact's outputs carry `cluster_id` / `region` / etc.
+  **deployment-shared** `/work` volume (`state.scope: deployment`) — shared by all
+  four phase modules, so each phase sees the others' state and **Destroy** can tear
+  it down.
+- On success the `cluster` phase's outputs carry `cluster_id` / `region` / etc.
 
 ## 7. Teardown
 
-**Destroy** the deployment → runs `roksbnkctl down --auto` against the persisted
-workspace. (An *existing* cluster attached with `cluster_create` off is not
-destroyed.)
+**Destroy** the deployment (or the `roksbnkctl-cluster` module) → the cluster
+phase runs `roksbnkctl down --auto`, tearing down the whole shared workspace
+(cluster + bnk + testing + gateway). The other phase modules' destroy is a no-op.
+(An *existing* cluster attached with `cluster_create` off is not destroyed.)
 
 ---
 
 ## Notes / gotchas
 
-- The artifact pins the runner image **by digest** (see
-  `roksbnkctl/workspace/bnkforge.artifact.json`). It must be a roksbnkctl build
-  that includes `init --non-interactive` — the digest in this repo points at such
-  a build.
+- Each phase artifact pins the runner image **by digest** (see
+  `roksbnkctl/<phase>/bnkforge.artifact.json`; all four pin the same image). It
+  must be a roksbnkctl build that includes `init --non-interactive` — the digest
+  in this repo points at such a build.
+- Requires a BNK Forge with **deployment-scoped shared workspace** support
+  (`state.scope: deployment`); without it each phase module would get its own
+  empty workspace and `bnk up` would fail with "workspace not initialised".
 - BNK Forge ships a *built-in* example artifact `roksbnkctl-tools-runner` whose
   steps use flags roksbnkctl does not have (`--home`, `cluster up --region/--cluster-name`,
   `bnk up --outputs`, and no `--auto`) and mount at `/state`. **Do not** deploy

@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "module": {
+    "name": "roksbnkctl-cluster",
+    "path": "roksbnkctl/cluster",
+    "version": "2.0.0",
+    "category": "bnk",
+    "description": "Provision (or attach) the IBM Cloud ROKS cluster. Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases."
+  },
+  "deployment_pack": {
+    "engine": "container",
+    "runner_profile": "container-default",
+    "working_directory": ".",
+    "lifecycle": {
+      "supports_init": false,
+      "supports_plan": false,
+      "supports_apply": true,
+      "supports_destroy": true,
+      "supports_refresh": false,
+      "supports_drift": false
+    },
+    "entrypoints": {}
+  },
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "description": "IBM Cloud region (e.g. eu-de)."
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "source": "user",
+        "description": "IBM Cloud resource group."
+      },
+      {
+        "name": "prefix",
+        "type": "string",
+        "source": "user",
+        "description": "Resource name prefix (e.g. acme-eu)."
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "source": "user",
+        "description": "Cluster name (new) or existing cluster name/ID."
+      }
+    ],
+    "optional": [
+      {
+        "name": "cluster_create",
+        "type": "boolean",
+        "source": "user",
+        "description": "On = provision a NEW ROKS cluster. Off = attach to the existing cluster named in cluster_name."
+      },
+      {
+        "name": "openshift_version",
+        "type": "string",
+        "source": "user",
+        "description": "OpenShift version for a new cluster (e.g. 4.18). Blank = roksbnkctl default."
+      },
+      {
+        "name": "workers_per_zone",
+        "type": "string",
+        "source": "user",
+        "description": "Worker nodes per zone for a new cluster (e.g. 2). Blank = roksbnkctl default."
+      },
+      {
+        "name": "cluster_vpc",
+        "type": "string",
+        "source": "user",
+        "description": "Adopt an existing cluster VPC by ID (new cluster lands in it). Blank = create one."
+      },
+      {
+        "name": "install_bnk",
+        "type": "boolean",
+        "source": "user",
+        "description": "Install BIG-IP Next for Kubernetes."
+      },
+      {
+        "name": "install_testing",
+        "type": "boolean",
+        "source": "user",
+        "description": "Deploy the testing phase."
+      },
+      {
+        "name": "install_gateway",
+        "type": "boolean",
+        "source": "user",
+        "description": "Deploy the gateway phase."
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "source": "user",
+        "description": "Adopt an existing Transit Gateway by name/ID \u2014 the new cluster + testing VPC attach to it. Blank = create one."
+      },
+      {
+        "name": "testing_vpc_name",
+        "type": "string",
+        "source": "user",
+        "description": "Name for the testing client VPC to create (testing phase). Blank = prefix-derived."
+      },
+      {
+        "name": "bigip_url",
+        "type": "string",
+        "source": "user",
+        "description": "BIG-IP management URL for the BNK CIS controller (optional)."
+      },
+      {
+        "name": "bigip_username",
+        "type": "string",
+        "source": "user",
+        "description": "BIG-IP username for CIS (optional)."
+      },
+      {
+        "name": "bigip_password",
+        "type": "string",
+        "source": "user",
+        "description": "BIG-IP password for CIS (optional)."
+      },
+      {
+        "name": "zone1_ext_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: external VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_int_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_int_snat_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_int_vip_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_external_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: external self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_internal_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_ext_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: external VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_int_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_int_snat_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_int_vip_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_external_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: external self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_internal_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_ext_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: external VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_int_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_int_snat_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_int_vip_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_external_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: external self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_internal_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal self-IP (all 6 zone fields required for the zone to apply)."
+      }
+    ]
+  },
+  "outputs": {
+    "key_outputs": [
+      {
+        "name": "cluster_id",
+        "type": "string",
+        "description": "Provisioned/attached ROKS cluster ID."
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "description": "ROKS cluster name."
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "description": "IBM Cloud region."
+      },
+      {
+        "name": "vpc_id",
+        "type": "string",
+        "description": "Cluster VPC ID."
+      }
+    ]
+  }
+}
