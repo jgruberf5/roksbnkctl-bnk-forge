@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-workspace",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "kind": "container_image",
   "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl, driven from a BNK Forge blueprint form. Procedural steps invoke the roksbnkctl-tools-runner image (argv only, no shell). State persists in the mounted workspace; the IBM Cloud API key arrives as IBMCLOUD_API_KEY.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:0ea2aa8dd52eac872615b2531ceff40abceb925b90a5109bca82fb07d5a44f28"
+    "digest": "sha256:ba6b909f7166ed3f56dc6fcb2b318dbb4b895e973c7415fea2d06f9ce2af6213"
   },
   "lifecycle": {
     "supports_apply": true,

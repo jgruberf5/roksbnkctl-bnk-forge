@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-workspace",
     "path": "roksbnkctl/workspace",
-    "version": "1.13.0",
+    "version": "1.14.0",
     "category": "bnk",
     "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl. Procedural container_image artifact (see bnkforge.artifact.json) run by the container engine."
   },
