@@ -7,7 +7,7 @@
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:17178cb56eb2beceab8fc3d32607f008ba8118d5bf8eaaa7688e47da098b9e2d"
+    "digest": "sha256:6f7a1e80f2c62fe8c418768350f6bd1633093e0d989f1ee19ea04ffc8945e1b9"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -35,7 +35,8 @@
           "ROKSBNKCTL_REGION": "{{inputs.region}}",
           "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
-          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}"
+          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "{{inputs.cluster_create}}"
         },
         "args": ["roksbnkctl", "init", "-w", "forge", "--override-from-env", "--non-interactive"],
         "timeout_seconds": 300
@@ -44,15 +45,8 @@
     "apply": [
       {
         "name": "cluster-up",
-        "when": "{{inputs.cluster_create}}",
         "args": ["roksbnkctl", "-w", "forge", "cluster", "up", "--auto"],
         "timeout_seconds": 3600
-      },
-      {
-        "name": "cluster-register",
-        "when": "{{inputs.use_existing_cluster}}",
-        "args": ["roksbnkctl", "-w", "forge", "cluster", "register", "{{inputs.cluster_name}}"],
-        "timeout_seconds": 600
       },
       {
         "name": "bnk-up",
@@ -76,7 +70,6 @@
     "destroy": [
       {
         "name": "down",
-        "when": "{{inputs.cluster_create}}",
         "args": ["roksbnkctl", "-w", "forge", "down", "--auto"],
         "timeout_seconds": 3600
       }
@@ -90,8 +83,7 @@
       { "name": "cluster_name",   "type": "string", "source": "user", "description": "Cluster name (new) or existing cluster name/ID." }
     ],
     "optional": [
-      { "name": "cluster_create",       "type": "boolean", "source": "user", "default": true,  "description": "Provision a NEW ROKS cluster." },
-      { "name": "use_existing_cluster", "type": "boolean", "source": "user", "default": false, "description": "Attach to an EXISTING cluster (register cluster_name)." },
+      { "name": "cluster_create",       "type": "boolean", "source": "user", "default": true,  "description": "On = provision a NEW ROKS cluster. Off = attach to the existing cluster named in cluster_name." },
       { "name": "install_bnk",          "type": "boolean", "source": "user", "default": true,  "description": "Install BIG-IP Next for Kubernetes." },
       { "name": "install_testing",      "type": "boolean", "source": "user", "default": false, "description": "Deploy the testing phase." },
       { "name": "install_gateway",      "type": "boolean", "source": "user", "default": false, "description": "Deploy the gateway phase." }

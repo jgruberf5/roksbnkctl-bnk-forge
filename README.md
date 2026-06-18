@@ -42,8 +42,7 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
 | `prefix` | Resource name prefix (e.g. `acme-eu`). |
 | `cluster_name` | New cluster name, or existing cluster name/ID. |
 | `region`, `resource_group` | Inherit from the selected IBM credential template. |
-| `cluster_create` | Provision a new ROKS cluster (`cluster up`). |
-| `use_existing_cluster` | Attach to an existing cluster (`cluster register`). |
+| `cluster_create` | On = provision a new ROKS cluster; Off = attach to the existing `cluster_name` (`cluster up` does both). |
 | `install_bnk` | Install BIG-IP Next for Kubernetes. |
 | `install_testing` | Deploy the testing phase. |
 | `install_gateway` | Deploy the gateway phase. |

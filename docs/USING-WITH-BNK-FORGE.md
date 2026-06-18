@@ -51,7 +51,7 @@ you mirror the image to a private registry.)
    - `prefix` — e.g. `acme-eu`
    - `cluster_name` — e.g. `acme-eu-roks`
    - `region` / `resource_group` — inherited from the credential template
-   - `cluster_create` — **on** (new cluster) — leave `use_existing_cluster` off
+   - `cluster_create` — **on** for a new cluster (off = attach to the existing `cluster_name`)
    - `install_bnk` — **on**
    - `install_testing` / `install_gateway` — off for a first run
 3. **Deploy.** The container engine runs each roksbnkctl phase as a governed
@@ -69,7 +69,7 @@ you mirror the image to a private registry.)
 ## 7. Teardown
 
 **Destroy** the deployment → runs `roksbnkctl down --auto` against the persisted
-workspace. (An *existing* cluster attached via `use_existing_cluster` is not
+workspace. (An *existing* cluster attached with `cluster_create` off is not
 destroyed.)
 
 ---

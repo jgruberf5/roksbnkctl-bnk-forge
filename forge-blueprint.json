@@ -13,7 +13,13 @@
   "estimated_time": "30-45 minutes",
   "difficulty": "intermediate",
   "maturity": "preview",
-  "tags": ["ibm", "roks", "openshift", "bnk", "roksbnkctl"],
+  "tags": [
+    "ibm",
+    "roks",
+    "openshift",
+    "bnk",
+    "roksbnkctl"
+  ],
   "outcomes": [
     "IBM Cloud ROKS (OpenShift) cluster provisioned",
     "BIG-IP Next for Kubernetes (BNK) installed",
@@ -21,17 +27,76 @@
   ],
   "inputs": {
     "required": [
-      { "name": "prefix",         "type": "string", "label": "Resource prefix", "description": "Prefix for all resource names (e.g. acme-eu).", "example": "acme-eu", "order": 1 },
-      { "name": "cluster_name",   "type": "string", "label": "Cluster name (or existing name/ID)", "description": "Name for a new ROKS cluster, or the name/ID of an existing cluster to attach to.", "example": "acme-eu-roks", "order": 2 },
-      { "name": "region",         "type": "string", "label": "IBM Cloud region", "description": "Region for the cluster. Inherits from the selected credential template.", "example": "eu-de", "source": "credential_template", "source_field": "region", "order": 3 },
-      { "name": "resource_group", "type": "string", "label": "Resource group", "description": "IBM Cloud resource group. Inherits from the selected credential template.", "example": "default", "source": "credential_template", "source_field": "ibmcloud_resource_group", "order": 4 }
+      {
+        "name": "prefix",
+        "type": "string",
+        "label": "Resource prefix",
+        "description": "Prefix for all resource names (e.g. acme-eu).",
+        "example": "acme-eu",
+        "order": 1
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "label": "Cluster name (or existing name/ID)",
+        "description": "Name for a new ROKS cluster, or the name/ID of an existing cluster to attach to.",
+        "example": "acme-eu-roks",
+        "order": 2
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "label": "IBM Cloud region",
+        "description": "Region for the cluster. Inherits from the selected credential template.",
+        "example": "eu-de",
+        "source": "credential_template",
+        "source_field": "region",
+        "order": 3
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "label": "Resource group",
+        "description": "IBM Cloud resource group. Inherits from the selected credential template.",
+        "example": "default",
+        "source": "credential_template",
+        "source_field": "ibmcloud_resource_group",
+        "order": 4
+      }
     ],
     "optional": [
-      { "name": "cluster_create",       "type": "boolean", "label": "Create a new cluster", "description": "On = provision a new ROKS cluster. Off = attach to the existing cluster named above (set 'Use existing cluster').", "default": true,  "order": 5 },
-      { "name": "use_existing_cluster", "type": "boolean", "label": "Use existing cluster", "description": "Attach to the existing cluster named above (register). Mutually exclusive with 'Create a new cluster'.", "default": false, "order": 6 },
-      { "name": "install_bnk",          "type": "boolean", "label": "Install BNK", "description": "Install BIG-IP Next for Kubernetes.", "default": true,  "order": 7 },
-      { "name": "install_testing",      "type": "boolean", "label": "Deploy testing phase", "description": "Deploy the roksbnkctl testing phase.", "default": false, "order": 8 },
-      { "name": "install_gateway",      "type": "boolean", "label": "Deploy gateway phase", "description": "Deploy the roksbnkctl gateway phase.", "default": false, "order": 9 }
+      {
+        "name": "cluster_create",
+        "type": "boolean",
+        "label": "Create a new cluster",
+        "description": "On = provision a new ROKS cluster. Off = attach to the existing cluster named above.",
+        "default": true,
+        "order": 5
+      },
+      {
+        "name": "install_bnk",
+        "type": "boolean",
+        "label": "Install BNK",
+        "description": "Install BIG-IP Next for Kubernetes.",
+        "default": true,
+        "order": 6
+      },
+      {
+        "name": "install_testing",
+        "type": "boolean",
+        "label": "Deploy testing phase",
+        "description": "Deploy the roksbnkctl testing phase.",
+        "default": false,
+        "order": 7
+      },
+      {
+        "name": "install_gateway",
+        "type": "boolean",
+        "label": "Deploy gateway phase",
+        "description": "Deploy the roksbnkctl gateway phase.",
+        "default": false,
+        "order": 8
+      }
     ]
   },
   "modules": [
@@ -48,7 +113,6 @@
         "region": "${region}",
         "resource_group": "${resource_group}",
         "cluster_create": "${cluster_create}",
-        "use_existing_cluster": "${use_existing_cluster}",
         "install_bnk": "${install_bnk}",
         "install_testing": "${install_testing}",
         "install_gateway": "${install_gateway}"
