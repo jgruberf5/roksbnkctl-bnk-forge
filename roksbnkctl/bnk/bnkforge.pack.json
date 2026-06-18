@@ -5,7 +5,8 @@
     "path": "roksbnkctl/bnk",
     "version": "2.0.0",
     "category": "bnk",
-    "description": "Install BIG-IP Next for Kubernetes (BNK) on the cluster. Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases."
+    "description": "Install BIG-IP Next for Kubernetes (BNK) on the cluster. Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases.",
+    "estimated_time_minutes": 20
   },
   "deployment_pack": {
     "engine": "container",

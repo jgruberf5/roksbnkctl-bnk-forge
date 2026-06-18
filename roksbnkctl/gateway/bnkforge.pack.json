@@ -5,7 +5,8 @@
     "path": "roksbnkctl/gateway",
     "version": "2.0.0",
     "category": "bnk",
-    "description": "Deploy the roksbnkctl gateway phase. Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases."
+    "description": "Deploy the roksbnkctl gateway phase. Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases.",
+    "estimated_time_minutes": 10
   },
   "deployment_pack": {
     "engine": "container",

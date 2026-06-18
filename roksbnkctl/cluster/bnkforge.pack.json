@@ -5,7 +5,8 @@
     "path": "roksbnkctl/cluster",
     "version": "2.0.0",
     "category": "bnk",
-    "description": "Provision (or attach) the IBM Cloud ROKS cluster. Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases."
+    "description": "Provision (or attach) the IBM Cloud ROKS cluster. Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases.",
+    "estimated_time_minutes": 45
   },
   "deployment_pack": {
     "engine": "container",
