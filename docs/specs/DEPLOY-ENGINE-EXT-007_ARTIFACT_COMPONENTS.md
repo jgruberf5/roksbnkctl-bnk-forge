@@ -103,7 +103,7 @@ the existing kubernetes engine and are out of this substrate question.
   "artifact": {
     "kind": "container_image",
     "name": "roksbnkctl-tools-runner",
-    "version": "1.11.4",
+    "version": "1.12.0",
     "category": "bnk",
     "description": "All-in-one roksbnkctl + terraform + IBM Cloud toolchain.",
     "provider": "ibm"
