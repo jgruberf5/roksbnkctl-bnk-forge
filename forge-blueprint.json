@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-bnk-roksbnkctl",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "name": "IBM ROKS + BNK (roksbnkctl)",
     "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl. Credential-backed by an IBM Cloud credential template; region and resource group inherit from the selected template."
   },
@@ -13,6 +13,7 @@
   "estimated_time": "30-45 minutes",
   "difficulty": "intermediate",
   "maturity": "preview",
+  "bnk_version": "2.3",
   "tags": [
     "ibm",
     "roks",
@@ -22,7 +23,7 @@
   ],
   "outcomes": [
     "IBM Cloud ROKS (OpenShift) cluster provisioned",
-    "BIG-IP Next for Kubernetes (BNK) installed",
+    "BIG-IP Next for Kubernetes (BNK) 2.3 installed",
     "Optional testing + gateway phases deployed"
   ],
   "inputs": {
