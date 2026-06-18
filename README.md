@@ -1,146 +1,80 @@
 # roksbnkctl-bnk-forge
 
-A BNK Forge **module source** that runs [roksbnkctl](https://github.com/jgruberf5/roksbnkctl)
-from a BNK Forge blueprint: a form populates the workspace `config.yaml`, an IBM
-Cloud **credential template** supplies the API key, and roksbnkctl provisions an
-IBM Cloud ROKS cluster and installs BIG-IP Next for Kubernetes (BNK).
+A [BNK Forge](https://github.com/jgruberf5) **module source** that runs
+[roksbnkctl](https://github.com/jgruberf5/roksbnkctl) from a blueprint to
+provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK).
 
-Register this repo once as a Git module source (`POST /api/module-sources`); the
-sync ingests both the deployment pack and the blueprint.
+It ships a BNK Forge **artifact component** (`kind: container_image`) that wraps
+the published `roksbnkctl-tools-runner` image, plus a **blueprint** that turns a
+form into a roksbnkctl deployment. BNK Forge's **container engine** runs each
+roksbnkctl phase as a governed container step (argv only, no shell), on either a
+**Docker** or **Kubernetes** substrate.
 
 ## How it works
 
 ```
-BNK Forge blueprint form ──▶ config.yaml (rendered) ──▶ roksbnkctl init/up
-   (prefix, cluster_name,            │                        │
-    region, resource_group,         │                        ▼
-    openshift_version, …)           │                  IBM ROKS + BNK
-                                    │
-IBM credential template ──▶ IBMCLOUD_API_KEY (env) ─────┘   cluster-outputs.json
-   (region, resource_group                                        │
-    auto-inherited)                                               ▼
-                                                            outputs.json → Forge
+Blueprint form ──▶ step env (ROKSBNKCTL_*)  ─┐
+  prefix, cluster_name, region,             │   roksbnkctl-tools-runner image
+  resource_group, cluster_create, …         ▼   (container step, argv only)
+IBM credential template ──▶ IBMCLOUD_API_KEY ──▶ init --non-interactive
+                                                 → cluster up --auto
+                                                 → bnk up --auto  (…testing/gateway)
+persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) ──▶ outputs
 ```
 
-- **Form → `config.yaml`.** The blueprint's `inputs` render the deploy form. Their
-  values flow into the pack via `${name}` interpolation on the module `inputs`,
-  reach the playbook as Ansible `--extra-vars`, and the playbook renders
-  `config.yaml` from `config.yaml.j2` and runs `roksbnkctl init --config-file …
-  --override-from-env`. **No `config.yaml` is hand-edited.**
+- **Form → env → `config.yaml`.** Blueprint `inputs` render the deploy form; the
+  artifact's `init` step maps them to `ROKSBNKCTL_*` env vars and runs
+  `roksbnkctl init --non-interactive`, which builds `config.yaml` from the
+  environment alone (no file, no prompt — roksbnkctl ≥ the `--non-interactive`
+  release). Subsequent steps run `cluster up` / `cluster register` / `bnk up` /
+  `testing up` / `gateway up`, each gated by a typed input.
 - **Credential template → API key.** Selecting an IBM credential template on the
-  Forge project injects `IBMCLOUD_API_KEY` into the run environment
-  (`credentials_service.get_cloud_credentials_env`). roksbnkctl consumes it
-  natively (env-first resolver; `--override-from-env` maps it into the workspace).
-  `region` and `resource_group` **auto-inherit** from the template via the form
-  cascade (`source: credential_template`).
-- **Outputs.** The playbook reads `cluster-outputs.json` and writes the manifest's
-  `outputs_file` (`outputs.json`); Forge imports it as module outputs.
+  Forge project injects `IBMCLOUD_API_KEY` into the run; `region` and
+  `resource_group` auto-inherit from the template via the form cascade.
+- **State persists** on the mounted `/work` volume (`ROKSBNKCTL_HOME=/work/.roksbnkctl`),
+  keyed to the deployment — so `destroy` tears down what `apply` created.
+- **Outputs**: `cluster-outputs.json` is read back as the artifact's outputs.
 
-## What the form controls
+## The form
 
 | Field | Effect |
 |---|---|
-| `cluster_create` | **On** → provision a new ROKS cluster (`cluster up`). **Off** → attach to the existing cluster named in `cluster_name` (`cluster register`). |
-| `cluster_name` | New cluster name, or the name/ID of the existing cluster to attach to. |
-| `region`, `resource_group` | Inherit from the selected IBM credential template (overridable). |
-| `openshift_version`, `workers_per_zone` | New-cluster sizing (ignored for an existing cluster). |
-| `install_bnk` | Install BIG-IP Next for Kubernetes (`bnk up`). |
-| `testing_vpc` | Testing phase — external client VPC + Transit Gateway jumphost. |
-| `existing_transit_gateway` | Adopt an existing Transit Gateway by name/ID (`resources.transit_gateway.existing`) instead of creating one. Required to use `testing_vpc` against an existing cluster; also lets a new cluster adopt a shared corporate TGW. |
-| `testing_in_cluster` | Testing phase — in-cluster per-AZ jumphosts. |
-| `install_gateway` | Deploy the gateway phase (`gateway up`). |
+| `prefix` | Resource name prefix (e.g. `acme-eu`). |
+| `cluster_name` | New cluster name, or existing cluster name/ID. |
+| `region`, `resource_group` | Inherit from the selected IBM credential template. |
+| `cluster_create` | Provision a new ROKS cluster (`cluster up`). |
+| `use_existing_cluster` | Attach to an existing cluster (`cluster register`). |
+| `install_bnk` | Install BIG-IP Next for Kubernetes. |
+| `install_testing` | Deploy the testing phase. |
+| `install_gateway` | Deploy the gateway phase. |
 
-Booleans render the matching `resources.*` toggles into `config.yaml` and gate the
-corresponding `roksbnkctl <phase> up --auto` task. Cluster-phase infra
-(`transit_gateway` / `registry_cos` / `cert_manager`) is created with a **new**
-cluster (matching `roksbnkctl init` defaults) and assumed already present for an
-**existing** one. Teardown runs the phases in reverse; an adopted existing cluster
-is never destroyed.
+## Requirements
 
-## Why one workspace pack (not per-phase packs)
+- A **BNK Forge** with the container-engine + Container Registries features
+  (the artifact-component model).
+- A **Container Registry** Access Method for `ghcr.io` (the runner image is public,
+  but BNK Forge resolves a registry per image host) and an **IBM Cloud credential
+  template** on the project.
+- The `roksbnkctl-tools-runner` image pinned in
+  [`roksbnkctl/workspace/bnkforge.artifact.json`](roksbnkctl/workspace/bnkforge.artifact.json)
+  must be a build that includes `init --non-interactive` (roksbnkctl ≥ that release).
 
-roksbnkctl is **workspace-stateful across phases**: cluster → BNK → testing →
-gateway share one `~/.roksbnkctl/<ws>` (config, terraform state,
-`cluster-outputs.json`). BNK Forge modules are **independent runs with independent
-workspaces**, so splitting the phases into separate packs would break roksbnkctl's
-shared state. The robust unit is therefore **one pack** that runs the selected
-phases in one workspace, with the form's booleans choosing which phases run.
-(Finer per-phase modules are possible later but require solving cross-run state
-sharing — e.g. remote state + an existing-cluster handoff.)
+## Using it
+
+1. Register this repo as a Git **module source** in BNK Forge — the sync ingests
+   the artifact component and the blueprint.
+2. On a project with an IBM credential template selected, deploy the **IBM ROKS +
+   BNK (roksbnkctl)** blueprint and fill the form.
+
+A step-by-step UI walkthrough lives in [`docs/USING-WITH-BNK-FORGE.md`](docs/USING-WITH-BNK-FORGE.md).
 
 ## Layout
 
 ```
-roksbnkctl/workspace/
-  bnkforge.pack.json   # engine: ansible, runner_profile: ansible-default
-  playbook.yml         # render config.yaml → roksbnkctl init → up → write outputs.json
-  destroy.yml          # roksbnkctl down
-  config.yaml.j2       # the config.yaml seed, fed by the form
-forge-blueprint.json   # the form + module wiring (cloud_provider: ibm)
-docs/backend-Dockerfile.snippet   # the runner-image addition (see Prerequisite)
+roksbnkctl/workspace/bnkforge.artifact.json   # kind: container_image + steps + state
+forge-blueprint.json                          # the form + artifact wiring (cloud_provider: ibm)
+docs/USING-WITH-BNK-FORGE.md                  # UI walkthrough for a manual test
+docs/specs/                                   # the design specs (historical; bnk-forge has since implemented them)
 ```
 
-`module.path` in the manifest (`roksbnkctl/workspace`) must equal the pack's
-repo-relative directory — BNK Forge enforces this and resolves the blueprint's
-`module:` ref by that path.
-
-## Prerequisite: bake the toolchain into the worker image
-
-The governed runner contract forbids per-pack images / runtime installs, so
-every binary a pack uses must be **baked into the BNK Forge worker image**
-(`backend/Dockerfile`, `FROM app-base AS worker`). The worker today bundles
-`tofu`/`helm`/`kubectl` — which is **not enough**. Three binaries must be added
-(see `docs/backend-Dockerfile.snippet`):
-
-1. **`roksbnkctl`** — the driver (not present).
-2. **`terraform` ≥ 1.5** — roksbnkctl runs `terraform` *by name* (`exec.LookPath`);
-   the worker's `tofu` is **not** used. (≥ 1.10 only if you enable remote-S3 state.)
-3. **`ansible-core`** — the `ansible-default` runner needs `ansible-playbook`;
-   it's not in `requirements.txt` or the Dockerfile today.
-
-roksbnkctl does **not** need the `ibmcloud` CLI (it uses the IBM Go SDK, auth'd
-by `IBMCLOUD_API_KEY`) or `kubectl`/`oc`/`helm` (it installs BNK via client-go).
-terraform providers download into the existing `TF_PLUGIN_CACHE_DIR`
-(`/app/provider-cache` volume) on the first run, then cache.
-
-After editing the Dockerfile, **rebuild and roll out the worker image** — e.g.
-`./scripts/build.sh --deploy`, or `docker compose build celery-worker && docker
-compose up -d celery-worker celery-worker-2` (both worker services share
-`bnk-forge-worker:latest`). Until the rebuilt image is live, a run fails at the
-playbook's *"Verify the roksbnkctl binary is on PATH"* step. This image change is
-the only BNK Forge edit required — everything else is pack content synced from
-this repo.
-
-## Caveats / things to verify
-
-- **Runner timeout.** The ansible runner caps a run at **3600 s (1 h)**. A full
-  ROKS create + BNK install can approach that; for slow regions, deploy in stages
-  (a first run with only the cluster — `install_bnk`/testing/gateway off — then a
-  second run enabling the rest) or raise the runner timeout.
-- **Existing-cluster infra.** Attaching to an existing cluster (`cluster_create`
-  off) skips creating `transit_gateway`/`registry_cos`/`cert_manager` (they're
-  assumed present). To run `testing_vpc` against an existing cluster, set
-  `existing_transit_gateway` to the cluster's Transit Gateway name/ID — the
-  template renders `resources.transit_gateway.{create: false, existing: …}` so the
-  testing phase finds it. (`registry_cos` adoption for an existing cluster is via
-  `cluster register --registry-cos-name`; see the playbook comment.)
-- **Destroy needs the state.** `destroy.yml` runs `roksbnkctl <phase> down`, which
-  needs the terraform state from apply. State lives under `ROKSBNKCTL_HOME` (pinned into
-  the module workspace). If Forge does **not** persist the module workspace between
-  apply and destroy, configure **remote state** so it survives — `roksbnkctl state
-  s3 …` writes a `state:` block that keeps terraform state in IBM COS. (You can add
-  an `s3_*` set of form inputs + a `state:` block to `config.yaml.j2` to wire this
-  from the blueprint.)
-- **Non-interactive confirm flag.** Verify the exact `roksbnkctl down` flag for
-  your release (the destroy playbook uses `--yes`); destroy must never prompt.
-- **`roksbnkctl version`** — verify the version subcommand name for your release
-  (the readiness check uses `roksbnkctl version`).
-- **Plan semantics.** A Forge "plan" runs `ansible --check`, which we map to a
-  read-only `roksbnkctl plan`. It does not promise OpenTofu-style change precision.
-
-## Relationship to the auto-registration feature
-
-This is **Approach 2** (Forge *drives* roksbnkctl). It is complementary to the
-roksbnkctl `bnkforge register` feature (**Approach 1**, where roksbnkctl runs
-*outside* Forge and registers the cluster back). When Forge drives roksbnkctl,
-Forge already owns the cluster — no registration step is needed.
+Validated against BNK Forge's `validate_artifact_manifest` + `BlueprintManifest`.
