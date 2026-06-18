@@ -38,9 +38,10 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
 - **Phases are separate modules over one shared workspace.** `cluster`, `bnk`,
   `testing`, `gateway` are distinct artifacts wired by the blueprint's
   `depends_on` graph; `state.scope: deployment` makes them share one roksbnkctl
-  `/work`, so each phase sees the others' state. Whole-deployment teardown lives
-  on the `cluster` phase's `destroy` (`roksbnkctl down`); the other phases'
-  destroy is a no-op.
+  `/work`, so each phase sees the others' state. **Each phase has its own
+  `destroy`** (`roksbnkctl <phase> down`), so destroying the deployment tears the
+  phases down in reverse dependency order (gateway → bnk/testing → cluster), and
+  a single phase can be torn down on its own.
 - **Credential template → API key.** Selecting an IBM credential template on the
   Forge project injects `IBMCLOUD_API_KEY` into the run; `region` and
   `resource_group` auto-inherit from the template via the form cascade.
@@ -106,10 +107,10 @@ A step-by-step UI walkthrough lives in [`docs/USING-WITH-BNK-FORGE.md`](docs/USI
 ## Layout
 
 ```
-roksbnkctl/cluster/   bnkforge.pack.json + bnkforge.artifact.json   # phase 1: ROKS cluster (provision/attach) — owns destroy (roksbnkctl down)
-roksbnkctl/bnk/       bnkforge.pack.json + bnkforge.artifact.json   # phase 2: install BNK            (depends_on cluster)
-roksbnkctl/testing/   bnkforge.pack.json + bnkforge.artifact.json   # phase 3: testing               (depends_on cluster)
-roksbnkctl/gateway/   bnkforge.pack.json + bnkforge.artifact.json   # phase 4: gateway               (depends_on bnk)
+roksbnkctl/cluster/   bnkforge.pack.json + bnkforge.artifact.json   # phase 1: ROKS cluster (provision/attach); destroy: cluster down
+roksbnkctl/bnk/       bnkforge.pack.json + bnkforge.artifact.json   # phase 2: install BNK   (depends_on cluster);  destroy: bnk down
+roksbnkctl/testing/   bnkforge.pack.json + bnkforge.artifact.json   # phase 3: testing       (depends_on cluster);  destroy: testing down
+roksbnkctl/gateway/   bnkforge.pack.json + bnkforge.artifact.json   # phase 4: gateway       (depends_on bnk,testing); destroy: gateway down
 forge-blueprint.json                                                # composes the 4 phases via depends_on (cloud_provider: ibm)
 docs/USING-WITH-BNK-FORGE.md                                        # UI walkthrough for a manual test
 docs/specs/                                                         # the design specs (historical; bnk-forge has since implemented them)

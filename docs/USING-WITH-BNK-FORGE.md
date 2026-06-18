@@ -76,10 +76,10 @@ you mirror the image to a private registry.)
 
 ## 7. Teardown
 
-**Destroy** the deployment (or the `roksbnkctl-cluster` module) → the cluster
-phase runs `roksbnkctl down --auto`, tearing down the whole shared workspace
-(cluster + bnk + testing + gateway). The other phase modules' destroy is a no-op.
-(An *existing* cluster attached with `cluster_create` off is not destroyed.)
+**Destroy** the deployment → each phase runs its own `roksbnkctl <phase> down
+--auto` in reverse dependency order (gateway → bnk / testing → cluster). You can
+also destroy a **single phase** from its module. (An *existing* cluster attached
+with `cluster_create` off is not destroyed by `cluster down`.)
 
 ---
 
