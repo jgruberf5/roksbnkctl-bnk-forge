@@ -4,11 +4,17 @@ A [BNK Forge](https://github.com/jgruberf5) **module source** that runs
 [roksbnkctl](https://github.com/jgruberf5/roksbnkctl) from a blueprint to
 provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK).
 
-It ships a BNK Forge **artifact component** (`kind: container_image`) that wraps
-the published `roksbnkctl-tools-runner` image, plus a **blueprint** that turns a
-form into a roksbnkctl deployment. BNK Forge's **container engine** runs each
-roksbnkctl phase as a governed container step (argv only, no shell), on either a
-**Docker** or **Kubernetes** substrate.
+It ships **one BNK Forge artifact component per roksbnkctl phase**
+(`roksbnkctl-cluster`, `roksbnkctl-bnk`, `roksbnkctl-testing`, `roksbnkctl-gateway`
+— each `kind: container_image` wrapping the published `roksbnkctl-tools-runner`
+image), plus a **blueprint** that composes them as a **dependency graph**
+(`cluster → bnk → testing / gateway`). BNK Forge's **container engine** runs each
+phase as a governed container step (argv only, no shell) on either a **Docker** or
+**Kubernetes** substrate. Because the phases are separate modules, **each phase can
+be deployed / re-run independently**, while a **deployment-scoped shared workspace**
+(`state.scope: deployment`) keeps roksbnkctl's single `/work` state (tfstate,
+generated keys, `cluster-outputs.json`) shared across them — so `bnk` sees the
+cluster `cluster` created.
 
 ## How it works
 
@@ -22,12 +28,19 @@ IBM credential template ──▶ IBMCLOUD_API_KEY ──▶ init --non-interact
 persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) ──▶ outputs
 ```
 
-- **Form → env → `config.yaml`.** Blueprint `inputs` render the deploy form; the
-  artifact's `init` step maps them to `ROKSBNKCTL_*` env vars and runs
-  `roksbnkctl init --non-interactive`, which builds `config.yaml` from the
-  environment alone (no file, no prompt — roksbnkctl ≥ the `--non-interactive`
-  release). Subsequent steps run `cluster up` / `cluster register` / `bnk up` /
-  `testing up` / `gateway up`, each gated by a typed input.
+- **Form → env → `config.yaml`.** Blueprint `inputs` render the deploy form and
+  are wired to every phase module. Each phase artifact's `apply` step-set begins
+  with an idempotent `init` step that maps the inputs to `ROKSBNKCTL_*` env vars
+  and runs `roksbnkctl init --non-interactive` (builds `config.yaml` from the
+  environment alone — roksbnkctl ≥ the `--non-interactive` release), then runs
+  that phase's `cluster up` / `bnk up` / `testing up` / `gateway up`, gated by a
+  typed input. Re-running a phase re-inits (idempotent) and re-converges.
+- **Phases are separate modules over one shared workspace.** `cluster`, `bnk`,
+  `testing`, `gateway` are distinct artifacts wired by the blueprint's
+  `depends_on` graph; `state.scope: deployment` makes them share one roksbnkctl
+  `/work`, so each phase sees the others' state. Whole-deployment teardown lives
+  on the `cluster` phase's `destroy` (`roksbnkctl down`); the other phases'
+  destroy is a no-op.
 - **Credential template → API key.** Selecting an IBM credential template on the
   Forge project injects `IBMCLOUD_API_KEY` into the run; `region` and
   `resource_group` auto-inherit from the template via the form cascade.
@@ -63,9 +76,12 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
 - A **Container Registry** Access Method for `ghcr.io` (the runner image is public,
   but BNK Forge resolves a registry per image host) and an **IBM Cloud credential
   template** on the project.
-- The `roksbnkctl-tools-runner` image pinned in
-  [`roksbnkctl/workspace/bnkforge.artifact.json`](roksbnkctl/workspace/bnkforge.artifact.json)
-  must be a build that includes `init --non-interactive` (roksbnkctl ≥ that release).
+- The `roksbnkctl-tools-runner` image pinned (by digest) in each phase artifact
+  (`roksbnkctl/<phase>/bnkforge.artifact.json`) must be a build that includes
+  `init --non-interactive` (roksbnkctl ≥ that release). All phases pin the same image.
+- A BNK Forge with **deployment-scoped shared workspace** support
+  (`state.scope: deployment`) — required so the phase modules share roksbnkctl's
+  `/work` state.
 
 ## Using it
 
@@ -74,15 +90,14 @@ this repo must be registered as **both** — and the module source first, so the
 module exists in the catalog when the blueprint deploys (otherwise project
 creation fails with `BLUEPRINT_MODULES_MISSING`):
 
-1. Register this repo as a Git **module source**. The module sync discovers
-   [`roksbnkctl/workspace/bnkforge.pack.json`](roksbnkctl/workspace/bnkforge.pack.json)
-   (the `container`-engine deployment pack) and registers the `roksbnkctl/workspace`
-   module — backed by the sibling
-   [`bnkforge.artifact.json`](roksbnkctl/workspace/bnkforge.artifact.json) the
-   container engine runs at deploy.
+1. Register this repo as a Git **module source**. The module sync discovers the
+   four per-phase `container`-engine packs — `roksbnkctl/{cluster,bnk,testing,gateway}/bnkforge.pack.json`
+   — and registers a module for each, backed by the sibling `bnkforge.artifact.json`
+   the container engine runs at deploy.
 2. Register this repo as a Git **blueprint source**. The blueprint sync discovers
    [`forge-blueprint.json`](forge-blueprint.json) and imports the **IBM ROKS + BNK
-   (roksbnkctl)** blueprint (which references the `roksbnkctl/workspace` module).
+   (roksbnkctl)** blueprint, which composes the four phase modules via a
+   `depends_on` graph (`cluster → bnk → testing / gateway`).
 3. On a project with an IBM credential template selected, deploy the blueprint and
    fill the form.
 
@@ -91,11 +106,18 @@ A step-by-step UI walkthrough lives in [`docs/USING-WITH-BNK-FORGE.md`](docs/USI
 ## Layout
 
 ```
-roksbnkctl/workspace/bnkforge.pack.json       # deployment pack (engine: container) — module catalog unit
-roksbnkctl/workspace/bnkforge.artifact.json   # kind: container_image + steps + state (run at deploy)
-forge-blueprint.json                          # the form + artifact wiring (cloud_provider: ibm)
-docs/USING-WITH-BNK-FORGE.md                  # UI walkthrough for a manual test
-docs/specs/                                   # the design specs (historical; bnk-forge has since implemented them)
+roksbnkctl/cluster/   bnkforge.pack.json + bnkforge.artifact.json   # phase 1: ROKS cluster (provision/attach) — owns destroy (roksbnkctl down)
+roksbnkctl/bnk/       bnkforge.pack.json + bnkforge.artifact.json   # phase 2: install BNK            (depends_on cluster)
+roksbnkctl/testing/   bnkforge.pack.json + bnkforge.artifact.json   # phase 3: testing               (depends_on cluster)
+roksbnkctl/gateway/   bnkforge.pack.json + bnkforge.artifact.json   # phase 4: gateway               (depends_on bnk)
+forge-blueprint.json                                                # composes the 4 phases via depends_on (cloud_provider: ibm)
+docs/USING-WITH-BNK-FORGE.md                                        # UI walkthrough for a manual test
+docs/specs/                                                         # the design specs (historical; bnk-forge has since implemented them)
 ```
+
+Each phase artifact declares `state.scope: deployment` so the four modules share
+one roksbnkctl `/work` workspace; `apply` runs `[init, <phase> up]` (idempotent,
+re-runnable). Deploy a single phase to re-run it, or deploy the blueprint /
+project to run them in dependency order.
 
 Validated against BNK Forge's `validate_pack_manifest` + `validate_artifact_manifest` + `BlueprintManifest`.

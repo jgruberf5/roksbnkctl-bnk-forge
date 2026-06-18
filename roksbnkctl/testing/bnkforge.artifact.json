@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "name": "roksbnkctl-workspace",
-  "version": "1.14.0",
+  "name": "roksbnkctl-testing",
+  "version": "2.0.0",
   "kind": "container_image",
-  "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl, driven from a BNK Forge blueprint form. Procedural steps invoke the roksbnkctl-tools-runner image (argv only, no shell). State persists in the mounted workspace; the IBM Cloud API key arrives as IBMCLOUD_API_KEY.",
+  "description": "Deploy the roksbnkctl testing phase (client VPC + workloads). Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
@@ -11,7 +11,7 @@
   },
   "lifecycle": {
     "supports_apply": true,
-    "supports_destroy": true
+    "supports_destroy": false
   },
   "credentials": {
     "cloud": "ibmcloud"
@@ -21,7 +21,8 @@
     "outputs_file": ".roksbnkctl/forge/cluster-outputs.json",
     "home_env": {
       "ROKSBNKCTL_HOME": "/work/.roksbnkctl"
-    }
+    },
+    "scope": "deployment"
   },
   "execution": {
     "engine": "container",
@@ -31,7 +32,7 @@
     }
   },
   "steps": {
-    "init": [
+    "apply": [
       {
         "name": "init",
         "env": {
@@ -76,33 +77,6 @@
           "--non-interactive"
         ],
         "timeout_seconds": 300
-      }
-    ],
-    "apply": [
-      {
-        "name": "cluster-up",
-        "args": [
-          "roksbnkctl",
-          "-w",
-          "forge",
-          "cluster",
-          "up",
-          "--auto"
-        ],
-        "timeout_seconds": 3600
-      },
-      {
-        "name": "bnk-up",
-        "when": "{{inputs.install_bnk}}",
-        "args": [
-          "roksbnkctl",
-          "-w",
-          "forge",
-          "bnk",
-          "up",
-          "--auto"
-        ],
-        "timeout_seconds": 3600
       },
       {
         "name": "testing-up",
@@ -116,32 +90,6 @@
           "--auto"
         ],
         "timeout_seconds": 2400
-      },
-      {
-        "name": "gateway-up",
-        "when": "{{inputs.install_gateway}}",
-        "args": [
-          "roksbnkctl",
-          "-w",
-          "forge",
-          "gateway",
-          "up",
-          "--auto"
-        ],
-        "timeout_seconds": 1800
-      }
-    ],
-    "destroy": [
-      {
-        "name": "down",
-        "args": [
-          "roksbnkctl",
-          "-w",
-          "forge",
-          "down",
-          "--auto"
-        ],
-        "timeout_seconds": 3600
       }
     ]
   },
