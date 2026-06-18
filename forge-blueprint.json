@@ -21,115 +21,24 @@
   ],
   "inputs": {
     "required": [
-      {
-        "name": "prefix",
-        "type": "string",
-        "label": "Resource prefix",
-        "description": "Prefix for all resource names (e.g. acme-eu).",
-        "example": "acme-eu",
-        "order": 1
-      },
-      {
-        "name": "cluster_name",
-        "type": "string",
-        "label": "Cluster name (or existing name/ID)",
-        "description": "Name for a new ROKS cluster, or the name/ID of an existing cluster to attach to.",
-        "example": "acme-eu-roks",
-        "order": 2
-      },
-      {
-        "name": "region",
-        "type": "string",
-        "label": "IBM Cloud region",
-        "description": "Region for the cluster. Inherits from the selected credential template.",
-        "example": "eu-de",
-        "source": "credential_template",
-        "source_field": "region",
-        "order": 3
-      },
-      {
-        "name": "resource_group",
-        "type": "string",
-        "label": "Resource group",
-        "description": "IBM Cloud resource group. Inherits from the selected credential template.",
-        "example": "default",
-        "source": "credential_template",
-        "source_field": "ibmcloud_resource_group",
-        "order": 4
-      }
+      { "name": "prefix",         "type": "string", "label": "Resource prefix", "description": "Prefix for all resource names (e.g. acme-eu).", "example": "acme-eu", "order": 1 },
+      { "name": "cluster_name",   "type": "string", "label": "Cluster name (or existing name/ID)", "description": "Name for a new ROKS cluster, or the name/ID of an existing cluster to attach to.", "example": "acme-eu-roks", "order": 2 },
+      { "name": "region",         "type": "string", "label": "IBM Cloud region", "description": "Region for the cluster. Inherits from the selected credential template.", "example": "eu-de", "source": "credential_template", "source_field": "region", "order": 3 },
+      { "name": "resource_group", "type": "string", "label": "Resource group", "description": "IBM Cloud resource group. Inherits from the selected credential template.", "example": "default", "source": "credential_template", "source_field": "ibmcloud_resource_group", "order": 4 }
     ],
     "optional": [
-      {
-        "name": "cluster_create",
-        "type": "boolean",
-        "label": "Create a new cluster",
-        "description": "On = provision a new ROKS cluster. Off = attach to the existing cluster named above.",
-        "default": true,
-        "order": 5
-      },
-      {
-        "name": "openshift_version",
-        "type": "string",
-        "label": "OpenShift version",
-        "description": "New cluster only. Blank = ROKS default.",
-        "default": "",
-        "order": 6
-      },
-      {
-        "name": "workers_per_zone",
-        "type": "number",
-        "label": "Workers per zone",
-        "description": "New cluster only. Worker nodes per zone.",
-        "default": 2,
-        "order": 7
-      },
-      {
-        "name": "install_bnk",
-        "type": "boolean",
-        "label": "Install BNK",
-        "description": "Install BIG-IP Next for Kubernetes.",
-        "default": true,
-        "order": 8
-      },
-      {
-        "name": "testing_vpc",
-        "type": "boolean",
-        "label": "Testing: external client VPC",
-        "description": "Deploy the testing phase's external client VPC + Transit Gateway jumphost.",
-        "default": false,
-        "order": 9
-      },
-      {
-        "name": "existing_transit_gateway",
-        "type": "string",
-        "label": "Existing Transit Gateway (name/ID)",
-        "description": "Adopt an existing Transit Gateway instead of creating one. Required to use 'Testing: external client VPC' against an existing cluster. Blank = create one with a new cluster.",
-        "default": "",
-        "order": 9.5
-      },
-      {
-        "name": "testing_in_cluster",
-        "type": "boolean",
-        "label": "Testing: in-cluster jumphosts",
-        "description": "Deploy the testing phase's in-cluster per-AZ jumphosts.",
-        "default": false,
-        "order": 10
-      },
-      {
-        "name": "install_gateway",
-        "type": "boolean",
-        "label": "Deploy gateway phase",
-        "description": "Deploy the gateway phase.",
-        "default": false,
-        "order": 11
-      }
+      { "name": "cluster_create",       "type": "boolean", "label": "Create a new cluster", "description": "On = provision a new ROKS cluster. Off = attach to the existing cluster named above (set 'Use existing cluster').", "default": true,  "order": 5 },
+      { "name": "use_existing_cluster", "type": "boolean", "label": "Use existing cluster", "description": "Attach to the existing cluster named above (register). Mutually exclusive with 'Create a new cluster'.", "default": false, "order": 6 },
+      { "name": "install_bnk",          "type": "boolean", "label": "Install BNK", "description": "Install BIG-IP Next for Kubernetes.", "default": true,  "order": 7 },
+      { "name": "install_testing",      "type": "boolean", "label": "Deploy testing phase", "description": "Deploy the roksbnkctl testing phase.", "default": false, "order": 8 },
+      { "name": "install_gateway",      "type": "boolean", "label": "Deploy gateway phase", "description": "Deploy the roksbnkctl gateway phase.", "default": false, "order": 9 }
     ]
   },
   "modules": [
     {
       "id": "roksbnkctl-workspace",
       "module": "roksbnkctl/workspace",
-      "version": "1.0.0",
+      "version": "1.11.4",
       "name": "roksbnkctl Workspace",
       "optional": false,
       "depends_on": [],
@@ -139,12 +48,9 @@
         "region": "${region}",
         "resource_group": "${resource_group}",
         "cluster_create": "${cluster_create}",
-        "openshift_version": "${openshift_version}",
-        "workers_per_zone": "${workers_per_zone}",
+        "use_existing_cluster": "${use_existing_cluster}",
         "install_bnk": "${install_bnk}",
-        "testing_vpc": "${testing_vpc}",
-        "existing_transit_gateway": "${existing_transit_gateway}",
-        "testing_in_cluster": "${testing_in_cluster}",
+        "install_testing": "${install_testing}",
         "install_gateway": "${install_gateway}"
       }
     }

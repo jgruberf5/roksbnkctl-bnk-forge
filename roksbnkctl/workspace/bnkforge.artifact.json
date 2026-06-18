@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "name": "roksbnkctl-workspace",
+  "version": "1.11.4",
+  "kind": "container_image",
+  "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl, driven from a BNK Forge blueprint form. Procedural steps invoke the roksbnkctl-tools-runner image (argv only, no shell). State persists in the mounted workspace; the IBM Cloud API key arrives as IBMCLOUD_API_KEY.",
+  "container_image": {
+    "registry_host": "ghcr.io",
+    "repository": "jgruberf5/roksbnkctl-tools-runner",
+    "digest": "sha256:a9b858b4c3c5afbd124625226451eaa66cdff3d2840b3a76c4f24c1e0fad259d"
+  },
+  "lifecycle": {
+    "supports_apply": true,
+    "supports_destroy": true
+  },
+  "credentials": {
+    "cloud": "ibmcloud"
+  },
+  "state": {
+    "mount_path": "/work",
+    "outputs_file": ".roksbnkctl/forge/cluster-outputs.json",
+    "home_env": {
+      "ROKSBNKCTL_HOME": "/work/.roksbnkctl"
+    }
+  },
+  "execution": {
+    "engine": "container",
+    "limits": { "cpus": "2", "memory": "2g" }
+  },
+  "steps": {
+    "init": [
+      {
+        "name": "init",
+        "env": {
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}"
+        },
+        "args": ["roksbnkctl", "init", "-w", "forge", "--override-from-env", "--non-interactive"],
+        "timeout_seconds": 300
+      }
+    ],
+    "apply": [
+      {
+        "name": "cluster-up",
+        "when": "{{inputs.cluster_create}}",
+        "args": ["roksbnkctl", "-w", "forge", "cluster", "up", "--auto"],
+        "timeout_seconds": 3600
+      },
+      {
+        "name": "cluster-register",
+        "when": "{{inputs.use_existing_cluster}}",
+        "args": ["roksbnkctl", "-w", "forge", "cluster", "register", "{{inputs.cluster_name}}"],
+        "timeout_seconds": 600
+      },
+      {
+        "name": "bnk-up",
+        "when": "{{inputs.install_bnk}}",
+        "args": ["roksbnkctl", "-w", "forge", "bnk", "up", "--auto"],
+        "timeout_seconds": 3600
+      },
+      {
+        "name": "testing-up",
+        "when": "{{inputs.install_testing}}",
+        "args": ["roksbnkctl", "-w", "forge", "testing", "up", "--auto"],
+        "timeout_seconds": 2400
+      },
+      {
+        "name": "gateway-up",
+        "when": "{{inputs.install_gateway}}",
+        "args": ["roksbnkctl", "-w", "forge", "gateway", "up", "--auto"],
+        "timeout_seconds": 1800
+      }
+    ],
+    "destroy": [
+      {
+        "name": "down",
+        "when": "{{inputs.cluster_create}}",
+        "args": ["roksbnkctl", "-w", "forge", "down", "--auto"],
+        "timeout_seconds": 3600
+      }
+    ]
+  },
+  "inputs": {
+    "required": [
+      { "name": "region",         "type": "string", "source": "user", "description": "IBM Cloud region (e.g. eu-de)." },
+      { "name": "resource_group", "type": "string", "source": "user", "description": "IBM Cloud resource group." },
+      { "name": "prefix",         "type": "string", "source": "user", "description": "Resource name prefix (e.g. acme-eu)." },
+      { "name": "cluster_name",   "type": "string", "source": "user", "description": "Cluster name (new) or existing cluster name/ID." }
+    ],
+    "optional": [
+      { "name": "cluster_create",       "type": "boolean", "source": "user", "default": true,  "description": "Provision a NEW ROKS cluster." },
+      { "name": "use_existing_cluster", "type": "boolean", "source": "user", "default": false, "description": "Attach to an EXISTING cluster (register cluster_name)." },
+      { "name": "install_bnk",          "type": "boolean", "source": "user", "default": true,  "description": "Install BIG-IP Next for Kubernetes." },
+      { "name": "install_testing",      "type": "boolean", "source": "user", "default": false, "description": "Deploy the testing phase." },
+      { "name": "install_gateway",      "type": "boolean", "source": "user", "default": false, "description": "Deploy the gateway phase." }
+    ]
+  },
+  "references": []
+}
