@@ -69,20 +69,33 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
 
 ## Using it
 
-1. Register this repo as a Git **module source** in BNK Forge — the sync ingests
-   the artifact component and the blueprint.
-2. On a project with an IBM credential template selected, deploy the **IBM ROKS +
-   BNK (roksbnkctl)** blueprint and fill the form.
+BNK Forge ingests **modules** and **blueprints** from *separate* source types, so
+this repo must be registered as **both** — and the module source first, so the
+module exists in the catalog when the blueprint deploys (otherwise project
+creation fails with `BLUEPRINT_MODULES_MISSING`):
+
+1. Register this repo as a Git **module source**. The module sync discovers
+   [`roksbnkctl/workspace/bnkforge.pack.json`](roksbnkctl/workspace/bnkforge.pack.json)
+   (the `container`-engine deployment pack) and registers the `roksbnkctl/workspace`
+   module — backed by the sibling
+   [`bnkforge.artifact.json`](roksbnkctl/workspace/bnkforge.artifact.json) the
+   container engine runs at deploy.
+2. Register this repo as a Git **blueprint source**. The blueprint sync discovers
+   [`forge-blueprint.json`](forge-blueprint.json) and imports the **IBM ROKS + BNK
+   (roksbnkctl)** blueprint (which references the `roksbnkctl/workspace` module).
+3. On a project with an IBM credential template selected, deploy the blueprint and
+   fill the form.
 
 A step-by-step UI walkthrough lives in [`docs/USING-WITH-BNK-FORGE.md`](docs/USING-WITH-BNK-FORGE.md).
 
 ## Layout
 
 ```
-roksbnkctl/workspace/bnkforge.artifact.json   # kind: container_image + steps + state
+roksbnkctl/workspace/bnkforge.pack.json       # deployment pack (engine: container) — module catalog unit
+roksbnkctl/workspace/bnkforge.artifact.json   # kind: container_image + steps + state (run at deploy)
 forge-blueprint.json                          # the form + artifact wiring (cloud_provider: ibm)
 docs/USING-WITH-BNK-FORGE.md                  # UI walkthrough for a manual test
 docs/specs/                                   # the design specs (historical; bnk-forge has since implemented them)
 ```
 
-Validated against BNK Forge's `validate_artifact_manifest` + `BlueprintManifest`.
+Validated against BNK Forge's `validate_pack_manifest` + `validate_artifact_manifest` + `BlueprintManifest`.
