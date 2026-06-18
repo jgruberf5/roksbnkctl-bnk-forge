@@ -93,11 +93,12 @@
     ],
     "destroy": [
       {
-        "name": "down",
+        "name": "cluster-down",
         "args": [
           "roksbnkctl",
           "-w",
           "forge",
+          "cluster",
           "down",
           "--auto"
         ],

@@ -11,7 +11,7 @@
   },
   "lifecycle": {
     "supports_apply": true,
-    "supports_destroy": false
+    "supports_destroy": true
   },
   "credentials": {
     "cloud": "ibmcloud"
@@ -90,6 +90,20 @@
           "--auto"
         ],
         "timeout_seconds": 3600
+      }
+    ],
+    "destroy": [
+      {
+        "name": "bnk-down",
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "forge",
+          "bnk",
+          "down",
+          "--auto"
+        ],
+        "timeout_seconds": 1800
       }
     ]
   },

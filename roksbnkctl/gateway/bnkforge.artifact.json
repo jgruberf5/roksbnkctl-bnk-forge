@@ -11,7 +11,7 @@
   },
   "lifecycle": {
     "supports_apply": true,
-    "supports_destroy": false
+    "supports_destroy": true
   },
   "credentials": {
     "cloud": "ibmcloud"
@@ -87,6 +87,20 @@
           "forge",
           "gateway",
           "up",
+          "--auto"
+        ],
+        "timeout_seconds": 1800
+      }
+    ],
+    "destroy": [
+      {
+        "name": "gateway-down",
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "forge",
+          "gateway",
+          "down",
           "--auto"
         ],
         "timeout_seconds": 1800

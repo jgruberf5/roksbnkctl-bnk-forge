@@ -16,7 +16,7 @@
       "supports_init": false,
       "supports_plan": false,
       "supports_apply": true,
-      "supports_destroy": false,
+      "supports_destroy": true,
       "supports_refresh": false,
       "supports_drift": false
     },
