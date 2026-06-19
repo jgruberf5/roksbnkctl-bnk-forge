@@ -7,7 +7,7 @@
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:ba6b909f7166ed3f56dc6fcb2b318dbb4b895e973c7415fea2d06f9ce2af6213"
+    "digest": "sha256:55d52e38619177da71a07ae1f1bed9dc55f465e1a979a4c9fa8b1be1576efc33"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -76,7 +76,8 @@
           "--override-from-env",
           "--non-interactive"
         ],
-        "timeout_seconds": 300
+        "timeout_seconds": 300,
+        "run_once": true
       },
       {
         "name": "bnk-up",
@@ -89,7 +90,11 @@
           "up",
           "--auto"
         ],
-        "timeout_seconds": 3600
+        "timeout_seconds": 3600,
+        "retry": {
+          "max_attempts": 3,
+          "backoff_seconds": 300
+        }
       }
     ],
     "destroy": [
