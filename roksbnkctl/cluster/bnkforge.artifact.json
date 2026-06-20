@@ -24,6 +24,11 @@
     },
     "scope": "deployment"
   },
+  "cluster": {
+    "name_output": "cluster_name",
+    "api_server_output": "master_url",
+    "kubeconfig_file": ".roksbnkctl/.kube/config"
+  },
   "execution": {
     "engine": "container",
     "limits": {
