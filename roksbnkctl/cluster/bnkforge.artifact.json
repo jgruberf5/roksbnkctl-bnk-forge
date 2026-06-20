@@ -27,6 +27,8 @@
   "cluster": {
     "name_output": "cluster_name",
     "api_server_output": "master_url",
+    "region_output": "region",
+    "cloud_provider": "ibm",
     "kubeconfig_file": ".roksbnkctl/.kube/config"
   },
   "execution": {
