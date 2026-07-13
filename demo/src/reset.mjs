@@ -95,13 +95,32 @@ async function main() {
     if (flag('destroy') && await openMore()) {
       const d = await page.$('[role=menuitem]::-p-text(Destroy all)');
       if (d) {
-        await d.click();
-        say(`  Destroy all: confirm ${await confirmDialog(page, ['Destroy', 'Confirm', 'Yes'])}`);
-        say('  waiting for teardown to finish…');
-        await page.waitForFunction(
-          () => /destroyed|removed|deleted|complete|no operations|idle/i.test(document.body.innerText) &&
-                !/running|in progress|destroying/i.test(document.body.innerText),
-          { timeout: 45 * 60 * 1000, polling: 15000 }).catch(() => say('  (teardown wait timed out — check manually)'));
+        await d.click(); await sleep(1500);
+        // "Destroy all" opens a role=dialog with a "Start Destruction" button.
+        const start = await page.$('[role=dialog] button::-p-text(Start Destruction)')
+          || await page.$('button::-p-text(Start Destruction)');
+        if (!start) { say('  !! no "Start Destruction" button — aborting destroy'); }
+        else {
+          await start.click();
+          say('  Start Destruction clicked; waiting for teardown (polling module status)…');
+          // Poll the API for the roksbnkctl modules to leave active states.
+          const ACTIVE = /apply|destroy|running|in_progress|pending|initializ/i;
+          const deadline = Date.now() + 60 * 60 * 1000;
+          let last = '';
+          while (Date.now() < deadline) {
+            const st = await page.evaluate(async () => {
+              const t = localStorage.getItem('auth_token');
+              const r = await fetch('/api/projects/modules/all?page_size=200', { headers: { Authorization: 'Bearer ' + t } });
+              const j = await r.json();
+              const arr = Array.isArray(j) ? j : (j.modules || j.items || j.data || []);
+              return arr.filter((m) => /roksbnkctl-(cluster|bnk|testing|gateway)/.test(m.name || ''))
+                       .map((m) => `${m.name}=${m.status || m.state}`).join(' ');
+            }).catch(() => '');
+            if (st && st !== last) { say('    ' + st); last = st; }
+            if (st && !ACTIVE.test(st)) { say('  teardown settled'); break; }
+            await sleep(15000);
+          }
+        }
       }
     }
 
