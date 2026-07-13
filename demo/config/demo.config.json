@@ -1,0 +1,37 @@
+{
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "windowWidth": 1920,
+    "windowHeight": 1167,
+    "fps": 30,
+    "captureFps": 12,
+    "jpegQuality": 85,
+    "crf": 20,
+    "preset": "medium"
+  },
+  "audio": {
+    "leadInSec": 0.75,
+    "tailGapSec": 3.0,
+    "sampleRate": 48000,
+    "sentenceSilenceSec": 0.7,
+    "lengthScale": 1.0
+  },
+  "speed": {
+    "waitSceneFactor": 4
+  },
+  "voices": {
+    "en": "~/.local/share/piper/voices/en_US-amy-medium.onnx",
+    "fr": "~/.local/share/piper/voices/fr_FR-tom-medium.onnx"
+  },
+  "rehearse": {
+    "clusterWaitSec": 40,
+    "phaseWaitSec": 15
+  },
+  "timeouts": {
+    "clusterDeployMs": 4500000,
+    "phaseMs": 1800000,
+    "navMs": 60000,
+    "elementMs": 30000
+  }
+}

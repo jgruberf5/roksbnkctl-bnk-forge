@@ -4,3 +4,8 @@
 **/seed-config.yaml
 **/outputs.json
 **/.bnk_ansible_vars_*
+
+# Demo recorder: deps, renders, captured frames, and the runner's saved answers.
+demo/node_modules/
+demo/out/
+demo/answers.json

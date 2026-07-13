@@ -1,0 +1,19 @@
+{
+  "name": "roksbnkctl-bnk-forge-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Puppeteer + piper demo: install this repo as a BNK Forge source, enable blueprints, deploy IBM ROKS + BNK.",
+  "scripts": {
+    "demo": "node src/run.mjs",
+    "rehearse": "node src/run.mjs --rehearse",
+    "probe": "node src/probe.mjs",
+    "reset": "node src/reset.mjs",
+    "record-dry": "node src/run.mjs --rehearse --skip-deploy",
+    "preview": "node src/preview.mjs",
+    "rerender": "node src/rerender.mjs"
+  },
+  "dependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}
