@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-bnk-adopt",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "kind": "container_image",
   "description": "Adopt an EXISTING IBM Cloud ROKS cluster over an existing Transit Gateway and install BIG-IP Next for Kubernetes on it. The cluster is registered, never created \u2014 and never destroyed.",
   "container_image": {
@@ -77,7 +77,8 @@
           "ROKSBNKCTL_ZONE3_INT_VIP_CIDR": "{{inputs.zone3_int_vip_cidr}}",
           "ROKSBNKCTL_ZONE3_EXTERNAL_SELFIP": "{{inputs.zone3_external_selfip}}",
           "ROKSBNKCTL_ZONE3_INTERNAL_SELFIP": "{{inputs.zone3_internal_selfip}}",
-          "ROKSBNKCTL_CLUSTER_CREATE": "false"
+          "ROKSBNKCTL_CLUSTER_CREATE": "false",
+          "HOME": "/home/runner"
         },
         "args": [
           "roksbnkctl",
@@ -91,6 +92,9 @@
       },
       {
         "name": "cluster-register",
+        "env": {
+          "HOME": "/home/runner"
+        },
         "args": [
           "roksbnkctl",
           "-w",
@@ -105,6 +109,9 @@
       },
       {
         "name": "bnk-up",
+        "env": {
+          "HOME": "/home/runner"
+        },
         "args": [
           "roksbnkctl",
           "-w",
@@ -121,6 +128,9 @@
       },
       {
         "name": "bnk-status",
+        "env": {
+          "HOME": "/home/runner"
+        },
         "args": [
           "roksbnkctl",
           "-w",
@@ -134,6 +144,9 @@
     "destroy": [
       {
         "name": "bnk-down",
+        "env": {
+          "HOME": "/home/runner"
+        },
         "args": [
           "roksbnkctl",
           "-w",
@@ -146,6 +159,9 @@
       },
       {
         "name": "tgw-disconnect",
+        "env": {
+          "HOME": "/home/runner"
+        },
         "args": [
           "roksbnkctl",
           "-w",

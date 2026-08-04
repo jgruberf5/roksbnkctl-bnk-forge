@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-bnk-adopt",
     "path": "roksbnkctl/bnk-adopt",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "category": "bnk",
     "description": "Adopt an EXISTING IBM Cloud ROKS cluster over an existing Transit Gateway and install BIG-IP Next for Kubernetes on it. The cluster is registered, never created \u2014 and never destroyed.",
     "estimated_time_minutes": 45
