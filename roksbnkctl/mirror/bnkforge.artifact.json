@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-mirror",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "kind": "container_image",
   "description": "Replicate the BNK supply chain (F5's artifact registry) into a private OCI registry, then verify it \u2014 the mirror half of a disconnected install. Host-side registry-to-registry copy; no cluster required.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:ef129ebc4425cdc8f7ee352c7f47a2fa58b3b534dbaa9e13bb751c95ad710766"
+    "digest": "sha256:21edb41d3879a914200de16592be508c968dcaa23025aa4bf46c6463ac8275fd"
   },
   "lifecycle": {
     "supports_apply": true,
