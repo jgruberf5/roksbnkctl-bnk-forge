@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-bnk-adopt",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "kind": "container_image",
   "description": "Adopt an EXISTING IBM Cloud ROKS cluster over an existing Transit Gateway and install BIG-IP Next for Kubernetes on it. The cluster is registered, never created \u2014 and never destroyed.",
   "container_image": {
@@ -20,6 +20,7 @@
     "mount_path": "/work",
     "outputs_file": ".roksbnkctl/bnk/cluster-outputs.json",
     "home_env": {
+      "HOME": "/home/runner",
       "ROKSBNKCTL_HOME": "/work/.roksbnkctl"
     },
     "scope": "deployment"
