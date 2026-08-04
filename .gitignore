@@ -9,3 +9,13 @@
 demo/node_modules/
 demo/out/
 demo/answers.json
+
+# OpenTofu/Terraform working state for the modules in this repo. `terraform init`
+# downloads ~150 MB of providers into .terraform/ — GitHub rejects the push above
+# 100 MB, and the Forge opentofu engine runs its own init anyway.
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/*.tfvars
+!**/*.tfvars.example

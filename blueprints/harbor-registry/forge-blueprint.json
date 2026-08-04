@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "blueprint": {
+    "id": "ibm-harbor-registry",
+    "version": "1.0.0",
+    "name": "Private Harbor registry on an IBM Cloud VSI",
+    "description": "Stand up the private OCI registry a disconnected BNK install pulls from: a Harbor VSI in a services VPC, attached to an existing Transit Gateway so an air-gapped cluster reaches it privately. This is the first of the four disconnected-deployment blueprints \u2014 its registry_host and vpc_id outputs feed the mirror, FLP and BNK install blueprints."
+  },
+  "category": "infra",
+  "cloud_provider": "ibm",
+  "icon": "archive",
+  "color": "cyan",
+  "estimated_time": "10-20 minutes",
+  "difficulty": "intermediate",
+  "maturity": "preview",
+  "tags": [
+    "ibm",
+    "harbor",
+    "registry",
+    "mirror",
+    "air-gapped",
+    "disconnected"
+  ],
+  "outcomes": [
+    "A services VPC attached to your existing Transit Gateway",
+    "Harbor running on a VSI, TLS covering both its private and floating IPs",
+    "registry_host + vpc_id outputs ready for the mirror, FLP and BNK blueprints"
+  ],
+  "prerequisites": [
+    {
+      "type": "credential_template",
+      "description": "An IBM Cloud credential template on the project. The opentofu engine injects its API key into the IBM provider; no key is ever a module input."
+    },
+    {
+      "type": "ssh_key",
+      "description": "An existing IBM Cloud VPC SSH key, attached so an operator can reach the VSI to inspect Harbor or read its CA."
+    },
+    {
+      "type": "transit_gateway",
+      "description": "An existing Transit Gateway. The services VPC is attached to it so the air-gapped cluster can pull images over the private path."
+    }
+  ],
+  "input_summary": [
+    {
+      "label": "Why the private IP matters",
+      "value": "Harbor derives its Bearer token-service realm from its hostname, which cloud-init sets to the VSI's PRIVATE IP. A floating-IP hostname would leave that realm unreachable from no-egress worker nodes and every pull would ImagePullBackOff. The TLS SAN covers both addresses, so the operator can still use the floating IP."
+    },
+    {
+      "label": "Egress",
+      "value": "The services subnet gets a public gateway: Harbor is the one component that must reach F5's registry to mirror from. The cluster side keeps none."
+    },
+    {
+      "label": "Next step",
+      "value": "Feed registry_host into the mirror blueprint (as the private registry host) and vpc_id into the FLP-VSI blueprint."
+    }
+  ],
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "label": "Resource prefix",
+        "description": "Prefix for every resource this blueprint names (e.g. acme-svc).",
+        "example": "acme-svc",
+        "order": 1
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "label": "IBM Cloud region",
+        "description": "Region for the services VPC and the Harbor VSI. Inherits from the selected credential template.",
+        "example": "us-east",
+        "source": "credential_template",
+        "source_field": "region",
+        "order": 2
+      },
+      {
+        "name": "ssh_key_name",
+        "type": "string",
+        "label": "SSH key name",
+        "description": "Name of an existing IBM Cloud VPC SSH key to attach to the VSI.",
+        "example": "bnk-airgap-key",
+        "order": 3
+      },
+      {
+        "name": "harbor_admin_password",
+        "type": "string",
+        "label": "Harbor admin password",
+        "description": "Password for Harbor's admin user \u2014 the same credential the mirror blueprint pushes with and the BNK install pulls with.",
+        "sensitive": true,
+        "order": 4
+      },
+      {
+        "name": "transit_gateway",
+        "type": "string",
+        "label": "Existing Transit Gateway (name or ID)",
+        "description": "The gateway the services VPC is attached to, so the air-gapped cluster reaches Harbor privately.",
+        "example": "bnkci-testing",
+        "order": 5
+      }
+    ],
+    "optional": [
+      {
+        "name": "resource_group",
+        "type": "string",
+        "label": "Resource group",
+        "description": "IBM Cloud resource group. Inherits from the selected credential template.",
+        "default": "default",
+        "source": "credential_template",
+        "source_field": "ibmcloud_resource_group",
+        "order": 6
+      },
+      {
+        "name": "zone",
+        "type": "string",
+        "label": "Zone",
+        "description": "Zone for the subnet and VSI. Blank = the region's first zone.",
+        "default": "",
+        "order": 7
+      },
+      {
+        "name": "subnet_cidr",
+        "type": "string",
+        "label": "Services subnet CIDR",
+        "description": "CIDR for the services subnet. Must not overlap the cluster VPC's range.",
+        "default": "10.241.0.0/24",
+        "order": 8
+      },
+      {
+        "name": "harbor_version",
+        "type": "string",
+        "label": "Harbor version",
+        "description": "Harbor release tag to install (the offline installer).",
+        "default": "v2.11.1",
+        "order": 9
+      },
+      {
+        "name": "vsi_profile",
+        "type": "string",
+        "label": "VSI profile",
+        "description": "IBM Cloud instance profile for the Harbor VSI.",
+        "default": "bx2-4x16",
+        "order": 10
+      },
+      {
+        "name": "boot_size_gb",
+        "type": "number",
+        "label": "Boot volume (GB)",
+        "description": "Boot volume size. A full BNK mirror plus Harbor's offline installer needs room.",
+        "default": 250,
+        "order": 11
+      },
+      {
+        "name": "vsi_image",
+        "type": "string",
+        "label": "VSI image",
+        "description": "Stock image for the Harbor VSI.",
+        "default": "ibm-ubuntu-24-04-4-minimal-amd64-6",
+        "order": 12
+      },
+      {
+        "name": "management_allowed_cidrs",
+        "type": "string",
+        "label": "Management allowed CIDRs",
+        "description": "Comma-separated CIDRs allowed to reach :443 and :22 on the floating IP. Blank = 0.0.0.0/0.",
+        "default": "",
+        "order": 13
+      },
+      {
+        "name": "registry_allowed_cidrs",
+        "type": "string",
+        "label": "Registry allowed CIDRs",
+        "description": "Comma-separated CIDRs allowed to reach :443 privately over the Transit Gateway. Blank = the RFC-1918 ranges.",
+        "default": "",
+        "order": 14
+      },
+      {
+        "name": "create_vpc",
+        "type": "boolean",
+        "label": "Create the services VPC",
+        "description": "On = create the VPC, subnet and public gateway. Off = adopt the existing VPC and subnet named below.",
+        "default": true,
+        "order": 15
+      },
+      {
+        "name": "existing_vpc_id",
+        "type": "string",
+        "label": "Existing VPC ID",
+        "description": "Services VPC to adopt when 'Create the services VPC' is off.",
+        "default": "",
+        "order": 16
+      },
+      {
+        "name": "existing_subnet_id",
+        "type": "string",
+        "label": "Existing subnet ID",
+        "description": "Subnet to adopt when 'Create the services VPC' is off.",
+        "default": "",
+        "order": 17
+      },
+      {
+        "name": "public_gateway",
+        "type": "boolean",
+        "label": "Attach a public gateway",
+        "description": "Harbor needs egress to mirror from F5's registry. Turn this off only if the subnet already has an egress path.",
+        "default": true,
+        "order": 18
+      }
+    ]
+  },
+  "modules": [
+    {
+      "id": "harbor-registry",
+      "module": "harbor",
+      "version": "1.0.0",
+      "name": "Harbor registry (VSI)",
+      "description": "Services VPC + Transit Gateway attachment + Harbor on a VSI, installed by cloud-init.",
+      "optional": false,
+      "depends_on": [],
+      "inputs": {
+        "prefix": "${prefix}",
+        "region": "${region}",
+        "resource_group": "${resource_group}",
+        "zone": "${zone}",
+        "ssh_key_name": "${ssh_key_name}",
+        "harbor_admin_password": "${harbor_admin_password}",
+        "transit_gateway": "${transit_gateway}",
+        "subnet_cidr": "${subnet_cidr}",
+        "harbor_version": "${harbor_version}",
+        "vsi_profile": "${vsi_profile}",
+        "vsi_image": "${vsi_image}",
+        "boot_size_gb": "${boot_size_gb}",
+        "management_allowed_cidrs": "${management_allowed_cidrs}",
+        "registry_allowed_cidrs": "${registry_allowed_cidrs}",
+        "create_vpc": "${create_vpc}",
+        "existing_vpc_id": "${existing_vpc_id}",
+        "existing_subnet_id": "${existing_subnet_id}",
+        "public_gateway": "${public_gateway}"
+      }
+    }
+  ],
+  "is_featured": false
+}

@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-flp-vsi-roksbnkctl",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "name": "Deploying F5 License Proxy as an IBM Cloud VSI",
-    "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC — no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
+    "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC \u2014 no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -50,7 +50,7 @@
   "input_summary": [
     {
       "label": "Deploys",
-      "value": "One VSI appliance (default bx2-4x16, 100 GB boot) running the f5-license-proxy stack — the proxy, Vault and PostgreSQL — as a systemd-managed podman pod."
+      "value": "One VSI appliance (default bx2-4x16, 100 GB boot) running the f5-license-proxy stack \u2014 the proxy, Vault and PostgreSQL \u2014 as a systemd-managed podman pod."
     },
     {
       "label": "Licensing reach",
@@ -137,7 +137,7 @@
         "name": "flp_vsi_floating_ip",
         "type": "boolean",
         "label": "Attach an operator floating IP",
-        "description": "On = attach a floating IP so `flp status` and the :80 web UI work from outside the VPC. It is a management path only — the consuming cluster always reaches the proxy privately.",
+        "description": "On = attach a floating IP so `flp status` and the :80 web UI work from outside the VPC. It is a management path only \u2014 the consuming cluster always reaches the proxy privately.",
         "default": true,
         "order": 9
       },
@@ -153,7 +153,7 @@
         "name": "flp_management_allowed_cidrs",
         "type": "string",
         "label": "Management allowed CIDRs",
-        "description": "Comma-separated CIDRs permitted to reach the :80 status UI. Blank = 0.0.0.0/0 — the page is read-only and carries no secrets.",
+        "description": "Comma-separated CIDRs permitted to reach the :80 status UI. Blank = 0.0.0.0/0 \u2014 the page is read-only and carries no secrets.",
         "default": "",
         "order": 11
       },
@@ -185,7 +185,7 @@
         "name": "flp_status_registry_ca_b64",
         "type": "string",
         "label": "Status registry CA (base64)",
-        "description": "Base64 CA for that registry, dropped into the VSI's certs.d so the status image pull is trusted. Already base64 — it is stored verbatim.",
+        "description": "Base64 CA for that registry, dropped into the VSI's certs.d so the status image pull is trusted. Already base64 \u2014 it is stored verbatim.",
         "default": "",
         "order": 15
       },
@@ -259,9 +259,9 @@
     {
       "id": "roksbnkctl-flp",
       "module": "roksbnkctl/flp",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "name": "roksbnkctl FLP (VSI)",
-      "description": "roksbnkctl flp up in vsi mode — a standalone F5 License Proxy appliance in an existing VPC.",
+      "description": "roksbnkctl flp up in vsi mode \u2014 a standalone F5 License Proxy appliance in an existing VPC.",
       "optional": false,
       "depends_on": [],
       "inputs": {

@@ -1,0 +1,26 @@
+#cloud-config
+# Harbor registry VSI — the private OCI mirror the disconnected BNK install pulls
+# from. Ported verbatim in behaviour from roksbnkctl's
+# scripts/demos/disconnected-cluster-cli-demo/harbor-cloud-init.yaml.tmpl; only the
+# substitution mechanism differs (terraform templatefile instead of envsubst).
+#
+# The $(...) / $PRIV shell expansions run on the VSI at cloud-init time and are
+# deliberately left intact — terraform's templatefile only expands $${...}, and the
+# bare $(...) below passes through untouched.
+package_update: true
+packages: [docker.io, docker-compose-v2, openssl]
+runcmd:
+  - [ bash, -lc, "systemctl enable --now docker" ]
+  # Self-signed cert covering BOTH addresses: the floating IP (operator/browser) and
+  # the private IP (the cluster nodes over the Transit Gateway).
+  - [ bash, -lc, "PRIV=$(hostname -I | awk '{print $1}'); mkdir -p /opt/harbor/certs; openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /opt/harbor/certs/harbor.key -out /opt/harbor/certs/harbor.crt -subj '/CN=${harbor_fip}' -addext \"subjectAltName=IP:${harbor_fip},IP:$PRIV\"" ]
+  - [ bash, -lc, "cd /opt/harbor && curl -fsSL -o h.tgz https://github.com/goharbor/harbor/releases/download/${harbor_version}/harbor-offline-installer-${harbor_version}.tgz && tar xzf h.tgz --strip-components=1" ]
+  # hostname MUST be the PRIVATE IP: Harbor derives its Bearer token-service URL (the
+  # docker/CRI-O auth realm) from hostname. In the air-gap model the operator and the
+  # cluster NODES both reach Harbor at its private IP; a floating-IP hostname makes the
+  # token realm unreachable from no-egress nodes -> ImagePullBackOff. The cert SAN
+  # already covers both IPs.
+  - [ bash, -lc, "PRIV=$(hostname -I | awk '{print $1}'); sed -e \"s/^hostname:.*/hostname: $PRIV/\" -e 's#certificate:.*#certificate: /opt/harbor/certs/harbor.crt#' -e 's#private_key:.*#private_key: /opt/harbor/certs/harbor.key#' -e 's/^harbor_admin_password:.*/harbor_admin_password: ${harbor_admin_password}/' /opt/harbor/harbor.yml.tmpl > /opt/harbor/harbor.yml" ]
+  - [ bash, -lc, "cd /opt/harbor && ./install.sh && touch /opt/harbor/READY" ]
+  # Publish the CA where the module's readiness check and the operator can fetch it.
+  - [ bash, -lc, "base64 -w0 /opt/harbor/certs/harbor.crt > /opt/harbor/harbor-ca.b64" ]
