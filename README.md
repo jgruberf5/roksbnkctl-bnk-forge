@@ -30,10 +30,42 @@ See [Adopting an existing cluster](#adopting-an-existing-cluster) and
 
 ## The runner image
 
-All artifacts pin the **same** image by digest — currently **roksbnkctl v1.33.1**,
-`ghcr.io/jgruberf5/roksbnkctl-tools-runner@sha256:4f50d886fff7eb4443d0a9b26f0cd28181fecb6927dfbdadc7a33058bd03f0e1`
-(the `:v1.33.1` tag). It carries the whole toolchain — terraform, helm, kubectl,
-oc, the ibmcloud CLI — so a step needs nothing on the host.
+The four ROKS phase modules pin **roksbnkctl v1.33.1**
+(`sha256:4f50d886…`). The three modules whose forms need the post-v1.33.1
+`ROKSBNKCTL_FLP_VSI_*` / `ROKSBNKCTL_COS_*` overrides — `flp`, `mirror`,
+`bnk-adopt` — pin a **`:dev`** build carrying them. The image carries the whole
+toolchain (terraform, helm, kubectl, oc, the ibmcloud CLI), so a step needs
+nothing on the host.
+
+> **`registry replicate` needs a runner built with the helm `--password-stdin`
+> fix.** Current helm *rejects* a password on the command line with a non-zero
+> exit rather than warning, and `registry replicate` logged in with `-p` at both
+> its FAR and mirror-push call sites. Because the Dockerfile installs "helm
+> latest stable", this is a property of *when the image was built*: the
+> v1.33.1 image (30 Jul) works and a fresh rebuild does not, until that fix
+> ships. Symptom: `helm registry login repo.f5.com: exit status 1: Using
+> --password via the CLI is insecure.`
+
+### What the container engine does and does not pass through
+
+Learned by running these against a live Forge, and worth knowing before writing
+another runner module:
+
+- **Step `env` reaches the container; `state.home_env` may not.** Every
+  `ROKSBNKCTL_*` variable here arrives via step `env`. `home_env` is the
+  documented hook for `HOME`/`XDG_*`, but at least one shipping Forge build does
+  not pass its keys through — so **`HOME` is declared in every step's `env`** in
+  this repo (and kept in `home_env` too, for builds that honour it). Without a
+  real `HOME`, helm, `ibmcloud` and `oc` resolve it to `""` and fail writing
+  dotfiles at `/`. `HOME` points at `/home/runner`, the image's own home —
+  **not** somewhere under `/work`, because the `ibmcloud` container-service
+  plugin lives at `/home/runner/.bluemix` and moving `HOME` breaks
+  `cluster register`'s kubeconfig fetch.
+- **`secret_files` may be silently inert.** The block validates and syncs on
+  builds that do not implement it, `/api/projects/<id>/secrets/required` returns
+  empty, and the files simply never appear — the step then fails on a missing
+  path. Check that endpoint reports your declared secrets before relying on it;
+  the FLP blueprint's COS inputs exist precisely as the fallback.
 
 **The image is not a deploy-form field, by design.** BNK Forge resolves it solely
 from the artifact's `container_image` block: the engine's `_resolve_image_digest`
