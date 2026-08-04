@@ -35,15 +35,36 @@ you mirror the image to a private registry.)
 3. Name: `roksbnkctl-bnk-forge`. URL:
    `https://github.com/jgruberf5/roksbnkctl-bnk-forge.git`. Branch: `main`.
 4. Save and let it **sync**. The sync ingests:
-   - the four phase **artifacts** `roksbnkctl-cluster` / `roksbnkctl-bnk` /
-     `roksbnkctl-testing` / `roksbnkctl-gateway` (each `kind: container_image`), and
-   - the **blueprint** *IBM ROKS + BNK (roksbnkctl)* that composes them.
+   - the five **artifacts** `roksbnkctl-cluster` / `roksbnkctl-bnk` /
+     `roksbnkctl-testing` / `roksbnkctl-gateway` / `roksbnkctl-flp` (each
+     `kind: container_image`), and
+   - **two blueprints** — *IBM ROKS + BNK (roksbnkctl)*, which composes the four
+     phase modules, and *Deploying F5 License Proxy as an IBM Cloud VSI*, which
+     uses `roksbnkctl-flp` on its own.
 
 ## 4. Put the credential template on a project
 
 1. Open (or create) a **Project**.
 2. Project detail → **Credentials** → select the IBM credential template from
    step 1.
+
+## 4b. Project secrets — for the FLP-VSI blueprint only
+
+*Deploying F5 License Proxy as an IBM Cloud VSI* takes F5's entitlement material as
+**file secrets** on the project, which the container engine materializes into the
+run workspace before the steps run (0600, re-created on every run — including
+destroy). The ROKS + BNK blueprint does not use these.
+
+1. Project detail → **Secrets** → **Add**, as a **file** secret.
+2. Create exactly these two names:
+
+   | Secret name | Upload | Lands in the workspace at |
+   |---|---|---|
+   | `f5_far_auth_key` | your `f5-far-auth-key.tgz` | `/work/far-auth.tgz` |
+   | `f5_subscription_jwt` | your subscription JWT | `/work/subscription.jwt` |
+
+The names are declared as `secret_files` on the artifact — a missing one fails the
+run up front, naming the secret, rather than failing obscurely inside `flp up`.
 
 ## 5. Deploy the blueprint
 
@@ -84,6 +105,40 @@ phase's destroy runs `tgw disconnect --auto` before `cluster down --auto`: when
 `existing_transit_gateway` was set, `cluster up` attaches the VPC in a separate
 `state-tgw/` phase that `cluster down` refuses to tear down underneath itself.
 It is a clean no-op when no Transit Gateway was adopted.
+
+---
+
+## Deploying the FLP as an IBM Cloud VSI
+
+Same flow, different blueprint — **Deploying F5 License Proxy as an IBM Cloud
+VSI**. It has one module and needs **no cluster**.
+
+1. Do steps 1, 4 and **4b** (credential template, project, the two file secrets).
+2. Blueprint catalog → **Deploying F5 License Proxy as an IBM Cloud VSI** →
+   **Deploy** into the project. Fill the form:
+   - `prefix` — e.g. `acme-flp`
+   - `region` / `resource_group` — inherited from the credential template
+   - `flp_vsi_vpc` — the **ID of an existing VPC** the consuming cluster can reach
+     (same VPC, peered, or over a Transit Gateway). This is what selects the
+     standalone, cluster-less path.
+   - `flp_vsi_zone` / `flp_vsi_ssh_key` — recommended; the rest can stay blank.
+   - `flp_vsi_floating_ip` — leave **on** to get the `flp status` web UI.
+3. **Deploy.** `apply` runs `[init, flp up --auto, flp status]`. The VSI comes up in
+   roughly 15–25 minutes; the proxy's listener starts serving a little **after**
+   `flp up` returns, so an early `flp status` line may read "unable to connect"
+   before it goes green.
+4. **Outputs** carry `endpoint`, `external_endpoint`, `root_ca_b64` and
+   `floating_ip`. Feed `external_endpoint` + `root_ca_b64` into the consuming
+   workspace's `bnk.flp.external` block (or, in CI, the `ROKSBNKCTL_FLP_EXTERNAL_URL`
+   / `ROKSBNKCTL_FLP_ROOT_CA_B64` variables) so its BNK install licenses through
+   this proxy.
+5. **Destroy** runs `flp down --auto`, which exits 0 "nothing to do" when there is
+   no state — so a teardown of a never-applied module is not an error.
+
+> The FLP form depends on `ROKSBNKCTL_FLP_MODE` / `ROKSBNKCTL_FLP_VSI_*`, which
+> land in roksbnkctl **after v1.33.1**. Until the artifact's digest is re-pinned to
+> a runner carrying them, `init` skips those fields and `flp up` will not take the
+> VSI path.
 
 ---
 

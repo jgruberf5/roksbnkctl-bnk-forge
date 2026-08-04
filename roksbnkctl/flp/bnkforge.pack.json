@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "module": {
+    "name": "roksbnkctl-flp",
+    "path": "roksbnkctl/flp",
+    "version": "1.0.0",
+    "category": "bnk",
+    "description": "Deploy the F5 License Proxy as a standalone IBM Cloud VSI appliance (no cluster) with roksbnkctl's flp phase. Procedural container_image artifact run by the container engine.",
+    "estimated_time_minutes": 20
+  },
+  "deployment_pack": {
+    "engine": "container",
+    "runner_profile": "container-default",
+    "working_directory": ".",
+    "lifecycle": {
+      "supports_init": false,
+      "supports_plan": false,
+      "supports_apply": true,
+      "supports_destroy": true,
+      "supports_refresh": false,
+      "supports_drift": false
+    },
+    "entrypoints": {}
+  },
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "description": "IBM Cloud region the FLP VSI is created in (e.g. us-south)."
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "source": "user",
+        "description": "IBM Cloud resource group."
+      },
+      {
+        "name": "prefix",
+        "type": "string",
+        "source": "user",
+        "description": "Resource name prefix for the appliance (e.g. acme-flp)."
+      },
+      {
+        "name": "flp_vsi_vpc",
+        "type": "string",
+        "source": "user",
+        "description": "Existing VPC ID to deploy the FLP VSI into. This is what makes the appliance cluster-less."
+      }
+    ],
+    "optional": [
+      {
+        "name": "flp_vsi_zone",
+        "type": "string",
+        "source": "user",
+        "description": "Zone for the VSI (e.g. us-south-1). Blank = the region's first zone."
+      },
+      {
+        "name": "flp_vsi_profile",
+        "type": "string",
+        "source": "user",
+        "description": "VSI instance profile. Blank = bx2-4x16 (the FLP's 4 vCPU / 8 GB floor)."
+      },
+      {
+        "name": "flp_vsi_ssh_key",
+        "type": "string",
+        "source": "user",
+        "description": "Name of an existing IBM Cloud VPC SSH key to attach, for operator access to the appliance."
+      },
+      {
+        "name": "flp_vsi_boot_size_gb",
+        "type": "string",
+        "source": "user",
+        "description": "Boot volume size in GB. Blank = 100 (clears the FLP's >80 GB requirement)."
+      },
+      {
+        "name": "flp_vsi_reach",
+        "type": "string",
+        "source": "user",
+        "description": "Address the consuming cluster's CWC dials: private (default) or floating."
+      },
+      {
+        "name": "flp_vsi_floating_ip",
+        "type": "boolean",
+        "source": "user",
+        "default": true,
+        "description": "Attach an operator floating IP for remote flp status + the :80 web UI. Not the CWC endpoint."
+      },
+      {
+        "name": "flp_management_allowed_cidrs",
+        "type": "string",
+        "source": "user",
+        "description": "Comma-separated CIDRs allowed to reach the :80 status UI. Blank = 0.0.0.0/0 (read-only page)."
+      },
+      {
+        "name": "flp_licensing_allowed_cidrs",
+        "type": "string",
+        "source": "user",
+        "description": "Comma-separated CIDRs allowed to reach the :8443 proxy and :22. Blank = the RFC-1918 private ranges."
+      },
+      {
+        "name": "flp_status_image",
+        "type": "string",
+        "source": "user",
+        "description": "flp-status web UI image, e.g. <harbor>/bnk-status/flp-status:v1. Blank = no status UI."
+      },
+      {
+        "name": "flp_status_registry_host",
+        "type": "string",
+        "source": "user",
+        "description": "Registry host serving the status image. Only needed for a private/self-signed mirror."
+      },
+      {
+        "name": "flp_status_registry_ca_b64",
+        "type": "string",
+        "source": "user",
+        "description": "Base64 CA for the status image's registry, dropped into the VSI's certs.d so the pull is trusted."
+      },
+      {
+        "name": "manifest_version",
+        "type": "string",
+        "source": "user",
+        "description": "BNK manifest version the FLP chart set is resolved from. Blank = the roksbnkctl default."
+      },
+      {
+        "name": "far_auth_local_file",
+        "type": "string",
+        "source": "user",
+        "default": "/work/far-auth.tgz",
+        "description": "Path to the FAR auth tarball in the run workspace, materialized from the f5_far_auth_key project secret. Blank both local-file fields to pull from COS instead."
+      },
+      {
+        "name": "subscription_jwt_local_file",
+        "type": "string",
+        "source": "user",
+        "default": "/work/subscription.jwt",
+        "description": "Path to the subscription JWT in the run workspace, materialized from the f5_subscription_jwt project secret. Blank both local-file fields to pull from COS instead."
+      },
+      {
+        "name": "cos_instance",
+        "type": "string",
+        "source": "user",
+        "description": "COS instance holding the FAR supply chain, when not using the local-file path. Blank = bnk-supply-chain."
+      },
+      {
+        "name": "cos_bucket",
+        "type": "string",
+        "source": "user",
+        "description": "COS bucket holding the FAR supply chain. Blank = bnk-artifacts."
+      },
+      {
+        "name": "cos_region",
+        "type": "string",
+        "source": "user",
+        "description": "COS bucket region. Blank = us-south."
+      },
+      {
+        "name": "far_auth_file",
+        "type": "string",
+        "source": "user",
+        "description": "FAR auth tarball object name in the bucket. Blank = f5-far-auth-key.tgz."
+      },
+      {
+        "name": "subscription_jwt_file",
+        "type": "string",
+        "source": "user",
+        "description": "Subscription JWT object name in the bucket. Blank = subscription.jwt."
+      }
+    ]
+  },
+  "outputs": {
+    "key_outputs": [
+      {
+        "name": "endpoint",
+        "type": "string",
+        "description": "The FLP's licensing endpoint, reached privately by the consuming cluster's CWC."
+      },
+      {
+        "name": "external_endpoint",
+        "type": "string",
+        "description": "Externally-reachable proxy endpoint, for a BNK install in another cluster (bnk.flp.external.url)."
+      },
+      {
+        "name": "root_ca_b64",
+        "type": "string",
+        "description": "The proxy's base64 root CA, which the consuming cluster must trust (bnk.flp.external.root_ca_b64)."
+      },
+      {
+        "name": "floating_ip",
+        "type": "string",
+        "description": "Operator floating IP hosting the flp-status web UI on :80."
+      }
+    ]
+  }
+}

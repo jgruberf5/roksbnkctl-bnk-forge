@@ -16,6 +16,29 @@ be deployed / re-run independently**, while a **deployment-scoped shared workspa
 generated keys, `cluster-outputs.json`) shared across them — so `bnk` sees the
 cluster `cluster` created.
 
+A **fifth module** — `roksbnkctl-flp` — and its own blueprint,
+[**Deploying F5 License Proxy as an IBM Cloud VSI**](blueprints/flp-vsi/forge-blueprint.json),
+deploy the F5 License Proxy as a **standalone VSI appliance in an existing VPC,
+with no cluster at all**. See [The FLP-VSI blueprint](#the-flp-vsi-blueprint).
+
+## The runner image
+
+All artifacts pin the **same** image by digest — currently **roksbnkctl v1.33.1**,
+`ghcr.io/jgruberf5/roksbnkctl-tools-runner@sha256:4f50d886fff7eb4443d0a9b26f0cd28181fecb6927dfbdadc7a33058bd03f0e1`
+(the `:v1.33.1` tag). It carries the whole toolchain — terraform, helm, kubectl,
+oc, the ibmcloud CLI — so a step needs nothing on the host.
+
+**The image is not a deploy-form field, by design.** BNK Forge resolves it solely
+from the artifact's `container_image` block: the engine's `_resolve_image_digest`
+applies no `{{inputs.*}}` templating there, the manifest validator requires a
+`sha256:` digest and rejects floating tags, and `image` / `entrypoint` are on the
+step denylist so a step cannot redirect to another image. That pin *is* the
+supply-chain boundary — it is what makes mirroring, signature verification and the
+registry allowlist meaningful. To move to a different build, change the `digest`
+in `roksbnkctl/<phase>/bnkforge.artifact.json` and re-sync the module source; to
+serve it from somewhere else, point a **Container Registry access method** at the
+host rather than editing the reference.
+
 ## How it works
 
 ```
@@ -73,6 +96,57 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
 | `bigip_url` / `bigip_username` / `bigip_password` | BIG-IP target + credentials for the BNK **CIS** controller. |
 | `zone<n>_int_vip_cidr` / `zone<n>_int_snat_cidr` / `zone<n>_ext_vlan_cidr` / `zone<n>_int_vlan_cidr` / `zone<n>_external_selfip` / `zone<n>_internal_selfip` (n = 1–3) | Per-AZ TMM network mapping — **listener (VIP)** and **SNAT** CIDRs + VLAN CIDRs + self-IPs for the BNK phase. Fill all six fields of a zone for it to apply. |
 
+## The FLP-VSI blueprint
+
+[**Deploying F5 License Proxy as an IBM Cloud VSI**](blueprints/flp-vsi/forge-blueprint.json)
+is a second, independent blueprint with a single module (`roksbnkctl/flp`). It runs
+`roksbnkctl flp up` in **`mode: vsi`** against an **existing VPC**, with **no
+cluster** — the standalone licensing appliance from the
+[disconnected walkthrough](https://github.com/jgruberf5/roksbnkctl/tree/main/scripts/demos/disconnected-cluster-cli-demo),
+which is the end-to-end tested reference this artifact reproduces field for field.
+
+```
+apply:   init (env → config.yaml) → flp up --auto → flp status
+destroy: flp down --auto            (exits 0 "nothing to do" when there is no state)
+```
+
+The proxy is the only component that needs egress to F5; consuming clusters reach
+it privately over the VPC or a Transit Gateway. Feed this deployment's
+`external_endpoint` + `root_ca_b64` outputs into the consuming workspace's
+`bnk.flp.external` block.
+
+| Field | Effect |
+|---|---|
+| `prefix` | Resource name prefix for the appliance. |
+| `region`, `resource_group` | Inherit from the selected IBM credential template. |
+| `flp_vsi_vpc` | **Existing VPC ID.** Naming a VPC is what makes the appliance cluster-less. |
+| `flp_vsi_zone` / `flp_vsi_profile` / `flp_vsi_boot_size_gb` | Placement + sizing. Blank = first zone / `bx2-4x16` / 100 GB. |
+| `flp_vsi_ssh_key` | Existing IBM Cloud VPC SSH key, for operator access to the appliance. |
+| `flp_vsi_floating_ip` | On (default) = an operator floating IP for `flp status` + the `:80` web UI. **Not** the CWC endpoint. |
+| `flp_management_allowed_cidrs` / `flp_licensing_allowed_cidrs` | Per-plane security-group scoping (`:80` UI vs. `:8443` proxy + `:22`). Comma-separated. |
+| `flp_status_image` + `flp_status_registry_host` / `_ca_b64` | Run the `flp-status` web UI from a (possibly self-signed, air-gapped) mirror. |
+| `far_auth_local_file` / `subscription_jwt_local_file` | Where the entitlement files land in the workspace. Defaults match the two **project secrets** below. Clear both to pull from COS instead. |
+| `cos_instance` / `cos_bucket` / `cos_region` / `far_auth_file` / `subscription_jwt_file` | The COS supply chain, when not using local files. |
+
+**Two project secrets are required**, declared as `secret_files` on the artifact so
+BNK Forge materializes them into the run workspace (0600, re-created every run,
+including destroy):
+
+| Project secret | Lands at | What it is |
+|---|---|---|
+| `f5_far_auth_key` | `/work/far-auth.tgz` | the F5 FAR auth tarball |
+| `f5_subscription_jwt` | `/work/subscription.jwt` | the F5 subscription JWT |
+
+This is the same **local-file supply chain** (`use_cos_bucket = false`) the tested
+walkthrough uses — no COS bucket needed.
+
+> **Runner requirement.** The FLP form drives `config.yaml` through
+> `ROKSBNKCTL_FLP_MODE` / `ROKSBNKCTL_FLP_VSI_*` and the supply-chain variables,
+> which land in roksbnkctl **after v1.33.1**. Until a runner image carrying them is
+> published and the digest in `roksbnkctl/flp/bnkforge.artifact.json` is re-pinned,
+> `init` will silently skip those fields and `flp up` will not select the VSI path.
+> The four ROKS phases are unaffected — they only use variables v1.33.1 already has.
+
 ## Requirements
 
 - A **BNK Forge** with the container-engine + Container Registries features
@@ -80,20 +154,17 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
 - A **Container Registry** Access Method for `ghcr.io` (the runner image is public,
   but BNK Forge resolves a registry per image host) and an **IBM Cloud credential
   template** on the project.
-- The `roksbnkctl-tools-runner` image pinned (by digest) in each phase artifact
-  (`roksbnkctl/<phase>/bnkforge.artifact.json`) must be a build that includes
-  `init --non-interactive` (roksbnkctl ≥ that release). All phases pin the same image
-  — currently **`roksbnkctl v1.33.1`**
-  (`sha256:4f50d886fff7eb4443d0a9b26f0cd28181fecb6927dfbdadc7a33058bd03f0e1`).
-- The **FAR supply chain** in the IBM account must sit at the names roksbnkctl
-  falls back to when no `cos:` block is configured — and the blueprint form has
-  no field for them, because roksbnkctl has no `ROKSBNKCTL_*` override for the
-  COS coordinates. On **v1.33.1** those defaults are COS instance
-  **`bnk-supply-chain`**, bucket **`bnk-artifacts`**, holding
-  **`f5-far-auth-key.tgz`** + **`subscription.jwt`**. (They were renamed in
-  roksbnkctl v1.22.0 — an account still holding the pre-v1.22 layout
-  `bnk-orchestration` / `bnk-schematics-resources` / `trial.jwt` must copy the
-  two objects to the new names, or the BNK phase cannot fetch them.)
+- The pinned `roksbnkctl-tools-runner` image — see [The runner image](#the-runner-image).
+- For the **ROKS + BNK** blueprint, the **FAR supply chain** in the IBM account
+  must sit where roksbnkctl looks when no `cos:` block is configured — and that
+  form has no field for it, because **v1.33.1 has no `ROKSBNKCTL_*` override for
+  the COS coordinates**. Those defaults are COS instance **`bnk-supply-chain`**,
+  bucket **`bnk-artifacts`**, holding **`f5-far-auth-key.tgz`** +
+  **`subscription.jwt`**. (They were renamed in roksbnkctl v1.22.0 — an account
+  still holding the pre-v1.22 layout `bnk-orchestration` /
+  `bnk-schematics-resources` / `trial.jwt` must copy the two objects to the new
+  names, or the BNK phase cannot fetch them.) The FLP-VSI blueprint sidesteps this
+  entirely by taking the entitlement material as **project secrets**.
 - A BNK Forge with **deployment-scoped shared workspace** support
   (`state.scope: deployment`) — required so the phase modules share roksbnkctl's
   `/work` state.
@@ -106,15 +177,19 @@ module exists in the catalog when the blueprint deploys (otherwise project
 creation fails with `BLUEPRINT_MODULES_MISSING`):
 
 1. Register this repo as a Git **module source**. The module sync discovers the
-   four per-phase `container`-engine packs — `roksbnkctl/{cluster,bnk,testing,gateway}/bnkforge.pack.json`
+   five `container`-engine packs — `roksbnkctl/{cluster,bnk,testing,gateway,flp}/bnkforge.pack.json`
    — and registers a module for each, backed by the sibling `bnkforge.artifact.json`
    the container engine runs at deploy.
-2. Register this repo as a Git **blueprint source**. The blueprint sync discovers
-   [`forge-blueprint.json`](forge-blueprint.json) and imports the **IBM ROKS + BNK
-   (roksbnkctl)** blueprint, which composes the four phase modules via a
-   `depends_on` graph (`cluster → bnk → testing / gateway`).
-3. On a project with an IBM credential template selected, deploy the blueprint and
-   fill the form.
+2. Register this repo as a Git **blueprint source**. The blueprint sync walks the
+   repo for files named exactly `forge-blueprint.json` and imports **both**:
+   [`forge-blueprint.json`](forge-blueprint.json) — **IBM ROKS + BNK (roksbnkctl)**,
+   the four phase modules wired by a `depends_on` graph — and
+   [`blueprints/flp-vsi/forge-blueprint.json`](blueprints/flp-vsi/forge-blueprint.json)
+   — **Deploying F5 License Proxy as an IBM Cloud VSI**, the single-module
+   standalone appliance.
+3. On a project with an IBM credential template selected, deploy a blueprint and
+   fill the form. For the FLP-VSI blueprint, add the two **project secrets**
+   (`f5_far_auth_key`, `f5_subscription_jwt`) first.
 
 A step-by-step UI walkthrough lives in [`docs/USING-WITH-BNK-FORGE.md`](docs/USING-WITH-BNK-FORGE.md).
 
@@ -125,14 +200,17 @@ roksbnkctl/cluster/   bnkforge.pack.json + bnkforge.artifact.json   # phase 1: R
 roksbnkctl/bnk/       bnkforge.pack.json + bnkforge.artifact.json   # phase 2: install BNK   (depends_on cluster);  destroy: bnk down
 roksbnkctl/testing/   bnkforge.pack.json + bnkforge.artifact.json   # phase 3: testing       (depends_on cluster);  destroy: testing down
 roksbnkctl/gateway/   bnkforge.pack.json + bnkforge.artifact.json   # phase 4: gateway       (depends_on bnk,testing); destroy: gateway down
+roksbnkctl/flp/       bnkforge.pack.json + bnkforge.artifact.json   # standalone FLP VSI appliance (no cluster); destroy: flp down
 forge-blueprint.json                                                # composes the 4 phases via depends_on (cloud_provider: ibm)
+blueprints/flp-vsi/forge-blueprint.json                             # "Deploying F5 License Proxy as an IBM Cloud VSI" (roksbnkctl/flp only)
 docs/USING-WITH-BNK-FORGE.md                                        # UI walkthrough for a manual test
 docs/specs/                                                         # the design specs (historical; bnk-forge has since implemented them)
 ```
 
-Each phase artifact declares `state.scope: deployment` so the four modules share
-one roksbnkctl `/work` workspace; `apply` runs `[init, <phase> up]` (idempotent,
-re-runnable). Deploy a single phase to re-run it, or deploy the blueprint /
-project to run them in dependency order.
+Each phase artifact declares `state.scope: deployment` so the four ROKS modules
+share one roksbnkctl `/work` workspace (workspace `forge`); `apply` runs
+`[init, <phase> up]` (idempotent, re-runnable). Deploy a single phase to re-run it,
+or deploy the blueprint / project to run them in dependency order. The FLP module
+is independent — its own workspace (`flp`), its own deployment.
 
 Validated against BNK Forge's `validate_pack_manifest` + `validate_artifact_manifest` + `BlueprintManifest`.
