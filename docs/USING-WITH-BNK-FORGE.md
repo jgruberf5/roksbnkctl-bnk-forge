@@ -79,7 +79,11 @@ you mirror the image to a private registry.)
 **Destroy** the deployment → each phase runs its own `roksbnkctl <phase> down
 --auto` in reverse dependency order (gateway → bnk / testing → cluster). You can
 also destroy a **single phase** from its module. (An *existing* cluster attached
-with `cluster_create` off is not destroyed by `cluster down`.)
+with `cluster_create` off is not destroyed by `cluster down`.) The cluster
+phase's destroy runs `tgw disconnect --auto` before `cluster down --auto`: when
+`existing_transit_gateway` was set, `cluster up` attaches the VPC in a separate
+`state-tgw/` phase that `cluster down` refuses to tear down underneath itself.
+It is a clean no-op when no Transit Gateway was adopted.
 
 ---
 
@@ -88,7 +92,14 @@ with `cluster_create` off is not destroyed by `cluster down`.)
 - Each phase artifact pins the runner image **by digest** (see
   `roksbnkctl/<phase>/bnkforge.artifact.json`; all four pin the same image). It
   must be a roksbnkctl build that includes `init --non-interactive` — the digest
-  in this repo points at such a build.
+  in this repo points at **roksbnkctl v1.33.1**.
+- The **FAR supply chain** must live at roksbnkctl's built-in COS defaults —
+  instance `bnk-supply-chain`, bucket `bnk-artifacts`, objects
+  `f5-far-auth-key.tgz` + `subscription.jwt`. The blueprint form cannot override
+  them (roksbnkctl exposes no `ROKSBNKCTL_*` env var for the COS coordinates),
+  and the names changed in roksbnkctl v1.22.0 — an account still holding
+  `bnk-orchestration` / `bnk-schematics-resources` / `trial.jwt` must copy the
+  objects across, or the BNK phase fails fetching them.
 - Requires a BNK Forge with **deployment-scoped shared workspace** support
   (`state.scope: deployment`); without it each phase module would get its own
   empty workspace and `bnk up` would fail with "workspace not initialised".

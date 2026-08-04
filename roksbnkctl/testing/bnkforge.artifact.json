@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-testing",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "kind": "container_image",
   "description": "Deploy the roksbnkctl testing phase (client VPC + workloads). Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:d52da65c99b98eb8420b139bc00c7ed5fd55ebf3e6abe4b0be435b5eb4cdee53"
+    "digest": "sha256:4f50d886fff7eb4443d0a9b26f0cd28181fecb6927dfbdadc7a33058bd03f0e1"
   },
   "lifecycle": {
     "supports_apply": true,

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-bnk-roksbnkctl",
-    "version": "2.0.1",
+    "version": "2.1.0",
     "name": "IBM ROKS + BNK (roksbnkctl)",
     "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl, decomposed into independently re-runnable phases (cluster \u2192 bnk \u2192 testing / gateway) over a shared deployment workspace."
   },
@@ -313,7 +313,7 @@
     {
       "id": "roksbnkctl-cluster",
       "module": "roksbnkctl/cluster",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "name": "roksbnkctl Cluster",
       "optional": false,
       "depends_on": [],
@@ -357,7 +357,7 @@
     {
       "id": "roksbnkctl-bnk",
       "module": "roksbnkctl/bnk",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "name": "roksbnkctl BNK",
       "optional": false,
       "depends_on": [
@@ -403,7 +403,7 @@
     {
       "id": "roksbnkctl-testing",
       "module": "roksbnkctl/testing",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "name": "roksbnkctl Testing",
       "optional": false,
       "depends_on": [
@@ -449,7 +449,7 @@
     {
       "id": "roksbnkctl-gateway",
       "module": "roksbnkctl/gateway",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "name": "roksbnkctl Gateway",
       "optional": false,
       "depends_on": [

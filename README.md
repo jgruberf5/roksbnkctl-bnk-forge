@@ -41,7 +41,10 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
   `/work`, so each phase sees the others' state. **Each phase has its own
   `destroy`** (`roksbnkctl <phase> down`), so destroying the deployment tears the
   phases down in reverse dependency order (gateway → bnk/testing → cluster), and
-  a single phase can be torn down on its own.
+  a single phase can be torn down on its own. The cluster phase's `destroy` runs
+  `tgw disconnect` first (a no-op when no Transit Gateway was adopted) — a
+  connection to an **existing** TGW lives in its own `state-tgw/` phase, which
+  `cluster down` refuses to destroy underneath itself.
 - **Credential template → API key.** Selecting an IBM credential template on the
   Forge project injects `IBMCLOUD_API_KEY` into the run; `region` and
   `resource_group` auto-inherit from the template via the form cascade.
@@ -79,7 +82,18 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
   template** on the project.
 - The `roksbnkctl-tools-runner` image pinned (by digest) in each phase artifact
   (`roksbnkctl/<phase>/bnkforge.artifact.json`) must be a build that includes
-  `init --non-interactive` (roksbnkctl ≥ that release). All phases pin the same image.
+  `init --non-interactive` (roksbnkctl ≥ that release). All phases pin the same image
+  — currently **`roksbnkctl v1.33.1`**
+  (`sha256:4f50d886fff7eb4443d0a9b26f0cd28181fecb6927dfbdadc7a33058bd03f0e1`).
+- The **FAR supply chain** in the IBM account must sit at the names roksbnkctl
+  falls back to when no `cos:` block is configured — and the blueprint form has
+  no field for them, because roksbnkctl has no `ROKSBNKCTL_*` override for the
+  COS coordinates. On **v1.33.1** those defaults are COS instance
+  **`bnk-supply-chain`**, bucket **`bnk-artifacts`**, holding
+  **`f5-far-auth-key.tgz`** + **`subscription.jwt`**. (They were renamed in
+  roksbnkctl v1.22.0 — an account still holding the pre-v1.22 layout
+  `bnk-orchestration` / `bnk-schematics-resources` / `trial.jwt` must copy the
+  two objects to the new names, or the BNK phase cannot fetch them.)
 - A BNK Forge with **deployment-scoped shared workspace** support
   (`state.scope: deployment`) — required so the phase modules share roksbnkctl's
   `/work` state.
@@ -107,7 +121,7 @@ A step-by-step UI walkthrough lives in [`docs/USING-WITH-BNK-FORGE.md`](docs/USI
 ## Layout
 
 ```
-roksbnkctl/cluster/   bnkforge.pack.json + bnkforge.artifact.json   # phase 1: ROKS cluster (provision/attach); destroy: cluster down
+roksbnkctl/cluster/   bnkforge.pack.json + bnkforge.artifact.json   # phase 1: ROKS cluster (provision/attach); destroy: tgw disconnect + cluster down
 roksbnkctl/bnk/       bnkforge.pack.json + bnkforge.artifact.json   # phase 2: install BNK   (depends_on cluster);  destroy: bnk down
 roksbnkctl/testing/   bnkforge.pack.json + bnkforge.artifact.json   # phase 3: testing       (depends_on cluster);  destroy: testing down
 roksbnkctl/gateway/   bnkforge.pack.json + bnkforge.artifact.json   # phase 4: gateway       (depends_on bnk,testing); destroy: gateway down
