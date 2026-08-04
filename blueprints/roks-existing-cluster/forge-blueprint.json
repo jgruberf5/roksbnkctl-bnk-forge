@@ -1,0 +1,380 @@
+{
+  "schema_version": 1,
+  "blueprint": {
+    "id": "ibm-roks-existing-bnk-roksbnkctl",
+    "version": "1.0.0",
+    "name": "BNK on an existing IBM ROKS cluster (existing Transit Gateway)",
+    "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` \u2014 it is never created, and a teardown removes only the BNK layer, never the cluster."
+  },
+  "category": "bnk",
+  "cloud_provider": "ibm",
+  "icon": "server",
+  "color": "green",
+  "estimated_time": "30-45 minutes",
+  "difficulty": "intermediate",
+  "maturity": "preview",
+  "bnk_version": "2.3",
+  "tags": [
+    "ibm",
+    "roks",
+    "openshift",
+    "bnk",
+    "roksbnkctl",
+    "existing-cluster"
+  ],
+  "outcomes": [
+    "An existing ROKS cluster adopted into the workspace (cluster-outputs.json)",
+    "The cluster VPC attached to your existing Transit Gateway",
+    "BIG-IP Next for Kubernetes 2.3 installed and reporting status"
+  ],
+  "prerequisites": [
+    {
+      "type": "credential_template",
+      "description": "An IBM Cloud credential template on the project. Region and resource group inherit from it."
+    },
+    {
+      "type": "kubernetes_cluster",
+      "description": "An existing IBM Cloud ROKS (vpc-gen2) cluster with BNK NOT installed. `cluster register` also requires a registry COS instance for it \u2014 see the Registry COS instance name field."
+    },
+    {
+      "type": "transit_gateway",
+      "description": "An existing Transit Gateway. If the cluster VPC is already attached, roksbnkctl adopts that attachment instead of creating one."
+    },
+    {
+      "type": "cos_bucket",
+      "description": "An orchestration COS bucket holding the FAR auth tarball and the subscription JWT. Blank COS fields fall back to bnk-supply-chain / bnk-artifacts / f5-far-auth-key.tgz / subscription.jwt."
+    }
+  ],
+  "input_summary": [
+    {
+      "label": "What it changes",
+      "value": "Only the BNK layer \u2014 cert-manager, FLO, the CNEInstance and the License CR. The cluster, its VPC and its worker pool are left exactly as found."
+    },
+    {
+      "label": "Teardown",
+      "value": "Destroy runs `bnk down --auto` then `tgw disconnect --auto`. It never runs `cluster down`, so an adopted cluster survives. A Transit Gateway attachment that pre-existed is left alone \u2014 roksbnkctl records it without managing it."
+    }
+  ],
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "label": "Resource prefix",
+        "description": "Prefix for resource names roksbnkctl creates (e.g. acme-eu).",
+        "example": "acme-eu",
+        "order": 1
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "label": "Existing cluster (name or ID)",
+        "description": "Name or ID of the EXISTING ROKS cluster to adopt. It is never created and never destroyed by this blueprint.",
+        "example": "disco-demo",
+        "order": 2
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "label": "IBM Cloud region",
+        "description": "Region the cluster lives in. Inherits from the selected credential template.",
+        "example": "us-south",
+        "source": "credential_template",
+        "source_field": "region",
+        "order": 3
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "label": "Resource group",
+        "description": "IBM Cloud resource group. Inherits from the selected credential template.",
+        "example": "default",
+        "source": "credential_template",
+        "source_field": "ibmcloud_resource_group",
+        "order": 4
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "label": "Existing Transit Gateway (name or ID)",
+        "description": "The EXISTING Transit Gateway the cluster's VPC is reached over. `cluster register` attaches the VPC to it; a VPC already attached is adopted, not re-created.",
+        "example": "bnkci-testing",
+        "order": 5
+      }
+    ],
+    "optional": [
+      {
+        "name": "registry_cos_name",
+        "type": "string",
+        "label": "Registry COS instance name",
+        "description": "Overrides the registry COS instance `cluster register` looks for. Blank = probe <prefix>-registry-cos, <cluster>-registry-cos, <cluster>-cos.",
+        "default": "",
+        "order": 6
+      },
+      {
+        "name": "manifest_version",
+        "type": "string",
+        "label": "BNK manifest version",
+        "description": "BNK manifest release to install. Blank = the roksbnkctl default.",
+        "default": "",
+        "order": 7
+      },
+      {
+        "name": "cos_instance",
+        "type": "string",
+        "label": "Supply-chain COS instance",
+        "description": "COS instance holding the FAR auth key + subscription JWT. Blank = bnk-supply-chain.",
+        "default": "",
+        "order": 8
+      },
+      {
+        "name": "cos_bucket",
+        "type": "string",
+        "label": "Supply-chain COS bucket",
+        "description": "Bucket holding the FAR auth key + subscription JWT. Blank = bnk-artifacts. Account-suffixed buckets (bnk-artifacts-<account>) must be named explicitly.",
+        "default": "",
+        "order": 9
+      },
+      {
+        "name": "cos_region",
+        "type": "string",
+        "label": "Supply-chain COS region",
+        "description": "Region of that bucket. Blank = us-south.",
+        "default": "",
+        "order": 10
+      },
+      {
+        "name": "far_auth_file",
+        "type": "string",
+        "label": "FAR auth object name",
+        "description": "Object name of the FAR auth tarball in the bucket. Blank = f5-far-auth-key.tgz.",
+        "default": "",
+        "order": 11
+      },
+      {
+        "name": "subscription_jwt_file",
+        "type": "string",
+        "label": "Subscription JWT object name",
+        "description": "Object name of the subscription JWT in the bucket. Blank = subscription.jwt.",
+        "default": "",
+        "order": 12
+      },
+      {
+        "name": "bigip_url",
+        "type": "string",
+        "label": "CIS BIG-IP URL",
+        "description": "BIG-IP management URL for the BNK CIS controller (optional).",
+        "default": "",
+        "order": 13
+      },
+      {
+        "name": "bigip_username",
+        "type": "string",
+        "label": "CIS BIG-IP username",
+        "description": "BIG-IP username for CIS (optional).",
+        "default": "",
+        "order": 14
+      },
+      {
+        "name": "bigip_password",
+        "type": "string",
+        "label": "CIS BIG-IP password",
+        "description": "BIG-IP password for CIS (optional).",
+        "default": "",
+        "sensitive": true,
+        "order": 15
+      },
+      {
+        "name": "zone1_ext_vlan_cidr",
+        "type": "string",
+        "label": "Zone1 Ext Vlan Cidr",
+        "description": "Zone 1: external VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 16
+      },
+      {
+        "name": "zone1_int_vlan_cidr",
+        "type": "string",
+        "label": "Zone1 Int Vlan Cidr",
+        "description": "Zone 1: internal VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 17
+      },
+      {
+        "name": "zone1_int_snat_cidr",
+        "type": "string",
+        "label": "Zone1 Int Snat Cidr",
+        "description": "Zone 1: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 18
+      },
+      {
+        "name": "zone1_int_vip_cidr",
+        "type": "string",
+        "label": "Zone1 Int Vip Cidr",
+        "description": "Zone 1: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 19
+      },
+      {
+        "name": "zone1_external_selfip",
+        "type": "string",
+        "label": "Zone1 External Selfip",
+        "description": "Zone 1: external self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 20
+      },
+      {
+        "name": "zone1_internal_selfip",
+        "type": "string",
+        "label": "Zone1 Internal Selfip",
+        "description": "Zone 1: internal self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 21
+      },
+      {
+        "name": "zone2_ext_vlan_cidr",
+        "type": "string",
+        "label": "Zone2 Ext Vlan Cidr",
+        "description": "Zone 2: external VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 22
+      },
+      {
+        "name": "zone2_int_vlan_cidr",
+        "type": "string",
+        "label": "Zone2 Int Vlan Cidr",
+        "description": "Zone 2: internal VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 23
+      },
+      {
+        "name": "zone2_int_snat_cidr",
+        "type": "string",
+        "label": "Zone2 Int Snat Cidr",
+        "description": "Zone 2: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 24
+      },
+      {
+        "name": "zone2_int_vip_cidr",
+        "type": "string",
+        "label": "Zone2 Int Vip Cidr",
+        "description": "Zone 2: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 25
+      },
+      {
+        "name": "zone2_external_selfip",
+        "type": "string",
+        "label": "Zone2 External Selfip",
+        "description": "Zone 2: external self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 26
+      },
+      {
+        "name": "zone2_internal_selfip",
+        "type": "string",
+        "label": "Zone2 Internal Selfip",
+        "description": "Zone 2: internal self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 27
+      },
+      {
+        "name": "zone3_ext_vlan_cidr",
+        "type": "string",
+        "label": "Zone3 Ext Vlan Cidr",
+        "description": "Zone 3: external VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 28
+      },
+      {
+        "name": "zone3_int_vlan_cidr",
+        "type": "string",
+        "label": "Zone3 Int Vlan Cidr",
+        "description": "Zone 3: internal VLAN CIDR (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 29
+      },
+      {
+        "name": "zone3_int_snat_cidr",
+        "type": "string",
+        "label": "Zone3 Int Snat Cidr",
+        "description": "Zone 3: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 30
+      },
+      {
+        "name": "zone3_int_vip_cidr",
+        "type": "string",
+        "label": "Zone3 Int Vip Cidr",
+        "description": "Zone 3: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 31
+      },
+      {
+        "name": "zone3_external_selfip",
+        "type": "string",
+        "label": "Zone3 External Selfip",
+        "description": "Zone 3: external self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 32
+      },
+      {
+        "name": "zone3_internal_selfip",
+        "type": "string",
+        "label": "Zone3 Internal Selfip",
+        "description": "Zone 3: internal self-IP (all 6 zone fields required for the zone to apply).",
+        "default": "",
+        "order": 33
+      }
+    ]
+  },
+  "modules": [
+    {
+      "id": "roksbnkctl-bnk-adopt",
+      "module": "roksbnkctl/bnk-adopt",
+      "version": "1.0.0",
+      "name": "roksbnkctl BNK (adopt existing cluster)",
+      "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
+      "optional": false,
+      "depends_on": [],
+      "inputs": {
+        "prefix": "${prefix}",
+        "cluster_name": "${cluster_name}",
+        "region": "${region}",
+        "resource_group": "${resource_group}",
+        "existing_transit_gateway": "${existing_transit_gateway}",
+        "registry_cos_name": "${registry_cos_name}",
+        "manifest_version": "${manifest_version}",
+        "cos_instance": "${cos_instance}",
+        "cos_bucket": "${cos_bucket}",
+        "cos_region": "${cos_region}",
+        "far_auth_file": "${far_auth_file}",
+        "subscription_jwt_file": "${subscription_jwt_file}",
+        "bigip_url": "${bigip_url}",
+        "bigip_username": "${bigip_username}",
+        "bigip_password": "${bigip_password}",
+        "zone1_ext_vlan_cidr": "${zone1_ext_vlan_cidr}",
+        "zone1_int_vlan_cidr": "${zone1_int_vlan_cidr}",
+        "zone1_int_snat_cidr": "${zone1_int_snat_cidr}",
+        "zone1_int_vip_cidr": "${zone1_int_vip_cidr}",
+        "zone1_external_selfip": "${zone1_external_selfip}",
+        "zone1_internal_selfip": "${zone1_internal_selfip}",
+        "zone2_ext_vlan_cidr": "${zone2_ext_vlan_cidr}",
+        "zone2_int_vlan_cidr": "${zone2_int_vlan_cidr}",
+        "zone2_int_snat_cidr": "${zone2_int_snat_cidr}",
+        "zone2_int_vip_cidr": "${zone2_int_vip_cidr}",
+        "zone2_external_selfip": "${zone2_external_selfip}",
+        "zone2_internal_selfip": "${zone2_internal_selfip}",
+        "zone3_ext_vlan_cidr": "${zone3_ext_vlan_cidr}",
+        "zone3_int_vlan_cidr": "${zone3_int_vlan_cidr}",
+        "zone3_int_snat_cidr": "${zone3_int_snat_cidr}",
+        "zone3_int_vip_cidr": "${zone3_int_vip_cidr}",
+        "zone3_external_selfip": "${zone3_external_selfip}",
+        "zone3_internal_selfip": "${zone3_internal_selfip}"
+      }
+    }
+  ],
+  "is_featured": false
+}

@@ -16,10 +16,17 @@ be deployed / re-run independently**, while a **deployment-scoped shared workspa
 generated keys, `cluster-outputs.json`) shared across them — so `bnk` sees the
 cluster `cluster` created.
 
-A **fifth module** — `roksbnkctl-flp` — and its own blueprint,
-[**Deploying F5 License Proxy as an IBM Cloud VSI**](blueprints/flp-vsi/forge-blueprint.json),
-deploy the F5 License Proxy as a **standalone VSI appliance in an existing VPC,
-with no cluster at all**. See [The FLP-VSI blueprint](#the-flp-vsi-blueprint).
+Four blueprints ship here, over seven modules:
+
+| Blueprint | Builds | Modules |
+|---|---|---|
+| [IBM ROKS + BNK (roksbnkctl)](forge-blueprint.json) | a **new** ROKS cluster, then BNK on it | `cluster → bnk → testing / gateway` |
+| [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json) | BNK onto a cluster **you already own**, over an existing Transit Gateway | `bnk-adopt` |
+| [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json) | the **air-gapped** install — private registry + F5 License Proxy | `mirror → bnk-adopt` |
+| [Deploying F5 License Proxy as an IBM Cloud VSI](blueprints/flp-vsi/forge-blueprint.json) | the FLP as a **standalone VSI appliance**, no cluster | `flp` |
+
+See [Adopting an existing cluster](#adopting-an-existing-cluster) and
+[The FLP-VSI blueprint](#the-flp-vsi-blueprint).
 
 ## The runner image
 
@@ -95,6 +102,77 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
 | `testing_vpc_name` | Name the testing client VPC to create (testing phase). |
 | `bigip_url` / `bigip_username` / `bigip_password` | BIG-IP target + credentials for the BNK **CIS** controller. |
 | `zone<n>_int_vip_cidr` / `zone<n>_int_snat_cidr` / `zone<n>_ext_vlan_cidr` / `zone<n>_int_vlan_cidr` / `zone<n>_external_selfip` / `zone<n>_internal_selfip` (n = 1–3) | Per-AZ TMM network mapping — **listener (VIP)** and **SNAT** CIDRs + VLAN CIDRs + self-IPs for the BNK phase. Fill all six fields of a zone for it to apply. |
+
+## Adopting an existing cluster
+
+Two blueprints install BNK onto a ROKS cluster **you already own**, reached over a
+Transit Gateway **you already own**. Both run over the `roksbnkctl-bnk-adopt`
+module, whose `apply` is the adopt sequence:
+
+```
+init (env → config.yaml) → cluster register <name> → bnk up --auto → bnk status
+```
+
+`cluster register` writes `cluster-outputs.json` for the existing cluster and — when
+`existing_transit_gateway` is set — attaches its VPC to that gateway. A VPC that is
+**already** attached is *adopted*: roksbnkctl records the live connection and skips
+the apply, so no terraform resource manages it.
+
+**The cluster is never created and never destroyed.** Destroy runs `bnk down --auto`
+then `tgw disconnect --auto` — never `cluster down`. And because an adopted
+attachment has no managed resource behind it, `tgw disconnect` cannot remove a
+connection that pre-existed; it exits 0 "nothing to do".
+
+`cluster register` also needs the cluster's **registry COS instance**. It probes
+`<prefix>-registry-cos`, `<cluster>-registry-cos` and `<cluster>-cos`; if yours is
+named otherwise, set `registry_cos_name`.
+
+### 1. Connected — [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json)
+
+One module. Charts and images come from F5's registry, licensing from the
+subscription JWT in your orchestration COS bucket. The form is the adopt identity
+(`prefix`, `cluster_name`, `region`, `resource_group`, `existing_transit_gateway`)
+plus the optional COS coordinates, the CIS BIG-IP target, and the per-AZ TMM
+network mapping.
+
+### 2. Disconnected — [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json)
+
+**BNK Forge is the CI.** This is the same roksbnkctl step sequence the
+[disconnected-cluster CI demo](https://github.com/jgruberf5/roksbnkctl/tree/main/scripts/demos/disconnected-cluster-ci-demo)
+runs under Argo Workflows — two Workflows over one shared PVC become two modules
+over one deployment-scoped workspace:
+
+| Demo Workflow | Module | Steps |
+|---|---|---|
+| `wf-mirror.yaml` | `roksbnkctl-mirror` | `init` → `registry replicate --target generic` → `registry verify` |
+| `wf-install.yaml` | `roksbnkctl-bnk-adopt` | `cluster register` → `bnk up --auto` → `bnk status` |
+
+`depends_on` serializes them exactly as `argo submit` did, and `state.scope:
+deployment` is the PVC: the mirror phase's workspace — including the registry CA it
+records — is what the install phase reads. The generated `config.yaml` matches the
+demo's tested `bnk.yaml` field for field (adopt the cluster, `cos:` supply chain,
+`registry: generic` by private IP, `license_mode: f5licenseproxy`, the existing
+TGW). It differs only in `resources.{registry_cos,tgw_jumphost,client_vpc}`, which
+the BNK-phase override forces off regardless of config.
+
+The mirror module declares **`supports_destroy: false`** — you do not un-mirror a
+registry — so teardown touches only the BNK layer.
+
+Additional form fields: `registry_generic_host` (the mirror's **private** IP/DNS
+over the TGW), `registry_password`, `flp_external_url` + `flp_root_ca_b64` (from
+`flp output` on the workspace that owns the proxy — or the FLP-VSI blueprint
+below), and `cos_bucket`.
+
+> **Two caveats.**
+> 1. The demo pairs `bnk up` with a **cwc-guard sidecar** that clears F5's
+>    ReadWriteOnce Multi-Attach deadlock on a **reused** cluster. A Forge container
+>    step is one container with no sidecar and no shell, so that guard is not
+>    reproduced. On a cluster where BNK was previously installed, licensing can
+>    stall until `f5-spk-cwc` is patched to `Recreate` and cycled by hand.
+> 2. `cos_bucket` / `cos_instance` / `manifest_version` need the `ROKSBNKCTL_COS_*`
+>    overrides, which land in roksbnkctl **after v1.33.1** — see the note under
+>    [The FLP-VSI blueprint](#the-flp-vsi-blueprint). With the v1.33.1 pin those
+>    fields are ignored and the built-in COS defaults apply.
 
 ## The FLP-VSI blueprint
 
@@ -177,11 +255,11 @@ module exists in the catalog when the blueprint deploys (otherwise project
 creation fails with `BLUEPRINT_MODULES_MISSING`):
 
 1. Register this repo as a Git **module source**. The module sync discovers the
-   five `container`-engine packs — `roksbnkctl/{cluster,bnk,testing,gateway,flp}/bnkforge.pack.json`
+   seven `container`-engine packs — `roksbnkctl/{cluster,bnk,testing,gateway,flp,bnk-adopt,mirror}/bnkforge.pack.json`
    — and registers a module for each, backed by the sibling `bnkforge.artifact.json`
    the container engine runs at deploy.
 2. Register this repo as a Git **blueprint source**. The blueprint sync walks the
-   repo for files named exactly `forge-blueprint.json` and imports **both**:
+   repo for files named exactly `forge-blueprint.json` and imports **all four**:
    [`forge-blueprint.json`](forge-blueprint.json) — **IBM ROKS + BNK (roksbnkctl)**,
    the four phase modules wired by a `depends_on` graph — and
    [`blueprints/flp-vsi/forge-blueprint.json`](blueprints/flp-vsi/forge-blueprint.json)
@@ -201,7 +279,11 @@ roksbnkctl/bnk/       bnkforge.pack.json + bnkforge.artifact.json   # phase 2: i
 roksbnkctl/testing/   bnkforge.pack.json + bnkforge.artifact.json   # phase 3: testing       (depends_on cluster);  destroy: testing down
 roksbnkctl/gateway/   bnkforge.pack.json + bnkforge.artifact.json   # phase 4: gateway       (depends_on bnk,testing); destroy: gateway down
 roksbnkctl/flp/       bnkforge.pack.json + bnkforge.artifact.json   # standalone FLP VSI appliance (no cluster); destroy: flp down
+roksbnkctl/bnk-adopt/ bnkforge.pack.json + bnkforge.artifact.json   # adopt an EXISTING cluster + install BNK; destroy: bnk down + tgw disconnect
+roksbnkctl/mirror/    bnkforge.pack.json + bnkforge.artifact.json   # FAR -> private registry replicate + verify (no destroy)
 forge-blueprint.json                                                # composes the 4 phases via depends_on (cloud_provider: ibm)
+blueprints/roks-existing-cluster/forge-blueprint.json               # "BNK on an existing IBM ROKS cluster (existing Transit Gateway)"
+blueprints/roks-disconnected/forge-blueprint.json                   # "BNK on a disconnected IBM ROKS cluster (private registry + FLP)"
 blueprints/flp-vsi/forge-blueprint.json                             # "Deploying F5 License Proxy as an IBM Cloud VSI" (roksbnkctl/flp only)
 docs/USING-WITH-BNK-FORGE.md                                        # UI walkthrough for a manual test
 docs/specs/                                                         # the design specs (historical; bnk-forge has since implemented them)

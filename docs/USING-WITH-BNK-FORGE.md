@@ -35,12 +35,12 @@ you mirror the image to a private registry.)
 3. Name: `roksbnkctl-bnk-forge`. URL:
    `https://github.com/jgruberf5/roksbnkctl-bnk-forge.git`. Branch: `main`.
 4. Save and let it **sync**. The sync ingests:
-   - the five **artifacts** `roksbnkctl-cluster` / `roksbnkctl-bnk` /
-     `roksbnkctl-testing` / `roksbnkctl-gateway` / `roksbnkctl-flp` (each
-     `kind: container_image`), and
-   - **two blueprints** — *IBM ROKS + BNK (roksbnkctl)*, which composes the four
-     phase modules, and *Deploying F5 License Proxy as an IBM Cloud VSI*, which
-     uses `roksbnkctl-flp` on its own.
+   - **seven artifacts** — `roksbnkctl-cluster` / `-bnk` / `-testing` / `-gateway`
+     (the new-cluster phases), `roksbnkctl-bnk-adopt` + `roksbnkctl-mirror` (the
+     existing-cluster path), and `roksbnkctl-flp` — each `kind: container_image`; and
+   - **four blueprints** — *IBM ROKS + BNK (roksbnkctl)*, *BNK on an existing IBM
+     ROKS cluster*, *BNK on a disconnected IBM ROKS cluster*, and *Deploying F5
+     License Proxy as an IBM Cloud VSI*.
 
 ## 4. Put the credential template on a project
 
@@ -105,6 +105,62 @@ phase's destroy runs `tgw disconnect --auto` before `cluster down --auto`: when
 `existing_transit_gateway` was set, `cluster up` attaches the VPC in a separate
 `state-tgw/` phase that `cluster down` refuses to tear down underneath itself.
 It is a clean no-op when no Transit Gateway was adopted.
+
+---
+
+## Installing BNK onto a cluster you already own
+
+**BNK on an existing IBM ROKS cluster (existing Transit Gateway)** — one module,
+no cluster creation.
+
+1. Steps 1 and 4 (credential template, project). No project secrets needed.
+2. Blueprint catalog → **BNK on an existing IBM ROKS cluster** → **Deploy**:
+   - `cluster_name` — the **existing** cluster's name or ID
+   - `existing_transit_gateway` — the gateway its VPC is reached over
+   - `registry_cos_name` — only if the cluster's registry COS instance is not
+     `<prefix>-registry-cos`, `<cluster>-registry-cos` or `<cluster>-cos`
+3. `apply` runs `[init, cluster register, bnk up --auto, bnk status]`.
+4. **Destroy** runs `bnk down --auto` then `tgw disconnect --auto`. It never runs
+   `cluster down` — your cluster survives. A Transit Gateway attachment that
+   pre-existed has no terraform resource behind it, so the disconnect is a no-op
+   for it.
+
+## The disconnected (air-gapped) install
+
+**BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)** —
+BNK Forge as the CI, replacing the Argo Workflows of roksbnkctl's
+`disconnected-cluster-ci-demo`. Two modules, `mirror → bnk-adopt`, over one
+deployment-scoped workspace (the demo's shared PVC).
+
+**Before you start** you need the services side already standing: a private
+registry (Harbor) and an F5 License Proxy, both reachable from the cluster over the
+Transit Gateway. Deploy the proxy with the FLP-VSI blueprint below, then read its
+`external_endpoint` and `root_ca_b64` outputs.
+
+1. Steps 1 and 4. Blueprint catalog → **BNK on a disconnected IBM ROKS cluster**.
+2. Fill the form:
+   - `cluster_name`, `existing_transit_gateway` — the air-gapped cluster and the gateway
+   - `registry_generic_host` — the mirror's **private** IP or DNS name (over the TGW)
+   - `registry_password` — the mirror's admin password (`registry_username` defaults
+     to `admin`, `registry_repo_prefix` to `bnk-mirror`)
+   - `flp_external_url` + `flp_root_ca_b64` — from the proxy's outputs
+   - `cos_bucket` — the orchestration bucket holding `f5-far-auth-key.tgz` +
+     `subscription.jwt`. These two are the only artifacts **not** served from the
+     mirror, so the bucket must be reachable.
+3. **Deploy.** The mirror module runs `[init, registry replicate --target generic,
+   registry verify]` — roksbnkctl captures the mirror's self-signed CA from its
+   served chain and records it. The install module then runs `[init, cluster
+   register, bnk up --auto, bnk status]`: `bnk up` trusts that CA for its own
+   terraform/helm chart pulls **and** installs it on every worker node through the
+   registry-trust DaemonSet before any image is pulled.
+4. **Destroy** tears down only the BNK layer. The mirror module declares
+   `supports_destroy: false` — a replicated registry is not un-replicated.
+
+> On a cluster where BNK was **previously** installed, F5's `f5-spk-cwc` Deployment
+> can deadlock on its ReadWriteOnce volume (`Multi-Attach`) and the License never
+> activates. The CI demo clears this with a sidecar beside `bnk up`; a Forge
+> container step has no sidecar, so if licensing stalls, patch
+> `deploy/f5-spk-cwc` in `f5-utils` to `strategy: Recreate` and cycle its replicas.
 
 ---
 

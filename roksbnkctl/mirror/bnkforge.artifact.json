@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "name": "roksbnkctl-mirror",
+  "version": "1.0.0",
+  "kind": "container_image",
+  "description": "Replicate the BNK supply chain (F5's artifact registry) into a private OCI registry, then verify it \u2014 the mirror half of a disconnected install. Host-side registry-to-registry copy; no cluster required.",
+  "container_image": {
+    "registry_host": "ghcr.io",
+    "repository": "jgruberf5/roksbnkctl-tools-runner",
+    "digest": "sha256:4f50d886fff7eb4443d0a9b26f0cd28181fecb6927dfbdadc7a33058bd03f0e1"
+  },
+  "lifecycle": {
+    "supports_apply": true,
+    "supports_destroy": false
+  },
+  "credentials": {
+    "cloud": "ibmcloud"
+  },
+  "state": {
+    "mount_path": "/work",
+    "outputs_file": ".roksbnkctl/bnk/cluster-outputs.json",
+    "home_env": {
+      "ROKSBNKCTL_HOME": "/work/.roksbnkctl"
+    },
+    "scope": "deployment"
+  },
+  "execution": {
+    "engine": "container",
+    "limits": {
+      "cpus": "2",
+      "memory": "2g"
+    }
+  },
+  "steps": {
+    "apply": [
+      {
+        "name": "init",
+        "env": {
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_MANIFEST_VERSION": "{{inputs.manifest_version}}",
+          "ROKSBNKCTL_COS_INSTANCE": "{{inputs.cos_instance}}",
+          "ROKSBNKCTL_COS_BUCKET": "{{inputs.cos_bucket}}",
+          "ROKSBNKCTL_COS_REGION": "{{inputs.cos_region}}",
+          "ROKSBNKCTL_FAR_AUTH_FILE": "{{inputs.far_auth_file}}",
+          "ROKSBNKCTL_SUBSCRIPTION_JWT_FILE": "{{inputs.subscription_jwt_file}}",
+          "ROKSBNKCTL_REGISTRY_TARGET": "{{inputs.registry_target}}",
+          "ROKSBNKCTL_GENERIC_HOST": "{{inputs.registry_generic_host}}",
+          "ROKSBNKCTL_GENERIC_REPO_PREFIX": "{{inputs.registry_repo_prefix}}",
+          "ROKSBNKCTL_GENERIC_USERNAME": "{{inputs.registry_username}}",
+          "ROKSBNKCTL_GENERIC_PASSWORD": "{{inputs.registry_password}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "false",
+          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "init",
+          "-w",
+          "bnk",
+          "--override-from-env",
+          "--non-interactive"
+        ],
+        "timeout_seconds": 300
+      },
+      {
+        "name": "registry-replicate",
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "registry",
+          "replicate",
+          "--target",
+          "generic"
+        ],
+        "timeout_seconds": 3600,
+        "retry": {
+          "max_attempts": 2,
+          "backoff_seconds": 120
+        }
+      },
+      {
+        "name": "registry-verify",
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "registry",
+          "verify"
+        ],
+        "timeout_seconds": 900
+      }
+    ]
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "source": "user",
+        "description": "Prefix for resource names roksbnkctl creates (e.g. acme-eu)."
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "description": "Region the cluster lives in. Inherits from the selected credential template."
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "source": "user",
+        "description": "IBM Cloud resource group. Inherits from the selected credential template."
+      }
+    ],
+    "optional": [
+      {
+        "name": "manifest_version",
+        "type": "string",
+        "source": "user",
+        "description": "BNK manifest release to install. Blank = the roksbnkctl default."
+      },
+      {
+        "name": "cos_instance",
+        "type": "string",
+        "source": "user",
+        "description": "COS instance holding the FAR auth key + subscription JWT. Blank = bnk-supply-chain."
+      },
+      {
+        "name": "cos_bucket",
+        "type": "string",
+        "source": "user",
+        "description": "Bucket holding the FAR auth key + subscription JWT. Blank = bnk-artifacts. Account-suffixed buckets (bnk-artifacts-<account>) must be named explicitly."
+      },
+      {
+        "name": "cos_region",
+        "type": "string",
+        "source": "user",
+        "description": "Region of that bucket. Blank = us-south."
+      },
+      {
+        "name": "far_auth_file",
+        "type": "string",
+        "source": "user",
+        "description": "Object name of the FAR auth tarball in the bucket. Blank = f5-far-auth-key.tgz."
+      },
+      {
+        "name": "subscription_jwt_file",
+        "type": "string",
+        "source": "user",
+        "description": "Object name of the subscription JWT in the bucket. Blank = subscription.jwt."
+      },
+      {
+        "name": "registry_target",
+        "type": "string",
+        "source": "user",
+        "description": "Mirror backend: generic (a private OCI registry such as Harbor) or icr."
+      },
+      {
+        "name": "registry_generic_host",
+        "type": "string",
+        "source": "user",
+        "description": "The mirror's host \u2014 for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
+      },
+      {
+        "name": "registry_repo_prefix",
+        "type": "string",
+        "source": "user",
+        "description": "Project / repository prefix inside the mirror (a Harbor project, an Artifactory repo key)."
+      },
+      {
+        "name": "registry_username",
+        "type": "string",
+        "source": "user",
+        "description": "Username the mirror is pushed to and pulled from."
+      },
+      {
+        "name": "registry_password",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "description": "Password / access token for that user. Stored base64 in the workspace config, never logged."
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "source": "user",
+        "description": "Name or ID of the EXISTING ROKS cluster to adopt. It is never created and never destroyed by this blueprint."
+      }
+    ]
+  },
+  "references": []
+}
