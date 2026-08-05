@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-far-mirror",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "name": "Mirror F5 artifacts from FAR into a private registry",
     "description": "Replicate the BIG-IP Next for Kubernetes supply chain out of F5's Artifact Registry into a private OCI registry, then verify every artifact by digest. Needs no cluster: this is the step that makes a disconnected install possible, and it can run long before one. Point it at any registry you already run, or deploy one with the Harbor blueprint — when Harbor is part of the same deployment the registry address and its CA are wired in automatically."
   },
@@ -187,7 +187,7 @@
     {
       "id": "roksbnkctl-FAR-mirror",
       "module": "roksbnkctl/far-mirror",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "name": "roksbnkctl FAR Mirror",
       "description": "Replicate FAR -> private registry, then verify every artifact by digest.",
       "optional": false,
@@ -208,7 +208,8 @@
         "far_auth_file": "${far_auth_file}",
         "subscription_jwt_file": "${subscription_jwt_file}",
         "manifest_version": "${manifest_version}",
-        "prefix": "${prefix}"
+        "prefix": "${prefix}",
+        "delete_artifacts_on_destroy": "true"
       }
     }
   ],
