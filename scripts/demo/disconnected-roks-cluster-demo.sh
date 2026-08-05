@@ -132,6 +132,19 @@ deploy() {
   if [[ -s "$STATE/$tag.project" ]]; then
     DEPLOY_PID=$(cat "$STATE/$tag.project"); DEPLOY_MODS=$(cat "$STATE/$tag.modules")
     say "resuming $tag from project $DEPLOY_PID (delete $STATE/$tag.project to redeploy)"
+    # Re-apply the first module that is not already applied. A resume after a
+    # mid-chain failure has to restart the module that failed, not just wait on
+    # it — waiting on an apply_failed module fails instantly. Re-applying the
+    # earliest incomplete one lets Forge's dependency graph carry the rest.
+    local m st
+    for m in $DEPLOY_MODS; do
+      st=$(forge_module_status "$m")
+      if [[ "$st" != "applied" ]]; then
+        say "$tag: module $m is '$st' — re-applying"
+        forge_apply "$m"
+        break
+      fi
+    done
   else
     DEPLOY_MODS=$(forge_create_project "$rel" "$name" "$REGION" \
                     "$FORGE_CREDENTIAL_TEMPLATE_ID" "$vars" 2> >(tee "$tmp" >&2)) \
