@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "name": "Private Harbor registry on an IBM Cloud VSI",
-    "description": "Stand up the private OCI registry a disconnected BNK install pulls from: a Harbor VSI in a services VPC, attached to an existing Transit Gateway so an air-gapped cluster reaches it privately. This is the first of the four disconnected-deployment blueprints \u2014 its registry_host and vpc_id outputs feed the mirror, FLP and BNK install blueprints."
+    "description": "Stand up the private OCI registry a disconnected BNK install pulls from: a Harbor VSI in a services VPC, attached to an existing Transit Gateway so an air-gapped cluster reaches it privately. This is the first of the four disconnected-deployment blueprints — its registry_host and vpc_id outputs feed the mirror, FLP and BNK install blueprints."
   },
   "category": "infrastructure",
   "cloud_provider": "ibm",
@@ -86,7 +86,7 @@
         "name": "harbor_admin_password",
         "type": "string",
         "label": "Harbor admin password",
-        "description": "Password for Harbor's admin user \u2014 the same credential the mirror blueprint pushes with and the BNK install pulls with.",
+        "description": "Password for Harbor's admin user — the same credential the mirror blueprint pushes with and the BNK install pulls with.",
         "sensitive": true,
         "order": 4
       },
@@ -122,7 +122,7 @@
         "name": "subnet_cidr",
         "type": "string",
         "label": "Services subnet CIDR",
-        "description": "CIDR for the services subnet. MUST NOT overlap the cluster VPC: roksbnkctl fixes its cluster subnets at 10.241.0.0/24, 10.241.64.0/24 and 10.241.128.0/24, so anything in 10.241.0.0/16 risks colliding once both VPCs are on the same Transit Gateway \u2014 the cluster would route the mirror's address to its own subnet.",
+        "description": "CIDR for the services subnet. MUST NOT overlap the cluster VPC: roksbnkctl fixes its cluster subnets at 10.241.0.0/24, 10.241.64.0/24 and 10.241.128.0/24, so anything in 10.241.0.0/16 risks colliding once both VPCs are on the same Transit Gateway — the cluster would route the mirror's address to its own subnet.",
         "default": "10.243.0.0/24",
         "order": 8
       },
@@ -210,7 +210,7 @@
         "name": "services_spare_cidr",
         "type": "string",
         "label": "Spare services prefix",
-        "description": "A second address prefix in the services VPC, reserved for appliances that allocate their own subnet from the VPC pool \u2014 roksbnkctl's FLP VSI does. A prefix that exactly equals the subnet leaves nothing to allocate. Must not overlap the subnet or the cluster VPC. Blank disables it.",
+        "description": "A second address prefix in the services VPC, reserved for appliances that allocate their own subnet from the VPC pool — roksbnkctl's FLP VSI does. A prefix that exactly equals the subnet leaves nothing to allocate. Must not overlap the subnet or the cluster VPC. Blank disables it.",
         "default": "10.243.1.0/24",
         "order": 19
       },
@@ -218,7 +218,7 @@
         "name": "registry_projects",
         "type": "string",
         "label": "Registry projects",
-        "description": "Comma-separated Harbor projects to create once the registry is up. Harbor does not auto-create a project on push and `registry replicate` does not either, so a missing project surfaces as 401 Unauthorized on the manifest HEAD \u2014 which reads like a credential fault. Defaults cover the mirror target and the flp-status image project.",
+        "description": "Comma-separated Harbor projects to create once the registry is up. Harbor does not auto-create a project on push and `registry replicate` does not either, so a missing project surfaces as 401 Unauthorized on the manifest HEAD — which reads like a credential fault. Defaults cover the mirror target and the flp-status image project.",
         "default": "bnk-mirror,bnk-status",
         "order": 20
       }

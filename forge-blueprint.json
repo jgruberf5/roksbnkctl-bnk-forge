@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-bnk-roksbnkctl",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "name": "IBM ROKS + BNK (roksbnkctl)",
-    "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl, decomposed into independently re-runnable phases (cluster \u2192 bnk \u2192 testing / gateway) over a shared deployment workspace."
+    "description": "Provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK) with roksbnkctl, decomposed into independently re-runnable phases (cluster → bnk → testing / gateway) over a shared deployment workspace."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -94,7 +94,7 @@
         "name": "cluster_vpc",
         "type": "string",
         "label": "Existing cluster VPC (ID)",
-        "description": "Adopt an existing cluster VPC by ID \u2014 the new cluster lands in it. Blank = create one.",
+        "description": "Adopt an existing cluster VPC by ID — the new cluster lands in it. Blank = create one.",
         "default": "",
         "order": 5.3
       },
@@ -126,7 +126,7 @@
         "name": "existing_transit_gateway",
         "type": "string",
         "label": "Existing Transit Gateway (name/ID)",
-        "description": "Adopt an existing Transit Gateway by name/ID \u2014 the new cluster + testing VPC attach to it. Blank = create one.",
+        "description": "Adopt an existing Transit Gateway by name/ID — the new cluster + testing VPC attach to it. Blank = create one.",
         "default": "",
         "order": 9
       },
