@@ -16,11 +16,71 @@ set -o pipefail
 if [[ -t 1 ]]; then B=$'\033[1m'; N=$'\033[0m'; G=$'\033[32m'; R=$'\033[31m'; Y=$'\033[33m'
 else B=""; N=""; G=""; R=""; Y=""; fi
 
-phase() { printf '\n%s══ %s %s\n' "$B" "$*" "$N" >&2; }
+# ── timing ───────────────────────────────────────────────────────────────────
+# Every phase is stamped so a completed run can report what it actually took.
+# The blueprint's estimated_time and each module's estimated_time_minutes drive
+# what the UI promises before a deploy, and those started as guesses — the Harbor
+# project advertised 40 minutes and finished in 17. Grounding them needs numbers
+# from a real end-to-end run, so the run collects its own.
+RUN_T0=$(date +%s)
+PHASE_MARKS=""            # "epoch<TAB>name" per line, in order
+
+_stamp() { date -u +%H:%M:%S; }
+
+phase() {
+  local now; now=$(date +%s)
+  PHASE_MARKS+="${now}	$*"$'\n'
+  printf '\n%s══ [%s] %s %s\n' "$B" "$(_stamp)" "$*" "$N" >&2
+}
 say()   { printf '   %s\n' "$*" >&2; }
-ok()    { printf '   %s✓%s %s\n' "$G" "$N" "$*" >&2; }
+ok()    { printf '   %s✓%s [%s] %s\n' "$G" "$N" "$(_stamp)" "$*" >&2; }
 warn()  { printf '   %s!%s %s\n' "$Y" "$N" "$*" >&2; }
-die()   { printf '   %s✗%s %s\n' "$R" "$N" "$*" >&2; exit 1; }
+die()   { printf '   %s✗%s %s\n' "$R" "$N" "$*" >&2; timing_summary; exit 1; }
+
+# hms <seconds>
+hms() { printf '%dm%02ds' $(( $1 / 60 )) $(( $1 % 60 )); }
+
+# timing_summary — wall-clock per phase, then the authoritative per-module
+# durations Forge recorded. The module numbers are what estimated_time_minutes
+# should be set from; the phase numbers include this script's own polling and
+# the out-of-band waits (Harbor's cloud-init, the CA fetch), so they are the
+# honest "how long did it take me" figure and always exceed the module sums.
+timing_summary() {
+  [[ -z "$PHASE_MARKS" ]] && return 0
+  local now; now=$(date +%s)
+  printf '\n%s══ Timing %s\n' "$B" "$N" >&2
+  printf '   %-46s %s\n' "phase" "wall clock" >&2
+  local prev_t="" prev_n=""
+  while IFS=$'\t' read -r t n; do
+    [[ -z "$t" ]] && continue
+    [[ -n "$prev_t" ]] && printf '   %-46s %s\n' "$prev_n" "$(hms $((t - prev_t)))" >&2
+    prev_t="$t"; prev_n="$n"
+  done <<< "$PHASE_MARKS"
+  [[ -n "$prev_t" ]] && printf '   %-46s %s\n' "$prev_n" "$(hms $((now - prev_t)))" >&2
+  printf '   %-46s %s\n' "TOTAL" "$(hms $((now - RUN_T0)))" >&2
+
+  # Per-module, straight from Forge's own deployment records.
+  local any=0
+  for f in "$STATE"/*.project; do
+    [[ -e "$f" ]] || continue
+    local tag pid; tag=$(basename "$f" .project); pid=$(cat "$f")
+    for mid in $(cat "$STATE/$tag.modules" 2>/dev/null); do
+      local row
+      row=$(forge_api GET "/api/project-modules/$mid/deployments" 2>/dev/null | python3 -c '
+import sys,json
+try: ds=json.load(sys.stdin).get("deployments") or []
+except Exception: raise SystemExit
+for d in ds:
+    if d.get("action")=="apply" and d.get("status")=="success" and d.get("duration_seconds"):
+        print(f"{d[\"duration_seconds\"]:.0f}"); break' 2>/dev/null)
+      if [[ -n "$row" ]]; then
+        [[ $any == 0 ]] && { printf '\n   %-46s %s\n' "module (Forge-recorded apply)" "duration" >&2; any=1; }
+        printf '   %-46s %s\n' "$tag/module $mid" "$(hms "$row")" >&2
+      fi
+    done
+  done
+  [[ $any == 1 ]] && printf '\n   %s\n' "Set estimated_time_minutes from the module rows, not the phase rows." >&2
+}
 
 # ── auth ─────────────────────────────────────────────────────────────────────
 # forge_login <url> <user> <password>

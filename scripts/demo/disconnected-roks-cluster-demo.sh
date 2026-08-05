@@ -8,8 +8,12 @@
 # waits, and carries the handoffs the API cannot (Harbor's CA and the FLP's root
 # CA, both of which live on their VSIs and must be supplied out of band).
 #
-#   ./disconnected-roks-cluster-demo.sh            # run it
-#   ./disconnected-roks-cluster-demo.sh teardown   # remove everything it created
+#   ./disconnected-roks-cluster-demo.sh up      # deploy (default with no argument)
+#   ./disconnected-roks-cluster-demo.sh down    # destroy it all and delete the projects
+#
+# `down` removes the resources and the Forge projects, and stops there — the
+# module source, its modules and the blueprint releases are untouched, so a
+# later `up` deploys from the same catalog with nothing to re-register.
 #
 # Prereqs: an EXISTING ROKS cluster with BNK not installed, an EXISTING Transit
 # Gateway, an IBM credential template on the Forge, and an IBM Cloud VPC SSH key
@@ -19,6 +23,14 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/forge-api.sh
 source "$HERE/lib/forge-api.sh"
+
+# Parsed before anything prompts: a typo should not cost you a password first.
+ACTION="${1:-up}"
+case "$ACTION" in
+  up|down) ;;
+  *) printf 'usage: %s [up|down]\n  up    deploy (default)\n  down  destroy what it built and delete the projects (catalog untouched)\n' \
+       "$(basename "$0")" >&2; exit 2 ;;
+esac
 
 [[ -f "$HERE/.env" ]] && { set -a; . "$HERE/.env"; set +a; }
 
@@ -179,28 +191,37 @@ deploy() {
   for m in $DEPLOY_MODS; do forge_wait_module "$m" "$tag" 5400; done
 }
 
-# ── teardown ─────────────────────────────────────────────────────────────────
-if [[ "${1:-}" == "teardown" ]]; then
-  phase "Teardown"
+# ── down ─────────────────────────────────────────────────────────────────────
+if [[ "$ACTION" == "down" ]]; then
+  phase "Down"
+  say "Destroys everything this demo built, in reverse order, and deletes the"
+  say "Forge projects. It stops there: the module source, the modules and the"
+  say "blueprint releases are left alone, so a later 'up' deploys from the same"
+  say "catalog without re-registering anything."
+  say "The adopted cluster and the Transit Gateway are never touched."
   for f in disco flp harbor; do            # reverse of creation order
     [[ -f "$STATE/$f.project" ]] || continue
     pid=$(cat "$STATE/$f.project")
     say "destroying project $pid ($f) …"
     forge_destroy_project "$pid" || warn "destroy-all returned non-zero for $pid"
     # Wait for "destroyed", not merely a terminal state — see forge_wait_module.
-    # The project must not be deleted while any module still holds resources: the
-    # delete abandons the in-flight destroys and orphans whatever they owned.
-    local_ok=1
+    # A module that has not STARTED destroying still reads "applied", and treating
+    # that as done is how a teardown walks away from live resources.
+    down_ok=1
     for mid in $(cat "$STATE/$f.modules" 2>/dev/null); do
-      forge_wait_module "$mid" "module $mid" 3600 destroyed || local_ok=0
+      forge_wait_module "$mid" "module $mid" 3600 destroyed || down_ok=0
     done
-    if [[ $local_ok == 1 ]]; then
+    if [[ $down_ok == 1 ]]; then
       forge_delete_project "$pid"; rm -f "$STATE/$f.project" "$STATE/$f.modules"
+      ok "$f destroyed and project $pid deleted"
     else
-      warn "project $pid still has modules that did not destroy — leaving it in place"
+      # Deleting now would abandon the in-flight destroys and orphan whatever
+      # they still own, with no module left to describe them.
+      warn "project $pid has modules that did not destroy — leaving it in place"
     fi
   done
-  ok "teardown complete — the adopted cluster and the Transit Gateway are left intact"
+  timing_summary
+  ok "down complete — resources destroyed, projects deleted, catalog untouched, cluster and Transit Gateway intact"
   exit 0
 fi
 
@@ -340,4 +361,5 @@ cat <<EOF >&2
    Remove everything this demo created (the cluster and the Transit Gateway stay):
      $0 teardown
 EOF
+timing_summary
 ok "disconnected deployment complete"
