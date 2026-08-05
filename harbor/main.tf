@@ -170,6 +170,48 @@ resource "ibm_is_floating_ip" "harbor" {
   resource_group = data.ibm_resource_group.rg.id
 }
 
+# ── Private IP, reserved BEFORE the VSI ──────────────────────────────────────
+# The private address is what the cluster nodes and the runner reach Harbor on over
+# the Transit Gateway, so it is in the TLS SAN. Reserving it here (rather than
+# letting the NIC pick one at boot) is what lets terraform own the certificate: the
+# SAN has to be known before the cert is signed, and the cert before the instance
+# that receives it. Same cycle-breaking trick as the floating IP above.
+resource "ibm_is_subnet_reserved_ip" "harbor" {
+  subnet = local.subnet_id
+  name   = "${local.name}-harbor-ip"
+}
+
+# ── TLS, terraform-owned ─────────────────────────────────────────────────────
+# The certificate is generated HERE, not by openssl on the box. Generating it on
+# the instance means terraform never learns it, so the CA can only be recovered by
+# SSHing to the VSI — which makes it unavailable as a module output and therefore
+# impossible to wire into the mirror module. Owning it here makes the CA and its
+# SHA-256 pin ordinary outputs. roksbnkctl's own flp_vsi module works this way.
+resource "tls_private_key" "harbor" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+resource "tls_self_signed_cert" "harbor" {
+  private_key_pem = tls_private_key.harbor.private_key_pem
+
+  subject {
+    common_name  = ibm_is_floating_ip.harbor.address
+    organization = "BNK Forge"
+  }
+
+  # Both addresses: the floating IP for the operator's browser, the private IP for
+  # the no-egress worker nodes reaching the registry over the Transit Gateway.
+  ip_addresses = [
+    ibm_is_floating_ip.harbor.address,
+    ibm_is_subnet_reserved_ip.harbor.address,
+  ]
+
+  validity_period_hours = 87600 # 10 years
+  is_ca_certificate     = true
+  allowed_uses          = ["key_encipherment", "digital_signature", "server_auth", "cert_signing"]
+}
+
 resource "ibm_is_instance" "harbor" {
   name           = "${local.name}-harbor"
   vpc            = local.vpc_id
@@ -182,6 +224,9 @@ resource "ibm_is_instance" "harbor" {
   primary_network_interface {
     subnet          = local.subnet_id
     security_groups = [ibm_is_security_group.harbor.id]
+    primary_ip {
+      reserved_ip = ibm_is_subnet_reserved_ip.harbor.reserved_ip
+    }
   }
 
   boot_volume {
@@ -190,9 +235,12 @@ resource "ibm_is_instance" "harbor" {
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     harbor_fip            = ibm_is_floating_ip.harbor.address
+    harbor_private_ip     = ibm_is_subnet_reserved_ip.harbor.address
     harbor_version        = var.harbor_version
     harbor_admin_password = var.harbor_admin_password
     registry_projects     = var.registry_projects
+    harbor_cert_pem       = tls_self_signed_cert.harbor.cert_pem
+    harbor_key_pem        = tls_private_key.harbor.private_key_pem
   })
 }
 

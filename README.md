@@ -16,14 +16,22 @@ be deployed / re-run independently**, while a **deployment-scoped shared workspa
 generated keys, `cluster-outputs.json`) shared across them — so `bnk` sees the
 cluster `cluster` created.
 
-Four blueprints ship here, over seven modules:
+Six blueprints ship here, over nine modules:
 
 | Blueprint | Builds | Modules |
 |---|---|---|
 | [IBM ROKS + BNK (roksbnkctl)](forge-blueprint.json) | a **new** ROKS cluster, then BNK on it | `cluster → bnk → testing / gateway` |
-| [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json) | BNK onto a cluster **you already own**, over an existing Transit Gateway | `bnk-install` |
-| [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json) | the **air-gapped** install — private registry + F5 License Proxy | `FAR-mirror → bnk-install` |
+| [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json) | BNK onto a cluster **you already own**, over an existing Transit Gateway | `cluster-registry → bnk-install` |
+| [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json) | the **air-gapped** install, from a registry you have already mirrored | `cluster-registry → bnk-install` |
+| [Private Harbor registry on an IBM Cloud VSI](blueprints/harbor-registry/forge-blueprint.json) | a private OCI registry on the Transit Gateway, **optionally filled from FAR** | `harbor → [FAR-mirror]` |
+| [Mirror F5 artifacts from FAR](blueprints/far-mirror/forge-blueprint.json) | the supply chain replicated into **any** private registry — no cluster needed | `FAR-mirror` |
 | [Deploying F5 License Proxy as an IBM Cloud VSI](blueprints/flp-vsi/forge-blueprint.json) | the FLP as a **standalone VSI appliance**, no cluster | `flp` |
+
+Both install blueprints are **two modules — register the cluster, then install BNK**.
+Filling the registry is deliberately not one of them: mirroring needs no cluster, takes
+far longer than the install, and is reusable across many installs. Build the registry
+and fill it in one go with the Harbor blueprint, or mirror into a registry you already
+run with the FAR mirror blueprint; either way the install blueprint just consumes it.
 
 See [Adopting an existing cluster](#adopting-an-existing-cluster) and
 [The FLP-VSI blueprint](#the-flp-vsi-blueprint).
@@ -41,9 +49,13 @@ host.
 > roksbnkctl **v1.35.0**, `registry replicate` refuses to adopt a self-signed
 > registry's CA from the wire — unpinned trust-on-first-use handed durable,
 > cluster-wide trust to whoever won a race on one dial. The disconnected
-> blueprint exposes **`registry_ca_b64`** and **`registry_ca_sha256`** for this;
-> supply at least one or the replicate step fails closed (and the refusal quotes
-> the fingerprint the host actually served, so you can record the pin from it).
+> mirror blueprints expose **`registry_ca_b64`** and **`registry_ca_sha256`** for
+> this; supply at least one or the replicate step fails closed (and the refusal
+> quotes the fingerprint the host actually served, so you can record the pin from
+> it). **The Harbor blueprint removes the chore entirely**: its certificate is
+> issued by terraform rather than by openssl on the box, so the CA is an ordinary
+> module output and the mirror module takes it by `source: module` wiring — nothing
+> to capture, and no SSH to the registry to bootstrap trust.
 
 ### What the container engine does and does not pass through
 
@@ -166,11 +178,10 @@ Kubernetes page, so it can be watched while BNK installs onto it. Everything els
 depends on that module:
 
 ```
-cluster-registry ──────▶ bnk-install     (existing cluster)
+cluster-registry ──▶ bnk-install     (both install blueprints)
 
-cluster-registry ──┐
-                   ├──▶ bnk-install      (disconnected)
-FAR-mirror ────────┘
+harbor ──▶ FAR-mirror                (registry + its contents, one deployment)
+FAR-mirror                           (into a registry you already run)
 ```
 
 The mirror deliberately does **not** depend on registration — it needs no cluster

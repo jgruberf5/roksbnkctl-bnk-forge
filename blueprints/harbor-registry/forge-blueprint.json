@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "1.1.0",
+    "version": "2.0.0",
     "name": "Private Harbor registry on an IBM Cloud VSI",
-    "description": "Stand up the private OCI registry a disconnected BNK install pulls from: a Harbor VSI in a services VPC, attached to an existing Transit Gateway so an air-gapped cluster reaches it privately. This is the first of the four disconnected-deployment blueprints — its registry_host and vpc_id outputs feed the mirror, FLP and BNK install blueprints."
+    "description": "A private Harbor OCI registry on an IBM Cloud VSI, attached to a Transit Gateway so air-gapped cluster nodes reach it privately. Its TLS certificate is issued by terraform, so the CA is a module output rather than something to fetch off the box. Optionally replicates the BNK supply chain from FAR on the way up, leaving a registry a disconnected install can use immediately."
   },
   "category": "infrastructure",
   "cloud_provider": "ibm",
@@ -221,6 +221,62 @@
         "description": "Comma-separated Harbor projects to create once the registry is up. Harbor does not auto-create a project on push and `registry replicate` does not either, so a missing project surfaces as 401 Unauthorized on the manifest HEAD — which reads like a credential fault. Defaults cover the mirror target and the flp-status image project.",
         "default": "bnk-mirror,bnk-status",
         "order": 20
+      },
+      {
+        "name": "cos_instance",
+        "type": "string",
+        "label": "Supply-chain COS instance",
+        "description": "COS instance holding the FAR auth key + subscription JWT. Blank = bnk-supply-chain. Used only when “Replicate from FAR” is on.",
+        "default": "",
+        "order": 21
+      },
+      {
+        "name": "cos_bucket",
+        "type": "string",
+        "label": "Supply-chain COS bucket",
+        "description": "Orchestration COS bucket holding the FAR auth tarball and the subscription JWT. The runner has no local copies, so it resolves them from here; buckets provisioned by `roksbnkctl init` carry a per-account suffix (bnk-artifacts-<account>). Used only when “Replicate from FAR” is on.",
+        "order": 22
+      },
+      {
+        "name": "cos_region",
+        "type": "string",
+        "label": "Supply-chain COS region",
+        "description": "Region of that bucket. Blank = us-south. Used only when “Replicate from FAR” is on.",
+        "default": "",
+        "order": 23
+      },
+      {
+        "name": "far_auth_file",
+        "type": "string",
+        "label": "FAR auth object name",
+        "description": "Object name of the FAR auth tarball in the bucket. Blank = f5-far-auth-key.tgz. Used only when “Replicate from FAR” is on.",
+        "default": "",
+        "order": 24
+      },
+      {
+        "name": "subscription_jwt_file",
+        "type": "string",
+        "label": "Subscription JWT object name",
+        "description": "Object name of the subscription JWT in the bucket. Blank = subscription.jwt. Used only when “Replicate from FAR” is on.",
+        "default": "",
+        "order": 25
+      },
+      {
+        "name": "manifest_version",
+        "type": "string",
+        "label": "BNK manifest version",
+        "description": "BNK manifest release to install. Blank = the roksbnkctl default. Used only when “Replicate from FAR” is on.",
+        "default": "",
+        "order": 26
+      },
+      {
+        "name": "registry_repo_prefix",
+        "type": "string",
+        "label": "Registry repository prefix",
+        "description": "Project / repository prefix inside the mirror (a Harbor project, an Artifactory repo key). Used only when “Replicate from FAR” is on.",
+        "example": "bnk-mirror",
+        "default": "bnk-mirror",
+        "order": 27
       }
     ]
   },
@@ -228,7 +284,7 @@
     {
       "id": "harbor-registry",
       "module": "harbor",
-      "version": "1.1.0",
+      "version": "2.0.0",
       "name": "Harbor registry (VSI)",
       "description": "Services VPC + Transit Gateway attachment + Harbor on a VSI, installed by cloud-init.",
       "optional": false,
@@ -254,6 +310,32 @@
         "public_gateway": "${public_gateway}",
         "services_spare_cidr": "${services_spare_cidr}",
         "registry_projects": "${registry_projects}"
+      }
+    },
+    {
+      "id": "roksbnkctl-FAR-mirror",
+      "module": "roksbnkctl/far-mirror",
+      "version": "1.2.0",
+      "name": "Replicate from FAR",
+      "description": "Optional. Fills the registry this blueprint just built with the BNK supply chain, so it is usable by a disconnected install straight away. The registry address and its CA are wired from the harbor module's outputs — nothing to copy by hand. Leave it out to build an empty registry and mirror later with the FAR mirror blueprint.",
+      "optional": true,
+      "depends_on": [
+        "harbor-registry"
+      ],
+      "inputs": {
+        "registry_target": "generic",
+        "prefix": "${prefix}",
+        "region": "${region}",
+        "resource_group": "${resource_group}",
+        "registry_repo_prefix": "${registry_repo_prefix}",
+        "registry_username": "admin",
+        "registry_password": "${harbor_admin_password}",
+        "cos_instance": "${cos_instance}",
+        "cos_bucket": "${cos_bucket}",
+        "cos_region": "${cos_region}",
+        "far_auth_file": "${far_auth_file}",
+        "subscription_jwt_file": "${subscription_jwt_file}",
+        "manifest_version": "${manifest_version}"
       }
     }
   ],

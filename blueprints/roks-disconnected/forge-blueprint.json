@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-disconnected-bnk-roksbnkctl",
-    "version": "1.1.1",
+    "version": "2.0.0",
     "name": "BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
-    "description": "The air-gapped install: mirror the BNK supply chain into your private registry, then install BIG-IP Next for Kubernetes onto an existing ROKS cluster that has no Internet egress — images from the mirror, licensing brokered by an F5 License Proxy, both reached privately over an existing Transit Gateway. BNK Forge is the CI: the same roksbnkctl step sequence the disconnected-cluster CI demo runs under Argo Workflows."
+    "description": "Install BIG-IP Next for Kubernetes onto an EXISTING IBM ROKS cluster that has no egress: images come from a private registry you have already mirrored, licensing from an F5 License Proxy. Registers the cluster with BNK Forge first, so it can be watched while BNK installs. Populate the mirror beforehand with the FAR mirror blueprint, or let the Harbor blueprint do it when it builds the registry."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -538,34 +538,6 @@
       }
     },
     {
-      "id": "roksbnkctl-FAR-mirror",
-      "module": "roksbnkctl/far-mirror",
-      "version": "1.1.0",
-      "name": "roksbnkctl FAR Mirror",
-      "description": "init -> registry replicate --target generic -> registry verify. No cluster needed.",
-      "optional": false,
-      "depends_on": [],
-      "inputs": {
-        "prefix": "${prefix}",
-        "cluster_name": "${cluster_name}",
-        "region": "${region}",
-        "resource_group": "${resource_group}",
-        "registry_generic_host": "${registry_generic_host}",
-        "registry_password": "${registry_password}",
-        "cos_bucket": "${cos_bucket}",
-        "registry_repo_prefix": "${registry_repo_prefix}",
-        "registry_username": "${registry_username}",
-        "cos_instance": "${cos_instance}",
-        "cos_region": "${cos_region}",
-        "far_auth_file": "${far_auth_file}",
-        "subscription_jwt_file": "${subscription_jwt_file}",
-        "manifest_version": "${manifest_version}",
-        "registry_target": "generic",
-        "registry_ca_b64": "${registry_ca_b64}",
-        "registry_ca_sha256": "${registry_ca_sha256}"
-      }
-    },
-    {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
       "version": "1.1.1",
@@ -573,8 +545,7 @@
       "description": "init -> cluster register -> bnk up -> bnk status, pulling from the mirror and licensing via the FLP.",
       "optional": false,
       "depends_on": [
-        "roksbnkctl-cluster-registry",
-        "roksbnkctl-FAR-mirror"
+        "roksbnkctl-cluster-registry"
       ],
       "inputs": {
         "prefix": "${prefix}",

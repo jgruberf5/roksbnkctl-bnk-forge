@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "blueprint": {
+    "id": "ibm-far-mirror",
+    "version": "1.0.0",
+    "name": "Mirror F5 artifacts from FAR into a private registry",
+    "description": "Replicate the BIG-IP Next for Kubernetes supply chain out of F5's Artifact Registry into a private OCI registry, then verify every artifact by digest. Needs no cluster: this is the step that makes a disconnected install possible, and it can run long before one. Point it at any registry you already run, or deploy one with the Harbor blueprint — when Harbor is part of the same deployment the registry address and its CA are wired in automatically."
+  },
+  "category": "infrastructure",
+  "cloud_provider": "ibm",
+  "icon": "📦",
+  "color": "#0f766e",
+  "estimated_time": "40-60 minutes",
+  "difficulty": "intermediate",
+  "maturity": "preview",
+  "bnk_version": "2.3",
+  "tags": [
+    "bnk",
+    "registry",
+    "mirror",
+    "disconnected",
+    "air-gap",
+    "far",
+    "roksbnkctl"
+  ],
+  "outcomes": [
+    "Every image, chart and file in the BNK manifest is present in the target registry",
+    "Each artifact verified by digest against its source in FAR",
+    "The registry is ready for a disconnected BNK install to pull from"
+  ],
+  "prerequisites": [
+    "A reachable OCI registry with a project/repository the credentials can push to",
+    "That registry's CA, if it is self-signed — or its SHA-256 pin",
+    "A COS bucket holding the FAR auth key and the subscription JWT"
+  ],
+  "input_summary": [
+    {
+      "label": "One phase",
+      "value": "init -> registry replicate --target generic -> registry verify"
+    },
+    {
+      "label": "Idempotent",
+      "value": "Artifacts already present at the same digest are skipped, so re-running against a populated registry costs minutes, not the full transfer"
+    }
+  ],
+  "inputs": {
+    "required": [
+      {
+        "name": "registry_generic_host",
+        "type": "string",
+        "label": "Private registry host",
+        "description": "The private registry (e.g. Harbor) BNK's charts and images are mirrored into and pulled from. For an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway.",
+        "example": "10.241.0.4",
+        "order": 4
+      },
+      {
+        "name": "cos_bucket",
+        "type": "string",
+        "label": "Supply-chain COS bucket",
+        "description": "Orchestration COS bucket holding the FAR auth tarball and the subscription JWT. The runner has no local copies, so it resolves them from here; buckets provisioned by `roksbnkctl init` carry a per-account suffix (bnk-artifacts-<account>).",
+        "order": 11
+      },
+      {
+        "name": "manifest_version",
+        "type": "string",
+        "label": "BNK manifest version",
+        "description": "BNK manifest release to install. Blank = the roksbnkctl default.",
+        "default": "",
+        "order": 15
+      }
+    ],
+    "optional": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "label": "Resource prefix",
+        "description": "Prefix for resource names roksbnkctl creates (e.g. acme-eu).",
+        "example": "acme-eu",
+        "order": 1
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "label": "IBM Cloud region",
+        "description": "Region the cluster lives in. Inherits from the selected credential template.",
+        "example": "us-south",
+        "source": "credential_template",
+        "source_field": "region",
+        "order": 2
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "label": "Resource group",
+        "description": "IBM Cloud resource group. Inherits from the selected credential template.",
+        "example": "default",
+        "source": "credential_template",
+        "source_field": "ibmcloud_resource_group",
+        "order": 3
+      },
+      {
+        "name": "registry_repo_prefix",
+        "type": "string",
+        "label": "Registry repository prefix",
+        "description": "Project / repository prefix inside the mirror (a Harbor project, an Artifactory repo key).",
+        "example": "bnk-mirror",
+        "default": "bnk-mirror",
+        "order": 5
+      },
+      {
+        "name": "registry_username",
+        "type": "string",
+        "label": "Registry username",
+        "description": "Username the mirror is pushed to and pulled from.",
+        "example": "admin",
+        "default": "admin",
+        "order": 6
+      },
+      {
+        "name": "registry_password",
+        "type": "string",
+        "label": "Registry password",
+        "description": "Password / access token for that user. Stored base64 in the workspace config, never logged.",
+        "sensitive": true,
+        "order": 7
+      },
+      {
+        "name": "registry_ca_b64",
+        "type": "string",
+        "label": "Registry CA (base64)",
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry.",
+        "default": "",
+        "order": 8
+      },
+      {
+        "name": "registry_ca_sha256",
+        "type": "string",
+        "label": "Registry CA SHA-256 pin",
+        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:…, colon-separated, or raw `openssl x509 -fingerprint -sha256` output.",
+        "default": "",
+        "order": 9
+      },
+      {
+        "name": "cos_instance",
+        "type": "string",
+        "label": "Supply-chain COS instance",
+        "description": "COS instance holding the FAR auth key + subscription JWT. Blank = bnk-supply-chain.",
+        "default": "",
+        "order": 10
+      },
+      {
+        "name": "cos_region",
+        "type": "string",
+        "label": "Supply-chain COS region",
+        "description": "Region of that bucket. Blank = us-south.",
+        "default": "",
+        "order": 12
+      },
+      {
+        "name": "far_auth_file",
+        "type": "string",
+        "label": "FAR auth object name",
+        "description": "Object name of the FAR auth tarball in the bucket. Blank = f5-far-auth-key.tgz.",
+        "default": "",
+        "order": 13
+      },
+      {
+        "name": "subscription_jwt_file",
+        "type": "string",
+        "label": "Subscription JWT object name",
+        "description": "Object name of the subscription JWT in the bucket. Blank = subscription.jwt.",
+        "default": "",
+        "order": 14
+      }
+    ]
+  },
+  "modules": [
+    {
+      "id": "roksbnkctl-FAR-mirror",
+      "module": "roksbnkctl/far-mirror",
+      "version": "1.2.0",
+      "name": "roksbnkctl FAR Mirror",
+      "description": "Replicate FAR -> private registry, then verify every artifact by digest.",
+      "optional": false,
+      "depends_on": [],
+      "inputs": {
+        "registry_target": "generic",
+        "region": "${region}",
+        "resource_group": "${resource_group}",
+        "registry_generic_host": "${registry_generic_host}",
+        "registry_repo_prefix": "${registry_repo_prefix}",
+        "registry_username": "${registry_username}",
+        "registry_password": "${registry_password}",
+        "registry_ca_b64": "${registry_ca_b64}",
+        "registry_ca_sha256": "${registry_ca_sha256}",
+        "cos_instance": "${cos_instance}",
+        "cos_bucket": "${cos_bucket}",
+        "cos_region": "${cos_region}",
+        "far_auth_file": "${far_auth_file}",
+        "subscription_jwt_file": "${subscription_jwt_file}",
+        "manifest_version": "${manifest_version}",
+        "prefix": "${prefix}"
+      }
+    }
+  ],
+  "is_featured": false
+}
