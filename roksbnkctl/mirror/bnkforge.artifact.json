@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-mirror",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "kind": "container_image",
   "description": "Replicate the BNK supply chain (F5's artifact registry) into a private OCI registry, then verify it \u2014 the mirror half of a disconnected install. Host-side registry-to-registry copy; no cluster required.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:21edb41d3879a914200de16592be508c968dcaa23025aa4bf46c6463ac8275fd"
+    "digest": "sha256:41c9961ede908daacfd14570ee684455bbc48a3387935bdbaee93047dff11b97"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -53,7 +53,9 @@
           "ROKSBNKCTL_GENERIC_PASSWORD": "{{inputs.registry_password}}",
           "ROKSBNKCTL_CLUSTER_CREATE": "false",
           "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_GENERIC_CA_B64": "{{inputs.registry_ca_b64}}",
+          "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}"
         },
         "args": [
           "roksbnkctl",
@@ -195,6 +197,18 @@
         "type": "string",
         "source": "user",
         "description": "Name or ID of the EXISTING ROKS cluster to adopt. It is never created and never destroyed by this blueprint."
+      },
+      {
+        "name": "registry_ca_b64",
+        "type": "string",
+        "source": "user",
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) \u2014 this is the CA you generated for the registry."
+      },
+      {
+        "name": "registry_ca_sha256",
+        "type": "string",
+        "source": "user",
+        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
       }
     ]
   },

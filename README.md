@@ -30,21 +30,20 @@ See [Adopting an existing cluster](#adopting-an-existing-cluster) and
 
 ## The runner image
 
-The four ROKS phase modules pin **roksbnkctl v1.33.1**
-(`sha256:4f50d886…`). The three modules whose forms need the post-v1.33.1
-`ROKSBNKCTL_FLP_VSI_*` / `ROKSBNKCTL_COS_*` overrides — `flp`, `mirror`,
-`bnk-adopt` — pin a **`:dev`** build carrying them. The image carries the whole
-toolchain (terraform, helm, kubectl, oc, the ibmcloud CLI), so a step needs
-nothing on the host.
+The four ROKS phase modules pin **roksbnkctl v1.33.1** (`sha256:4f50d886…`).
+The three modules whose forms need the FLP-VSI and COS env overrides — `flp`,
+`mirror`, `bnk-adopt` — pin **v1.35.0** (`sha256:41c9961e…`), the first release
+carrying them (they shipped in v1.34.0). The image carries the whole toolchain
+(terraform, helm, kubectl, oc, the ibmcloud CLI), so a step needs nothing on the
+host.
 
-> **`registry replicate` needs a runner built with the helm `--password-stdin`
-> fix.** Current helm *rejects* a password on the command line with a non-zero
-> exit rather than warning, and `registry replicate` logged in with `-p` at both
-> its FAR and mirror-push call sites. Because the Dockerfile installs "helm
-> latest stable", this is a property of *when the image was built*: the
-> v1.33.1 image (30 Jul) works and a fresh rebuild does not, until that fix
-> ships. Symptom: `helm registry login repo.f5.com: exit status 1: Using
-> --password via the CLI is insecure.`
+> **A self-signed mirror now needs its CA supplied out of band.** As of
+> roksbnkctl **v1.35.0**, `registry replicate` refuses to adopt a self-signed
+> registry's CA from the wire — unpinned trust-on-first-use handed durable,
+> cluster-wide trust to whoever won a race on one dial. The disconnected
+> blueprint exposes **`registry_ca_b64`** and **`registry_ca_sha256`** for this;
+> supply at least one or the replicate step fails closed (and the refusal quotes
+> the fingerprint the host actually served, so you can record the pin from it).
 
 ### What the container engine does and does not pass through
 
