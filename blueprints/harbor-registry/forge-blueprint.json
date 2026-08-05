@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "name": "Private Harbor registry on an IBM Cloud VSI",
     "description": "Stand up the private OCI registry a disconnected BNK install pulls from: a Harbor VSI in a services VPC, attached to an existing Transit Gateway so an air-gapped cluster reaches it privately. This is the first of the four disconnected-deployment blueprints \u2014 its registry_host and vpc_id outputs feed the mirror, FLP and BNK install blueprints."
   },
@@ -213,6 +213,14 @@
         "description": "A second address prefix in the services VPC, reserved for appliances that allocate their own subnet from the VPC pool \u2014 roksbnkctl's FLP VSI does. A prefix that exactly equals the subnet leaves nothing to allocate. Must not overlap the subnet or the cluster VPC. Blank disables it.",
         "default": "10.243.1.0/24",
         "order": 19
+      },
+      {
+        "name": "registry_projects",
+        "type": "string",
+        "label": "Registry projects",
+        "description": "Comma-separated Harbor projects to create once the registry is up. Harbor does not auto-create a project on push and `registry replicate` does not either, so a missing project surfaces as 401 Unauthorized on the manifest HEAD \u2014 which reads like a credential fault. Defaults cover the mirror target and the flp-status image project.",
+        "default": "bnk-mirror,bnk-status",
+        "order": 20
       }
     ]
   },
@@ -220,7 +228,7 @@
     {
       "id": "harbor-registry",
       "module": "harbor",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "name": "Harbor registry (VSI)",
       "description": "Services VPC + Transit Gateway attachment + Harbor on a VSI, installed by cloud-init.",
       "optional": false,
@@ -244,7 +252,8 @@
         "existing_vpc_id": "${existing_vpc_id}",
         "existing_subnet_id": "${existing_subnet_id}",
         "public_gateway": "${public_gateway}",
-        "services_spare_cidr": "${services_spare_cidr}"
+        "services_spare_cidr": "${services_spare_cidr}",
+        "registry_projects": "${registry_projects}"
       }
     }
   ],

@@ -192,6 +192,7 @@ resource "ibm_is_instance" "harbor" {
     harbor_fip            = ibm_is_floating_ip.harbor.address
     harbor_version        = var.harbor_version
     harbor_admin_password = var.harbor_admin_password
+    registry_projects     = var.registry_projects
   })
 }
 

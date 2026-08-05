@@ -121,3 +121,15 @@ variable "services_spare_cidr" {
   type        = string
   default     = "10.243.1.0/24"
 }
+
+variable "registry_projects" {
+  description = <<-EOT
+    Comma-separated Harbor projects to create once the registry is up. Harbor does
+    not auto-create a project on push and `registry replicate` does not create one,
+    so a missing project surfaces as 401 Unauthorized on the manifest HEAD — which
+    looks like a credential fault, not a missing project. Defaults cover the mirror
+    target and the flp-status image project.
+  EOT
+  type        = string
+  default     = "bnk-mirror,bnk-status"
+}
