@@ -22,10 +22,16 @@ runcmd:
   # already covers both IPs.
   - [ bash, -lc, "PRIV=$(hostname -I | awk '{print $1}'); sed -e \"s/^hostname:.*/hostname: $PRIV/\" -e 's#certificate:.*#certificate: /opt/harbor/certs/harbor.crt#' -e 's#private_key:.*#private_key: /opt/harbor/certs/harbor.key#' -e 's/^harbor_admin_password:.*/harbor_admin_password: ${harbor_admin_password}/' /opt/harbor/harbor.yml.tmpl > /opt/harbor/harbor.yml" ]
   - [ bash, -lc, "cd /opt/harbor && ./install.sh && touch /opt/harbor/READY" ]
+  # install.sh returns when the containers have STARTED, not when the API is ready
+  # to serve: nginx accepts the connection while harbor-core is still coming up, so
+  # anything that posts immediately gets 502. Wait for a real 200 first.
+  - [ bash, -lc, "for i in $(seq 1 90); do c=$(curl -sk -o /dev/null -w '%%{http_code}' https://127.0.0.1/api/v2.0/systeminfo); [ \"$c\" = 200 ] && break; sleep 5; done; echo \"api ready after $((i*5))s: $c\" > /opt/harbor/api-ready.log" ]
   # Harbor does NOT auto-create a project on first push, and `registry replicate`
   # does not create one either — it just gets 401 Unauthorized on the manifest HEAD,
   # which reads like a bad credential rather than a missing project. Create them
-  # here, where the admin password already is.
-  - [ bash, -lc, "for p in $(echo '${registry_projects}' | tr ',' ' '); do [ -z \"$p\" ] && continue; curl -sk -u 'admin:${harbor_admin_password}' -X POST https://127.0.0.1/api/v2.0/projects -H 'Content-Type: application/json' -d \"{\\\"project_name\\\":\\\"$p\\\",\\\"public\\\":true}\" -o /dev/null -w \"$p:%%{http_code}\\n\"; done > /opt/harbor/projects.log 2>&1" ]
+  # here, where the admin password already is. 201=created, 409=already exists;
+  # anything else is retried, and a project that never lands removes the READY
+  # marker so the failure surfaces here instead of as a 401 an hour into a mirror.
+  - [ bash, -lc, "for p in $(echo '${registry_projects}' | tr ',' ' '); do [ -z \"$p\" ] && continue; for a in 1 2 3 4 5; do c=$(curl -sk -u 'admin:${harbor_admin_password}' -X POST https://127.0.0.1/api/v2.0/projects -H 'Content-Type: application/json' -d \"{\\\"project_name\\\":\\\"$p\\\",\\\"public\\\":true}\" -o /dev/null -w '%%{http_code}'); case \"$c\" in 201|409) break;; *) sleep 10;; esac; done; echo \"$p:$c\"; case \"$c\" in 201|409) ;; *) rm -f /opt/harbor/READY;; esac; done > /opt/harbor/projects.log 2>&1" ]
   # Publish the CA where the module's readiness check and the operator can fetch it.
   - [ bash, -lc, "base64 -w0 /opt/harbor/certs/harbor.crt > /opt/harbor/harbor-ca.b64" ]

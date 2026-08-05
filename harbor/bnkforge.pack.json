@@ -3,9 +3,9 @@
   "module": {
     "name": "harbor-registry",
     "path": "harbor",
-    "version": "1.0.5",
+    "version": "1.1.0",
     "category": "infra",
-    "description": "Private Harbor OCI registry on an IBM Cloud VSI \u2014 the mirror a disconnected BNK install pulls its charts and images from. Creates (or adopts) the services VPC, attaches it to an existing Transit Gateway, and installs Harbor with a self-signed cert covering both its private and floating IPs.",
+    "description": "Private Harbor OCI registry on an IBM Cloud VSI — the mirror a disconnected BNK install pulls its charts and images from. Creates (or adopts) the services VPC, attaches it to an existing Transit Gateway, and installs Harbor with a self-signed cert covering both its private and floating IPs.",
     "estimated_time_minutes": 15
   },
   "deployment_pack": {
@@ -52,7 +52,7 @@
         "name": "harbor_admin_password",
         "type": "string",
         "source": "user",
-        "description": "Harbor admin password \u2014 also the credential the mirror blueprint pushes with and the install pulls with."
+        "description": "Harbor admin password — also the credential the mirror blueprint pushes with and the install pulls with."
       }
     ],
     "optional": [
@@ -99,7 +99,7 @@
         "type": "string",
         "source": "user",
         "default": "10.243.0.0/24",
-        "description": "CIDR for the services subnet. MUST NOT overlap the cluster VPC: roksbnkctl fixes its cluster subnets at 10.241.0.0/24, 10.241.64.0/24 and 10.241.128.0/24, so anything in 10.241.0.0/16 risks colliding once both VPCs are on the same Transit Gateway \u2014 the cluster would route the mirror's address to its own subnet."
+        "description": "CIDR for the services subnet. MUST NOT overlap the cluster VPC: roksbnkctl fixes its cluster subnets at 10.241.0.0/24, 10.241.64.0/24 and 10.241.128.0/24, so anything in 10.241.0.0/16 risks colliding once both VPCs are on the same Transit Gateway — the cluster would route the mirror's address to its own subnet."
       },
       {
         "name": "public_gateway",
@@ -153,14 +153,14 @@
         "type": "string",
         "source": "user",
         "default": "10.243.1.0/24",
-        "description": "A second address prefix in the services VPC, reserved for appliances that allocate their own subnet from the VPC pool \u2014 roksbnkctl's FLP VSI does. A prefix that exactly equals the subnet leaves nothing to allocate. Must not overlap the subnet or the cluster VPC. Blank disables it."
+        "description": "A second address prefix in the services VPC, reserved for appliances that allocate their own subnet from the VPC pool — roksbnkctl's FLP VSI does. A prefix that exactly equals the subnet leaves nothing to allocate. Must not overlap the subnet or the cluster VPC. Blank disables it."
       },
       {
         "name": "registry_projects",
         "type": "string",
         "source": "user",
         "default": "bnk-mirror,bnk-status",
-        "description": "Comma-separated Harbor projects to create once the registry is up. Harbor does not auto-create a project on push and `registry replicate` does not either, so a missing project surfaces as 401 Unauthorized on the manifest HEAD \u2014 which reads like a credential fault. Defaults cover the mirror target and the flp-status image project."
+        "description": "Comma-separated Harbor projects to create once the registry is up. Harbor does not auto-create a project on push and `registry replicate` does not either, so a missing project surfaces as 401 Unauthorized on the manifest HEAD — which reads like a credential fault. Defaults cover the mirror target and the flp-status image project."
       }
     ]
   },
@@ -169,7 +169,7 @@
       {
         "name": "registry_host",
         "type": "string",
-        "description": "Harbor's PRIVATE IP \u2014 the address the cluster nodes and the runner use over the Transit Gateway. This is what the mirror and install blueprints take."
+        "description": "Harbor's PRIVATE IP — the address the cluster nodes and the runner use over the Transit Gateway. This is what the mirror and install blueprints take."
       },
       {
         "name": "registry_url",
@@ -184,7 +184,7 @@
       {
         "name": "vpc_id",
         "type": "string",
-        "description": "Services VPC id \u2014 feed this to the FLP-VSI blueprint so the licensing appliance lands in the same VPC."
+        "description": "Services VPC id — feed this to the FLP-VSI blueprint so the licensing appliance lands in the same VPC."
       },
       {
         "name": "subnet_id",
