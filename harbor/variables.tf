@@ -40,9 +40,9 @@ variable "existing_subnet_id" {
 }
 
 variable "subnet_cidr" {
-  description = "CIDR for the services subnet when this module creates it."
+  description = "CIDR for the services subnet. MUST NOT overlap the cluster VPC: roksbnkctl fixes its cluster subnets at 10.241.0.0/24, 10.241.64.0/24 and 10.241.128.0/24, so anything in 10.241.0.0/16 risks colliding once both VPCs are on the same Transit Gateway — the cluster would route the mirror's address to its own subnet."
   type        = string
-  default     = "10.241.0.0/24"
+  default     = "10.243.0.0/24"
 }
 
 # The services VPC is the ONLY side with egress in the disconnected topology: Harbor

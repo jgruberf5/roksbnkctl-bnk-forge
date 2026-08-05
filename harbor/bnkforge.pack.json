@@ -3,7 +3,7 @@
   "module": {
     "name": "harbor-registry",
     "path": "harbor",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "category": "infra",
     "description": "Private Harbor OCI registry on an IBM Cloud VSI \u2014 the mirror a disconnected BNK install pulls its charts and images from. Creates (or adopts) the services VPC, attaches it to an existing Transit Gateway, and installs Harbor with a self-signed cert covering both its private and floating IPs.",
     "estimated_time_minutes": 15
@@ -98,8 +98,8 @@
         "name": "subnet_cidr",
         "type": "string",
         "source": "user",
-        "default": "10.241.0.0/24",
-        "description": "CIDR for the services subnet this module creates."
+        "default": "10.243.0.0/24",
+        "description": "CIDR for the services subnet. MUST NOT overlap the cluster VPC: roksbnkctl fixes its cluster subnets at 10.241.0.0/24, 10.241.64.0/24 and 10.241.128.0/24, so anything in 10.241.0.0/16 risks colliding once both VPCs are on the same Transit Gateway \u2014 the cluster would route the mirror's address to its own subnet."
       },
       {
         "name": "public_gateway",

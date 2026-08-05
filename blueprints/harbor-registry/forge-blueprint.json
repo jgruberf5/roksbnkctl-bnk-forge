@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "name": "Private Harbor registry on an IBM Cloud VSI",
     "description": "Stand up the private OCI registry a disconnected BNK install pulls from: a Harbor VSI in a services VPC, attached to an existing Transit Gateway so an air-gapped cluster reaches it privately. This is the first of the four disconnected-deployment blueprints \u2014 its registry_host and vpc_id outputs feed the mirror, FLP and BNK install blueprints."
   },
@@ -122,8 +122,8 @@
         "name": "subnet_cidr",
         "type": "string",
         "label": "Services subnet CIDR",
-        "description": "CIDR for the services subnet. Must not overlap the cluster VPC's range.",
-        "default": "10.241.0.0/24",
+        "description": "CIDR for the services subnet. MUST NOT overlap the cluster VPC: roksbnkctl fixes its cluster subnets at 10.241.0.0/24, 10.241.64.0/24 and 10.241.128.0/24, so anything in 10.241.0.0/16 risks colliding once both VPCs are on the same Transit Gateway \u2014 the cluster would route the mirror's address to its own subnet.",
+        "default": "10.243.0.0/24",
         "order": 8
       },
       {
@@ -212,7 +212,7 @@
     {
       "id": "harbor-registry",
       "module": "harbor",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "name": "Harbor registry (VSI)",
       "description": "Services VPC + Transit Gateway attachment + Harbor on a VSI, installed by cloud-init.",
       "optional": false,
