@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "name": "Private Harbor registry on an IBM Cloud VSI",
     "description": "A private Harbor OCI registry on an IBM Cloud VSI, attached to a Transit Gateway so air-gapped cluster nodes reach it privately. Its TLS certificate is issued by terraform, so the CA is a module output rather than something to fetch off the box. Optionally replicates the BNK supply chain from FAR on the way up, leaving a registry a disconnected install can use immediately."
   },
@@ -284,7 +284,7 @@
     {
       "id": "harbor-registry",
       "module": "harbor",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "name": "Harbor registry (VSI)",
       "description": "Services VPC + Transit Gateway attachment + Harbor on a VSI, installed by cloud-init.",
       "optional": false,
@@ -317,7 +317,7 @@
       "module": "roksbnkctl/far-mirror",
       "version": "1.2.0",
       "name": "Replicate from FAR",
-      "description": "Optional. Fills the registry this blueprint just built with the BNK supply chain, so it is usable by a disconnected install straight away. The registry address and its CA are wired from the harbor module's outputs — nothing to copy by hand. Leave it out to build an empty registry and mirror later with the FAR mirror blueprint.",
+      "description": "Optional, and created DISABLED — enable it on the project (or in the deploy form) to fill the registry as it is built. The registry address and its CA come from the harbor module's outputs, so there is nothing to copy by hand. Leave it off to build an empty registry and mirror later with the FAR mirror blueprint.",
       "optional": true,
       "depends_on": [
         "harbor-registry"

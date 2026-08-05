@@ -122,6 +122,16 @@ print(' '.join(str(m) for m in d['created_module_ids']))
 # forge_apply <module-id>
 forge_apply() { forge_api POST "/api/project-modules/$1/apply" '{}' >/dev/null; }
 
+# forge_enable_module <module-id>
+#
+# A blueprint module marked `optional: true` is created DISABLED — it appears in
+# the project but not in the diagram, and is skipped. That is the right default
+# for a human choosing in the UI, and wrong for an unattended run that already
+# supplied the inputs the module needs, so the demo turns them on explicitly.
+forge_enable_module() {
+  forge_api PUT "/api/project-modules/$1" '{"enabled":true}' >/dev/null
+}
+
 # forge_module_status <module-id>
 forge_module_status() {
   forge_api GET "/api/project-modules/$1/status" \

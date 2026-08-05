@@ -249,3 +249,42 @@ resource "ibm_is_instance_network_interface_floating_ip" "harbor" {
   network_interface = ibm_is_instance.harbor.primary_network_interface[0].id
   floating_ip       = ibm_is_floating_ip.harbor.id
 }
+
+# ── Readiness gate ───────────────────────────────────────────────────────────
+# Without this the module reports "applied" the moment the VSI exists, while
+# cloud-init still has ~5 minutes of work left: pulling the Harbor installer,
+# loading a dozen images, running install.sh, creating the registry projects.
+# Anything that depends_on this module therefore starts against a registry that
+# refuses connections — the FAR mirror in this blueprint did exactly that, and
+# failed before Harbor had loaded its images.
+#
+# depends_on is only as truthful as the resource it points at, so the resource
+# has to mean "serving", not "provisioned". Polling the floating IP rather than
+# the private one because that is the address reachable from wherever opentofu
+# runs; the private address is only reachable across the Transit Gateway.
+resource "terraform_data" "harbor_ready" {
+  depends_on = [ibm_is_instance_network_interface_floating_ip.harbor]
+
+  triggers_replace = [ibm_is_instance.harbor.id]
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/sh", "-c"]
+    command     = <<-EOT
+      addr='${ibm_is_floating_ip.harbor.address}'
+      # ~15 minutes. Image load dominates and is disk- and network-bound, so a
+      # slow zone can take well over the usual five.
+      i=0
+      while [ $i -lt 180 ]; do
+        code=$(curl -sk -o /dev/null -w '%%{http_code}' --max-time 10 \
+                 "https://$addr/api/v2.0/systeminfo" || echo 000)
+        if [ "$code" = "200" ]; then
+          echo "harbor serving after $((i * 5))s"
+          exit 0
+        fi
+        i=$((i + 1)); sleep 5
+      done
+      echo "harbor did not serve within 900s (last status $code)" >&2
+      exit 1
+    EOT
+  }
+}

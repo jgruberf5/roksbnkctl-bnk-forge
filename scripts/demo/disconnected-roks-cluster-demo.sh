@@ -152,6 +152,9 @@ deploy() {
     DEPLOY_PID=$(awk '/^PROJECT/{print $2}' "$tmp")
     [[ -n "$DEPLOY_PID" ]] || die "$tag project was created but returned no project id"
     echo "$DEPLOY_PID" > "$STATE/$tag.project"; echo "$DEPLOY_MODS" > "$STATE/$tag.modules"
+    # Optional modules arrive disabled; this demo wants every module the
+    # blueprint declares, and has supplied inputs for all of them.
+    for m in $DEPLOY_MODS; do forge_enable_module "$m"; done
     # Apply the first module only; Forge's dependency graph triggers the rest as
     # each one's dependencies are met. Applying them all races the orchestrator.
     forge_apply "$(echo "$DEPLOY_MODS" | awk '{print $1}')"
@@ -195,18 +198,28 @@ ok "releases imported — harbor=$HARBOR_REL flp=$FLP_REL disconnected=$DISCO_RE
 
 # ── 2. Harbor ────────────────────────────────────────────────────────────────
 phase "2/5  Private Harbor registry"
-say "Creates the services VPC, attaches it to $TRANSIT_GATEWAY, and installs Harbor."
+say "Creates the services VPC, attaches it to $TRANSIT_GATEWAY, installs Harbor, and"
+say "replicates the BNK supply chain into it — the mirror module takes the registry"
+say "address and CA straight from the harbor module's outputs."
 say "Harbor's hostname is its PRIVATE IP so the token realm is reachable from"
 say "no-egress worker nodes; the cert SAN covers the floating IP too."
 HARBOR_VARS=$(python3 -c '
 import json,sys
-k=dict(zip(["prefix","region","rg","zone","ssh","pw","tgw","cidr","spare","projects"],sys.argv[1:]))
+k=dict(zip(["prefix","region","rg","zone","ssh","pw","tgw","cidr","spare","projects",
+            "repo","cosi","cosb","cosr","far","jwt","mv"],sys.argv[1:]))
 print(json.dumps({"prefix":k["prefix"]+"-svc","region":k["region"],"resource_group":k["rg"],
  "zone":k["zone"],"ssh_key_name":k["ssh"],"harbor_admin_password":k["pw"],
  "transit_gateway":k["tgw"],"subnet_cidr":k["cidr"],"services_spare_cidr":k["spare"],
- "registry_projects":k["projects"],"create_vpc":True,"public_gateway":True}))' \
+ "registry_projects":k["projects"],"create_vpc":True,"public_gateway":True,
+ # the optional FAR-mirror module in this blueprint: it takes the registry address
+ # and CA from the harbor module outputs, so only the supply chain is needed here
+ "registry_repo_prefix":k["repo"],"cos_instance":k["cosi"],"cos_bucket":k["cosb"],
+ "cos_region":k["cosr"],"far_auth_file":k["far"],"subscription_jwt_file":k["jwt"],
+ "manifest_version":k["mv"]}))' \
   "$PREFIX" "$REGION" "$RESOURCE_GROUP" "$ZONE" "$SSH_KEY_NAME" "$HARBOR_ADMIN_PASSWORD" \
-  "$TRANSIT_GATEWAY" "$SERVICES_SUBNET_CIDR" "$SERVICES_SPARE_CIDR" "$HARBOR_PROJECT,bnk-status")
+  "$TRANSIT_GATEWAY" "$SERVICES_SUBNET_CIDR" "$SERVICES_SPARE_CIDR" "$HARBOR_PROJECT,bnk-status" \
+  "$HARBOR_PROJECT" "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" "$FAR_AUTH_FILE" \
+  "$SUBSCRIPTION_JWT_FILE" "$MANIFEST_VERSION")
 deploy harbor "$HARBOR_REL" "$PREFIX-harbor" "$HARBOR_VARS"
 HARBOR_PID="$DEPLOY_PID"
 
@@ -268,9 +281,9 @@ FLP_CA=$(ssh "${SSH_OPTS[@]}" \
 ok "FLP at https://$FLP_IP:8443 — root CA captured"
 
 # ── 4+5. the disconnected chain ──────────────────────────────────────────────
-phase "4/5  Register the cluster, mirror FAR, install BNK"
-say "One deployment, three modules. Registration runs FIRST so the cluster is"
-say "on Forge's Kubernetes page and watchable while BNK installs onto it."
+phase "4/5  Register the cluster, install BNK"
+say "Two modules. Registration runs FIRST so the cluster is on Forge's Kubernetes"
+say "page and watchable while BNK installs onto it. The mirror is already populated."
 DISCO_VARS=$(python3 -c '
 import json,sys
 k=sys.argv[1:]
