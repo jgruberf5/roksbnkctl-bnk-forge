@@ -2,7 +2,7 @@
 # disconnected-roks-cluster-demo.sh — drive the whole air-gapped BNK deployment
 # through the BNK Forge REST API.
 #
-#   Harbor registry  →  FLP appliance  →  cluster registry → FAR mirror → BNK install
+#   Harbor registry  →  FAR mirror  →  FLP appliance  →  cluster registry → BNK install
 #
 # Everything runs as BNK Forge deployments; this script only calls the API,
 # waits, and carries the handoffs the API cannot (Harbor's CA and the FLP's root
@@ -204,9 +204,9 @@ ok "releases imported — harbor=$HARBOR_REL mirror=$MIRROR_REL flp=$FLP_REL dis
 
 # ── 2. Harbor ────────────────────────────────────────────────────────────────
 phase "2/5  Private Harbor registry"
-say "Creates the services VPC, attaches it to $TRANSIT_GATEWAY, installs Harbor, and"
-say "replicates the BNK supply chain into it — the mirror module takes the registry"
-say "address and CA straight from the harbor module's outputs."
+say "Creates the services VPC, attaches it to $TRANSIT_GATEWAY, and installs Harbor."
+say "Its TLS certificate is issued by terraform, so the CA is a module output and"
+say "the mirror below takes it as an input — nothing has to be fetched off the box."
 say "Harbor's hostname is its PRIVATE IP so the token realm is reachable from"
 say "no-egress worker nodes; the cert SAN covers the floating IP too."
 HARBOR_VARS=$(python3 -c '
