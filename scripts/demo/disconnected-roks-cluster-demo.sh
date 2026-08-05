@@ -40,7 +40,7 @@ if [[ -z "${FORGE_CREDENTIAL_TEMPLATE_ID:-}" ]]; then
   forge_api GET /api/credential-templates | python3 -c '
 import sys,json
 for t in json.load(sys.stdin):
-    if (t.get("provider") or "")=="ibm":
+    if (t.get("provider") or "").lower()=="ibm":
         print(f"      {t[\"id\"]:>3}  {t[\"name\"]}  (region {t.get(\"region\")}, key set: {t.get(\"has_ibmcloud_api_key\")})")' >&2
   ask FORGE_CREDENTIAL_TEMPLATE_ID "Credential template id"
 fi
@@ -71,6 +71,53 @@ SSH_KEY_FILE="${SSH_KEY_FILE/#\~/$HOME}"
 SSH_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=15 -i "$SSH_KEY_FILE")
 STATE="$HERE/.demo-state"; mkdir -p "$STATE"
 
+# ── reading back what a deployment built ─────────────────────────────────────
+# The opentofu modules publish floating IPs and VPC ids as terraform outputs, but
+# whether Forge surfaces them over the API depends on the build. Resolve them from
+# IBM Cloud instead: the modules name every resource deterministically off the
+# prefix, so a lookup by name is exact and works on any Forge build.
+ibm_ready() {
+  ibmcloud is instances --output json >/dev/null 2>&1 && return 0
+  [[ -n "${IBMCLOUD_API_KEY:-}" ]] || die "set IBMCLOUD_API_KEY (or run 'ibmcloud login') so the demo can read back module outputs"
+  ibmcloud login --apikey "$IBMCLOUD_API_KEY" -r "$REGION" -g "$RESOURCE_GROUP" >/dev/null 2>&1 \
+    || die "ibmcloud login failed"
+  ibmcloud target -r "$REGION" >/dev/null 2>&1
+}
+
+# vsi_field <name> <private|floating|vpc> — exact instance name, empty if absent
+vsi_field() {
+  ibmcloud is instances --output json 2>/dev/null | python3 -c '
+import sys,json
+name,want=sys.argv[1],sys.argv[2]
+for i in json.load(sys.stdin):
+    if i.get("name")!=name: continue
+    n=(i.get("primary_network_interface") or i.get("network_interfaces",[{}])[0]) or {}
+    if want=="private":  print(n.get("primary_ip",{}).get("address") or n.get("primary_ipv4_address") or "")
+    elif want=="vpc":    print((i.get("vpc") or {}).get("id") or "")
+    else:                print(((n.get("floating_ips") or [{}])[0]).get("address") or "")
+    break' "$1" "$2" 2>/dev/null | tr -d '\r\n'
+}
+
+# fip_by_name <fip-name> — the module reserves it before the instance exists
+fip_by_name() {
+  ibmcloud is floating-ips --output json 2>/dev/null | python3 -c '
+import sys,json
+want=sys.argv[1]
+for f in json.load(sys.stdin):
+    if f.get("name")==want: print(f.get("address") or ""); break' "$1" 2>/dev/null | tr -d '\r\n'
+}
+
+# resolve <var> <description> <lookup-command...> — look it up, prompt only if that fails
+resolve() {
+  local var="$1" desc="$2"; shift 2
+  local cur="${!var:-}" v=""
+  [[ -n "$cur" ]] && return 0
+  v="$("$@")"
+  if [[ -n "$v" ]]; then printf -v "$var" '%s' "$v"; say "$desc = $v"; return 0; fi
+  warn "could not resolve $desc from IBM Cloud — falling back to a prompt"
+  ask "$var" "$desc"
+}
+
 # ── teardown ─────────────────────────────────────────────────────────────────
 if [[ "${1:-}" == "teardown" ]]; then
   phase "Teardown"
@@ -91,9 +138,9 @@ fi
 # ── 1. catalog ───────────────────────────────────────────────────────────────
 phase "1/5  Sync the module + blueprint catalog"
 forge_sync_source "roksbnkctl-bnk-forge"
-HARBOR_REL=$(forge_latest_release "Harbor")    || die "no valid Harbor blueprint release found"
-DISCO_REL=$(forge_latest_release "disconnected") || die "no valid disconnected blueprint release found"
-FLP_REL=$(forge_latest_release "License Proxy")  || die "no valid FLP blueprint release found"
+HARBOR_REL=$(forge_latest_release "ibm-harbor-registry") || die "no valid Harbor blueprint release found"
+DISCO_REL=$(forge_latest_release "ibm-roks-disconnected-bnk-roksbnkctl") || die "no valid disconnected blueprint release found"
+FLP_REL=$(forge_latest_release "ibm-flp-vsi-roksbnkctl") || die "no valid FLP blueprint release found"
 for r in "$HARBOR_REL" "$FLP_REL" "$DISCO_REL"; do forge_import_release "$r"; done
 ok "releases imported — harbor=$HARBOR_REL flp=$FLP_REL disconnected=$DISCO_REL"
 
@@ -116,19 +163,9 @@ HARBOR_PID=$(awk '/^PROJECT/{print $2}' /tmp/.hp); echo "$HARBOR_PID" > "$STATE/
 for m in $HARBOR_MODS; do forge_apply "$m"; done
 for m in $HARBOR_MODS; do forge_wait_module "$m" "harbor" 3600; done
 
-HARBOR_FIP=$(ssh_harbor_fip() { :; }; forge_api GET "/api/projects/$HARBOR_PID/variables" >/dev/null; \
-  python3 - "$STATE" <<'PY'
-import sys,os
-# The floating IP is a module output; read it back from the state file the
-# apply step wrote if the outputs API is unavailable on this Forge build.
-p=os.path.join(sys.argv[1],"harbor.fip")
-print(open(p).read().strip() if os.path.exists(p) else "")
-PY
-)
-if [[ -z "$HARBOR_FIP" ]]; then
-  ask HARBOR_FIP "Harbor floating IP (from the module outputs in the UI)"
-  echo "$HARBOR_FIP" > "$STATE/harbor.fip"
-fi
+ibm_ready
+resolve HARBOR_FIP "Harbor floating IP" fip_by_name "$PREFIX-svc-harbor-fip"
+echo "$HARBOR_FIP" > "$STATE/harbor.fip"
 say "waiting for Harbor's cloud-init to finish installing …"
 for i in $(seq 1 90); do
   [[ "$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "https://$HARBOR_FIP/api/v2.0/systeminfo")" == "200" ]] && break
@@ -149,12 +186,8 @@ ok "mirror at $HARBOR_IP (private) — CA captured, pin ${HARBOR_PIN:0:16}…"
 phase "3/5  F5 License Proxy appliance"
 say "A standalone VSI in the services VPC — no cluster. The proxy is the only"
 say "component needing egress to F5; the cluster reaches it privately."
-HARBOR_VPC=$(ssh "${SSH_OPTS[@]}" "ubuntu@$HARBOR_FIP" "true" 2>/dev/null; \
-             cat "$STATE/harbor.vpc" 2>/dev/null)
-if [[ -z "$HARBOR_VPC" ]]; then
-  ask HARBOR_VPC "Services VPC id (Harbor module output vpc_id)"
-  echo "$HARBOR_VPC" > "$STATE/harbor.vpc"
-fi
+resolve HARBOR_VPC "Services VPC id" vsi_field "$PREFIX-svc-harbor" vpc
+echo "$HARBOR_VPC" > "$STATE/harbor.vpc"
 FLP_VARS=$(python3 -c '
 import json,sys
 k=sys.argv[1:]
@@ -170,12 +203,17 @@ FLP_PID=$(awk '/^PROJECT/{print $2}' /tmp/.fp); echo "$FLP_PID" > "$STATE/flp.pr
 for m in $FLP_MODS; do forge_apply "$m"; done
 for m in $FLP_MODS; do forge_wait_module "$m" "flp" 3600; done
 
-ask FLP_IP "FLP private IP (module output / `ibmcloud is instance flp-vsi`)"
-# The proxy's root CA lives on the appliance; reach it by jumping through Harbor,
-# since the FLP's :22 is restricted to the private plane.
-scp "${SSH_OPTS[@]}" "$SSH_KEY_FILE" "ubuntu@$HARBOR_FIP:/home/ubuntu/.jump" >/dev/null 2>&1
-FLP_CA=$(ssh "${SSH_OPTS[@]}" "ubuntu@$HARBOR_FIP" \
-  "chmod 600 /home/ubuntu/.jump; ssh -o StrictHostKeyChecking=no -i /home/ubuntu/.jump ubuntu@$FLP_IP 'sudo base64 -w0 /opt/flp/ca.crt'" 2>/dev/null | tr -d '\r\n')
+# roksbnkctl names the appliance "flp-vsi" unprefixed (terraform/modules/flp_vsi/
+# main.tf), so the lookup is by that literal name — and only one can exist per region.
+resolve FLP_IP "FLP private IP" vsi_field "flp-vsi" private
+echo "$FLP_IP" > "$STATE/flp.ip"
+# The proxy's root CA lives on the appliance (terraform writes it to /opt/flp/ca.crt
+# and also publishes it as the flp_root_ca output). The FLP's :22 is on the private
+# plane only, so reach it through Harbor with ProxyJump — which keeps the private key
+# on THIS host. Copying the key onto the bastion would leave it there for the life of
+# the VSI, readable by anyone who later gets on the box.
+FLP_CA=$(ssh "${SSH_OPTS[@]}" -o "ProxyJump=ubuntu@$HARBOR_FIP" \
+  "ubuntu@$FLP_IP" "sudo base64 -w0 /opt/flp/ca.crt" 2>/dev/null | tr -d '\r\n')
 [[ -n "$FLP_CA" ]] || die "could not read the FLP root CA (jumped via $HARBOR_FIP)"
 ok "FLP at https://$FLP_IP:8443 — root CA captured"
 

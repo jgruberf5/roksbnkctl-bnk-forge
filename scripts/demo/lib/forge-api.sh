@@ -78,12 +78,18 @@ if b: print(f\"   blueprints: {b.get('blueprints_found')} found, {b.get('release
 " >&2
 }
 
-# forge_latest_release <name-substring>  -> release id of the highest version
+# forge_latest_release <blueprint-id>  -> release id of the highest valid version
+#
+# Matches blueprint_id EXACTLY, never the display name. Display names overlap:
+# "BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)"
+# contains "License Proxy", so a substring search for the FLP blueprint silently
+# returns the disconnected one — and, being the higher version, it wins the sort.
 forge_latest_release() {
   forge_api GET /api/blueprint-catalog/releases | python3 -c "
 import sys,json
-want='''$1'''.lower()
-rs=[r for r in json.load(sys.stdin) if want in r['blueprint_name'].lower() and r['validation_state']=='valid']
+want='''$1'''
+rs=[r for r in json.load(sys.stdin)
+    if r.get('blueprint_id')==want and r['validation_state']=='valid']
 if not rs: raise SystemExit(1)
 rs.sort(key=lambda r:[int(x) for x in r['blueprint_version'].split('.')], reverse=True)
 print(rs[0]['id'])
@@ -132,7 +138,10 @@ forge_wait_module() {
     [[ "$st" != "$last" && -n "$st" ]] && { say "$label: $st"; last="$st"; }
     case "$st" in
       applied|destroyed) ok "$label complete"; return 0 ;;
-      apply_failed|destroy_failed|failed|error)
+      # plan_failed is terminal too — the plan never became an apply, so the module
+      # sits there forever. Match any *_failed rather than listing them, so a state
+      # this script has not seen yet still stops the run instead of hanging to timeout.
+      *_failed|failed|error|cancelled)
         forge_api GET "/api/project-modules/$id/status" | python3 -c '
 import sys,json; d=json.load(sys.stdin)
 print("   error:", (d.get("deployment_error") or "(none recorded)")[:400])' >&2

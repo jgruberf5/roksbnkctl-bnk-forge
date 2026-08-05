@@ -19,3 +19,7 @@ demo/answers.json
 **/terraform.tfstate.backup
 **/*.tfvars
 !**/*.tfvars.example
+
+# demo runtime — never commit credentials or run state
+scripts/demo/.env
+scripts/demo/.demo-state/
