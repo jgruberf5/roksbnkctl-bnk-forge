@@ -82,11 +82,13 @@ another runner module:
   **not** somewhere under `/work`, because the `ibmcloud` container-service
   plugin lives at `/home/runner/.bluemix` and moving `HOME` breaks
   `cluster register`'s kubeconfig fetch.
-- **`secret_files` may be silently inert.** The block validates and syncs on
-  builds that do not implement it, `/api/projects/<id>/secrets/required` returns
-  empty, and the files simply never appear — the step then fails on a missing
-  path. Check that endpoint reports your declared secrets before relying on it;
-  the FLP blueprint's COS inputs exist precisely as the fallback.
+- **`secret_files` is all-or-nothing, and its behaviour changed.** Older builds
+  validated and synced the block without implementing it — the files never
+  appeared and the step failed on a missing path. Newer builds implement it, and
+  now every declared secret is *mandatory*: `materialize_secret_files` raises if
+  the project lacks one, with no way to mark an entry optional. A module that
+  supports more than one way of getting the same material therefore cannot
+  declare the secret path at all without breaking the others.
 
 **The image is not a deploy-form field, by design.** BNK Forge resolves it solely
 from the artifact's `container_image` block: the engine's `_resolve_image_digest`
@@ -309,9 +311,19 @@ it privately over the VPC or a Transit Gateway. Feed this deployment's
 | `far_auth_local_file` / `subscription_jwt_local_file` | Where the entitlement files land in the workspace. Defaults match the two **project secrets** below. Clear both to pull from COS instead. |
 | `cos_instance` / `cos_bucket` / `cos_region` / `far_auth_file` / `subscription_jwt_file` | The COS supply chain, when not using local files. |
 
-**Two project secrets are required**, declared as `secret_files` on the artifact so
-BNK Forge materializes them into the run workspace (0600, re-created every run,
-including destroy):
+**The supply chain comes from COS.** The artifact used to declare the FAR auth key
+and the subscription JWT as `secret_files`, so Forge would materialize them into the
+run workspace. That declaration is gone, because Forge has no way to say a secret is
+*optional*: `materialize_secret_files` raises on any declared secret the project does
+not have, so declaring them made the COS path — which this module fully supports, and
+which the blueprint exposes as inputs — impossible to use. Builds that did not
+implement `secret_files` hid this; the ones that do turn it into a hard failure:
+
+    Required secret 'f5_far_auth_key' is not set on this project.
+
+Supply the two artifacts through `cos_instance` / `cos_bucket` / `far_auth_file` /
+`subscription_jwt_file`. If you would rather hold them as project secrets, upload them
+and point `far_auth_local_file` / `subscription_jwt_local_file` at where they land:
 
 | Project secret | Lands at | What it is |
 |---|---|---|
