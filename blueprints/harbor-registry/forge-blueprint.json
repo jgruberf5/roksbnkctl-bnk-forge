@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "4.1.0",
+    "version": "4.2.0",
     "name": "Private Harbor registry on an IBM Cloud VSI",
     "description": "A private Harbor OCI registry on an IBM Cloud VSI, attached to a Transit Gateway so air-gapped cluster nodes reach it privately. Its TLS certificate is issued by terraform, so the CA is a module output rather than something to fetch off the box. Optionally replicates the BNK supply chain from FAR on the way up — the mirror takes the registry address and CA straight from the harbor module, so one deployment leaves a registry a disconnected install can use immediately."
   },
@@ -10,7 +10,7 @@
   "cloud_provider": "ibm",
   "icon": "archive",
   "color": "cyan",
-  "estimated_time": "10-20 minutes",
+  "estimated_time": "15-30 minutes",
   "difficulty": "intermediate",
   "maturity": "preview",
   "tags": [
@@ -284,7 +284,7 @@
     {
       "id": "harbor-registry",
       "module": "harbor",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "name": "Harbor registry (VSI)",
       "description": "Services VPC + Transit Gateway attachment + Harbor on a VSI, installed by cloud-init.",
       "optional": false,
@@ -315,7 +315,7 @@
     {
       "id": "roksbnkctl-FAR-mirror",
       "module": "roksbnkctl/far-mirror",
-      "version": "3.1.0",
+      "version": "3.2.0",
       "name": "Replicate from FAR",
       "description": "Optional, and created DISABLED — enable it to fill the registry as it is built. The registry address and its CA come from the harbor module's outputs, so there is nothing to copy by hand. Needs BNK Forge with the container dependency-output wiring (PR #519); without it the inputs resolve to nothing and the step fails reporting a missing registry host. Leave it off to build an empty registry and mirror later with the FAR mirror blueprint.",
       "optional": true,

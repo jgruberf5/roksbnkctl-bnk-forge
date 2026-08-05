@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-existing-bnk-roksbnkctl",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "name": "BNK on an existing IBM ROKS cluster (existing Transit Gateway)",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` — it is never created, and a teardown removes only the BNK layer, never the cluster."
   },
@@ -10,7 +10,7 @@
   "cloud_provider": "ibm",
   "icon": "server",
   "color": "green",
-  "estimated_time": "30-45 minutes",
+  "estimated_time": "35-55 minutes",
   "difficulty": "intermediate",
   "maturity": "preview",
   "bnk_version": "2.3",

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-disconnected-bnk-roksbnkctl",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "name": "BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Install BIG-IP Next for Kubernetes onto an EXISTING IBM ROKS cluster that has no egress: images come from a private registry you have already mirrored, licensing from an F5 License Proxy. Registers the cluster with BNK Forge first, so it can be watched while BNK installs. Populate the mirror beforehand with the FAR mirror blueprint, or let the Harbor blueprint do it when it builds the registry."
   },
@@ -10,7 +10,7 @@
   "cloud_provider": "ibm",
   "icon": "shield-lock",
   "color": "slate",
-  "estimated_time": "45-70 minutes",
+  "estimated_time": "40-60 minutes",
   "difficulty": "intermediate",
   "maturity": "preview",
   "bnk_version": "2.3",
