@@ -128,8 +128,45 @@ forge_apply() { forge_api POST "/api/project-modules/$1/apply" '{}' >/dev/null; 
 # the project but not in the diagram, and is skipped. That is the right default
 # for a human choosing in the UI, and wrong for an unattended run that already
 # supplied the inputs the module needs, so the demo turns them on explicitly.
+#
+# WARNING: enabling a disabled module DESTROYS the project's blueprint-derived
+# dependency edges. update_module calls calculate_deployment_order() for the whole
+# project, which re-derives dependencies from library-level module metadata unless
+# use_existing_dependencies=True — and a blueprint's depends_on edges live in the
+# manifest, not in the library modules, so they are dropped. The module is then left
+# with no dependencies: the diagram loses its arrows and the sequencer is free to run
+# a dependent module against something that is not ready. Callers must put the edges
+# back — forge_restore_dependencies does that.
 forge_enable_module() {
   forge_api PUT "/api/project-modules/$1" '{"enabled":true}' >/dev/null
+}
+
+# forge_restore_dependencies <release-id> <module-id...>
+#
+# Re-applies the blueprint's depends_on graph after enabling. created_module_ids
+# comes back in blueprint module order, so position maps a blueprint module id to
+# the project module id it became.
+forge_restore_dependencies() {
+  local rid="$1"; shift
+  local plan
+  plan=$(forge_api GET "/api/blueprint-catalog/releases/$rid" \
+         | python3 -c 'import sys,json
+ids = sys.argv[1:]
+d = json.load(sys.stdin)
+mods = (d.get("manifest") or d).get("modules") or []
+pos = {m["id"]: i for i, m in enumerate(mods)}
+for i, m in enumerate(mods):
+    if i >= len(ids):
+        continue
+    deps = [ids[pos[x]] for x in (m.get("depends_on") or []) if pos.get(x, len(ids)) < len(ids)]
+    if deps:
+        print(ids[i], ",".join(deps))' "$@") || return 0
+  local mid deps
+  while read -r mid deps; do
+    [[ -z "$mid" ]] && continue
+    forge_api PUT "/api/project-modules/$mid/dependencies" "{\"dependencies\":[$deps]}" >/dev/null \
+      && say "restored dependency: module $mid depends on [$deps]"
+  done <<< "$plan"
 }
 
 # forge_module_status <module-id>

@@ -25,15 +25,24 @@ Five blueprints ship here, over five modules:
 |---|---|---|
 | [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json) | BNK onto a cluster **you already own**, over an existing Transit Gateway | `cluster-registry → bnk-install` |
 | [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json) | the **air-gapped** install, from a registry you have already mirrored | `cluster-registry → bnk-install` |
-| [Private Harbor registry on an IBM Cloud VSI](blueprints/harbor-registry/forge-blueprint.json) | a private OCI registry on the Transit Gateway, **optionally filled from FAR** | `harbor → [FAR-mirror]` |
+| [Private Harbor registry on an IBM Cloud VSI](blueprints/harbor-registry/forge-blueprint.json) | a private OCI registry on the Transit Gateway, CA published as an output | `harbor` |
 | [Mirror F5 artifacts from FAR](blueprints/far-mirror/forge-blueprint.json) | the supply chain replicated into **any** private registry — no cluster needed | `FAR-mirror` |
 | [Deploying F5 License Proxy as an IBM Cloud VSI](blueprints/flp-vsi/forge-blueprint.json) | the FLP as a **standalone VSI appliance**, no cluster | `flp` |
 
 Both install blueprints are **two modules — register the cluster, then install BNK**.
 Filling the registry is deliberately not one of them: mirroring needs no cluster, takes
 far longer than the install, and is reusable across many installs. Build the registry
-and fill it in one go with the Harbor blueprint, or mirror into a registry you already
-run with the FAR mirror blueprint; either way the install blueprint just consumes it.
+with the Harbor blueprint, fill it with the FAR mirror blueprint, and the install
+blueprint just consumes it.
+
+> **Why the mirror is not a module inside the Harbor blueprint.** It was, briefly. A
+> module can declare an input as `source: module` and have Forge wire it from a
+> dependency's output — but only on the **opentofu** path. `container_tasks` never runs
+> the dependency-output wiring (`variable_assembler` layer 3); it builds the step's
+> inputs from the project module's own variables. The mirror is a container module, so
+> the wiring is stored, ignored, and the step runs with no registry host. Until that is
+> fixed in Forge, Harbor's `registry_host` and `registry_ca_b64` outputs have to be
+> carried by whoever drives the deployment.
 
 See [Adopting an existing cluster](#adopting-an-existing-cluster) and
 [The FLP-VSI blueprint](#the-flp-vsi-blueprint).
@@ -181,8 +190,8 @@ depends on that module:
 ```
 cluster-registry ──▶ bnk-install     (both install blueprints)
 
-harbor ──▶ FAR-mirror                (registry + its contents, one deployment)
-FAR-mirror                           (into a registry you already run)
+harbor                               (registry; publishes registry_host + CA)
+FAR-mirror                           (fills any registry, given host + CA)
 ```
 
 The mirror deliberately does **not** depend on registration — it needs no cluster
