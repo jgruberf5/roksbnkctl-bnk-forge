@@ -288,6 +288,11 @@ for c in cs:
 # Echoes the watcher pid; the caller kills it when the phase ends.
 forge_watch_cluster() {
   local name="$1" interval="${2:-60}"
+  # The child's stdout MUST be closed off, not just its output discarded: this is
+  # called as CLUSTER_WATCH_PID=$(forge_watch_cluster ...), and command
+  # substitution waits for every writer to the pipe to let go. A backgrounded
+  # child inherits that pipe, so without the redirect $(...) blocks forever on a
+  # loop that never exits — the caller hangs before it has done anything.
   (
     local id=""
     while :; do
@@ -295,7 +300,7 @@ forge_watch_cluster() {
       [[ -n "$id" ]] && forge_api PUT "/api/k8s/clusters/$id" '{}' >/dev/null 2>&1
       sleep "$interval"
     done
-  ) &
+  ) >/dev/null 2>&1 &
   echo $!
 }
 
