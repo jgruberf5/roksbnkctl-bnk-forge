@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-FAR-mirror",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "kind": "container_image",
   "description": "Replicate the BNK supply chain (F5's artifact registry) into a private OCI registry, then verify it — the mirror half of a disconnected install. Host-side registry-to-registry copy; no cluster required.",
   "container_image": {
@@ -189,8 +189,10 @@
       {
         "name": "registry_generic_host",
         "type": "string",
-        "source": "user",
-        "description": "The mirror's host — for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway. Take it from the Harbor blueprint's outputs, or supply your own registry's."
+        "source": "module",
+        "description": "The mirror's host — for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway. When a harbor module is part of the same deployment Forge wires this from its output; supply it yourself when mirroring into a registry you already run.",
+        "from_module": "harbor",
+        "from_output": "registry_host"
       },
       {
         "name": "registry_repo_prefix",
@@ -220,8 +222,10 @@
       {
         "name": "registry_ca_b64",
         "type": "string",
-        "source": "user",
-        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry. Take it from the Harbor blueprint's outputs, or supply your own registry's."
+        "source": "module",
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry. When a harbor module is part of the same deployment Forge wires this from its output; supply it yourself when mirroring into a registry you already run.",
+        "from_module": "harbor",
+        "from_output": "registry_ca_b64"
       },
       {
         "name": "registry_ca_sha256",
