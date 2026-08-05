@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-disconnected-bnk-roksbnkctl",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "name": "BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "The air-gapped install: mirror the BNK supply chain into your private registry, then install BIG-IP Next for Kubernetes onto an existing ROKS cluster that has no Internet egress \u2014 images from the mirror, licensing brokered by an F5 License Proxy, both reached privately over an existing Transit Gateway. BNK Forge is the CI: the same roksbnkctl step sequence the disconnected-cluster CI demo runs under Argo Workflows."
   },
@@ -455,7 +455,7 @@
     {
       "id": "roksbnkctl-cluster-register",
       "module": "roksbnkctl/cluster-register",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "name": "roksbnkctl Cluster Register",
       "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
       "optional": false,

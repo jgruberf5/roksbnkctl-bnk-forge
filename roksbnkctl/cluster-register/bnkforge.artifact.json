@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-register",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "kind": "container_image",
   "description": "Adopt an EXISTING IBM Cloud ROKS cluster into the workspace and register it with BNK Forge, so the cluster is visible and monitorable BEFORE anything is installed onto it. Runs first in the graph; the cluster itself is never created or destroyed.",
   "container_image": {
@@ -113,7 +113,8 @@
         "name": "kubeconfig-fetch",
         "when": "{{inputs.bnkforge_url}}",
         "env": {
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "KUBECONFIG": "/work/.kube/config"
         },
         "args": [
           "roksbnkctl",
@@ -131,7 +132,8 @@
           "HOME": "/home/runner",
           "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
           "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
-          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}"
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
+          "KUBECONFIG": "/work/.kube/config"
         },
         "args": [
           "roksbnkctl",
