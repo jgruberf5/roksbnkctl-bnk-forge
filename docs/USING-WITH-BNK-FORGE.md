@@ -36,7 +36,7 @@ you mirror the image to a private registry.)
    `https://github.com/jgruberf5/roksbnkctl-bnk-forge.git`. Branch: `main`.
 4. Save and let it **sync**. The sync ingests:
    - **seven artifacts** — `roksbnkctl-cluster` / `-bnk` / `-testing` / `-gateway`
-     (the new-cluster phases), `roksbnkctl-bnk-adopt` + `roksbnkctl-mirror` (the
+     (the new-cluster phases), `roksbnkctl-bnk-install` + `roksbnkctl-FAR-mirror` (the
      existing-cluster path), and `roksbnkctl-flp` — each `kind: container_image`; and
    - **four blueprints** — *IBM ROKS + BNK (roksbnkctl)*, *BNK on an existing IBM
      ROKS cluster*, *BNK on a disconnected IBM ROKS cluster*, and *Deploying F5
@@ -129,7 +129,7 @@ no cluster creation.
 
 **BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)** —
 BNK Forge as the CI, replacing the Argo Workflows of roksbnkctl's
-`disconnected-cluster-ci-demo`. Two modules, `mirror → bnk-adopt`, over one
+`disconnected-cluster-ci-demo`. Two modules, `FAR-mirror → bnk-install`, over one
 deployment-scoped workspace (the demo's shared PVC).
 
 **Before you start** you need the services side already standing: a private

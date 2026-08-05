@@ -21,8 +21,8 @@ Four blueprints ship here, over seven modules:
 | Blueprint | Builds | Modules |
 |---|---|---|
 | [IBM ROKS + BNK (roksbnkctl)](forge-blueprint.json) | a **new** ROKS cluster, then BNK on it | `cluster → bnk → testing / gateway` |
-| [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json) | BNK onto a cluster **you already own**, over an existing Transit Gateway | `bnk-adopt` |
-| [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json) | the **air-gapped** install — private registry + F5 License Proxy | `mirror → bnk-adopt` |
+| [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json) | BNK onto a cluster **you already own**, over an existing Transit Gateway | `bnk-install` |
+| [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json) | the **air-gapped** install — private registry + F5 License Proxy | `FAR-mirror → bnk-install` |
 | [Deploying F5 License Proxy as an IBM Cloud VSI](blueprints/flp-vsi/forge-blueprint.json) | the FLP as a **standalone VSI appliance**, no cluster | `flp` |
 
 See [Adopting an existing cluster](#adopting-an-existing-cluster) and
@@ -32,7 +32,7 @@ See [Adopting an existing cluster](#adopting-an-existing-cluster) and
 
 The four ROKS phase modules pin **roksbnkctl v1.33.1** (`sha256:4f50d886…`).
 The three modules whose forms need the FLP-VSI and COS env overrides — `flp`,
-`mirror`, `bnk-adopt` — pin **v1.35.0** (`sha256:41c9961e…`), the first release
+`FAR-mirror`, `bnk-install` — pin **v1.35.0** (`sha256:41c9961e…`), the first release
 carrying them (they shipped in v1.34.0). The image carries the whole toolchain
 (terraform, helm, kubectl, oc, the ibmcloud CLI), so a step needs nothing on the
 host.
@@ -137,7 +137,7 @@ persistent /work volume  ◀── state (tfstate, keys, cluster-outputs.json) �
 ## Adopting an existing cluster
 
 Two blueprints install BNK onto a ROKS cluster **you already own**, reached over a
-Transit Gateway **you already own**. Both run over the `roksbnkctl-bnk-adopt`
+Transit Gateway **you already own**. Both run over the `roksbnkctl-bnk-install`
 module, whose `apply` is the adopt sequence:
 
 ```
@@ -160,22 +160,24 @@ named otherwise, set `registry_cos_name`.
 
 ### Registering the cluster with BNK Forge
 
-Registration is its **own module, first in the graph** — `roksbnkctl-cluster-register`.
+Registration is its **own module, first in the graph** — `roksbnkctl-cluster-registry`.
 A project apply therefore begins by adopting the cluster and putting it on Forge's
 Kubernetes page, so it can be watched while BNK installs onto it. Everything else
 depends on that module:
 
 ```
-cluster-register ──▶ bnk-adopt                    (existing cluster)
-cluster-register ──┐
-mirror ────────────┴▶ bnk-adopt                   (disconnected)
+cluster-registry ──────▶ bnk-install     (existing cluster)
+
+cluster-registry ──┐
+                   ├──▶ bnk-install      (disconnected)
+FAR-mirror ────────┘
 ```
 
 The mirror deliberately does **not** depend on registration — it needs no cluster
 at all, so it runs in parallel and the long replicate starts immediately.
 
 The module also owns the Transit Gateway attachment (its `destroy` is
-`tgw disconnect`), because `cluster register` is what creates it. `bnk-adopt`'s
+`tgw disconnect`), because `cluster register` is what creates it. `bnk-install`'s
 destroy is now just `bnk down`, and Forge's reverse-order teardown gets the
 sequence right: BNK first, then the detach.
 
@@ -220,8 +222,8 @@ over one deployment-scoped workspace:
 
 | Demo Workflow | Module | Steps |
 |---|---|---|
-| `wf-mirror.yaml` | `roksbnkctl-mirror` | `init` → `registry replicate --target generic` → `registry verify` |
-| `wf-install.yaml` | `roksbnkctl-bnk-adopt` | `cluster register` → `bnk up --auto` → `bnk status` |
+| `wf-mirror.yaml` | `roksbnkctl-FAR-mirror` | `init` → `registry replicate --target generic` → `registry verify` |
+| `wf-install.yaml` | `roksbnkctl-bnk-install` | `cluster register` → `bnk up --auto` → `bnk status` |
 
 `depends_on` serializes them exactly as `argo submit` did, and `state.scope:
 deployment` is the PVC: the mirror phase's workspace — including the registry CA it
@@ -335,7 +337,7 @@ module exists in the catalog when the blueprint deploys (otherwise project
 creation fails with `BLUEPRINT_MODULES_MISSING`):
 
 1. Register this repo as a Git **module source**. The module sync discovers the
-   seven `container`-engine packs — `roksbnkctl/{cluster,bnk,testing,gateway,flp,bnk-adopt,mirror}/bnkforge.pack.json`
+   seven `container`-engine packs — `roksbnkctl/{cluster,bnk,testing,gateway,flp,bnk-install,far-mirror}/bnkforge.pack.json`
    — and registers a module for each, backed by the sibling `bnkforge.artifact.json`
    the container engine runs at deploy.
 2. Register this repo as a Git **blueprint source**. The blueprint sync walks the
@@ -359,8 +361,8 @@ roksbnkctl/bnk/       bnkforge.pack.json + bnkforge.artifact.json   # phase 2: i
 roksbnkctl/testing/   bnkforge.pack.json + bnkforge.artifact.json   # phase 3: testing       (depends_on cluster);  destroy: testing down
 roksbnkctl/gateway/   bnkforge.pack.json + bnkforge.artifact.json   # phase 4: gateway       (depends_on bnk,testing); destroy: gateway down
 roksbnkctl/flp/       bnkforge.pack.json + bnkforge.artifact.json   # standalone FLP VSI appliance (no cluster); destroy: flp down
-roksbnkctl/bnk-adopt/ bnkforge.pack.json + bnkforge.artifact.json   # adopt an EXISTING cluster + install BNK; destroy: bnk down + tgw disconnect
-roksbnkctl/mirror/    bnkforge.pack.json + bnkforge.artifact.json   # FAR -> private registry replicate + verify (no destroy)
+roksbnkctl/bnk-install/ bnkforge.pack.json + bnkforge.artifact.json   # adopt an EXISTING cluster + install BNK; destroy: bnk down + tgw disconnect
+roksbnkctl/far-mirror/    bnkforge.pack.json + bnkforge.artifact.json   # FAR -> private registry replicate + verify (no destroy)
 forge-blueprint.json                                                # composes the 4 phases via depends_on (cloud_provider: ibm)
 blueprints/roks-existing-cluster/forge-blueprint.json               # "BNK on an existing IBM ROKS cluster (existing Transit Gateway)"
 blueprints/roks-disconnected/forge-blueprint.json                   # "BNK on a disconnected IBM ROKS cluster (private registry + FLP)"

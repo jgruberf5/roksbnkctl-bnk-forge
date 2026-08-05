@@ -1,148 +1,30 @@
 {
   "schema_version": 1,
-  "name": "roksbnkctl-bnk-adopt",
-  "version": "1.0.7",
-  "kind": "container_image",
-  "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-register, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
-  "container_image": {
-    "registry_host": "ghcr.io",
-    "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:41c9961ede908daacfd14570ee684455bbc48a3387935bdbaee93047dff11b97"
+  "module": {
+    "name": "roksbnkctl-bnk-install",
+    "path": "roksbnkctl/bnk-install",
+    "version": "1.1.0",
+    "category": "bnk",
+    "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy — never the cluster.",
+    "estimated_time_minutes": 45
   },
-  "lifecycle": {
-    "supports_apply": true,
-    "supports_destroy": true
-  },
-  "credentials": {
-    "cloud": "ibmcloud"
-  },
-  "state": {
-    "mount_path": "/work",
-    "outputs_file": ".roksbnkctl/bnk/cluster-outputs.json",
-    "home_env": {
-      "HOME": "/home/runner",
-      "ROKSBNKCTL_HOME": "/work/.roksbnkctl"
-    },
-    "scope": "deployment"
-  },
-  "execution": {
+  "deployment_pack": {
     "engine": "container",
-    "limits": {
-      "cpus": "2",
-      "memory": "2g"
-    }
+    "runner_profile": "container-default",
+    "working_directory": ".",
+    "lifecycle": {
+      "supports_init": false,
+      "supports_plan": false,
+      "supports_apply": true,
+      "supports_destroy": true,
+      "supports_refresh": false,
+      "supports_drift": false
+    },
+    "entrypoints": {}
   },
-  "steps": {
-    "apply": [
-      {
-        "name": "init",
-        "env": {
-          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
-          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
-          "ROKSBNKCTL_REGION": "{{inputs.region}}",
-          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
-          "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}",
-          "ROKSBNKCTL_MANIFEST_VERSION": "{{inputs.manifest_version}}",
-          "ROKSBNKCTL_BIGIP_URL": "{{inputs.bigip_url}}",
-          "ROKSBNKCTL_BIGIP_USERNAME": "{{inputs.bigip_username}}",
-          "ROKSBNKCTL_BIGIP_PASSWORD": "{{inputs.bigip_password}}",
-          "ROKSBNKCTL_COS_INSTANCE": "{{inputs.cos_instance}}",
-          "ROKSBNKCTL_COS_BUCKET": "{{inputs.cos_bucket}}",
-          "ROKSBNKCTL_COS_REGION": "{{inputs.cos_region}}",
-          "ROKSBNKCTL_FAR_AUTH_FILE": "{{inputs.far_auth_file}}",
-          "ROKSBNKCTL_SUBSCRIPTION_JWT_FILE": "{{inputs.subscription_jwt_file}}",
-          "ROKSBNKCTL_REGISTRY_TARGET": "{{inputs.registry_target}}",
-          "ROKSBNKCTL_GENERIC_HOST": "{{inputs.registry_generic_host}}",
-          "ROKSBNKCTL_GENERIC_REPO_PREFIX": "{{inputs.registry_repo_prefix}}",
-          "ROKSBNKCTL_GENERIC_USERNAME": "{{inputs.registry_username}}",
-          "ROKSBNKCTL_GENERIC_PASSWORD": "{{inputs.registry_password}}",
-          "ROKSBNKCTL_LICENSE_MODE": "{{inputs.license_mode}}",
-          "ROKSBNKCTL_FLP_EXTERNAL_URL": "{{inputs.flp_external_url}}",
-          "ROKSBNKCTL_FLP_ROOT_CA_B64": "{{inputs.flp_root_ca_b64}}",
-          "ROKSBNKCTL_ZONE1_EXT_VLAN_CIDR": "{{inputs.zone1_ext_vlan_cidr}}",
-          "ROKSBNKCTL_ZONE1_INT_VLAN_CIDR": "{{inputs.zone1_int_vlan_cidr}}",
-          "ROKSBNKCTL_ZONE1_INT_SNAT_CIDR": "{{inputs.zone1_int_snat_cidr}}",
-          "ROKSBNKCTL_ZONE1_INT_VIP_CIDR": "{{inputs.zone1_int_vip_cidr}}",
-          "ROKSBNKCTL_ZONE1_EXTERNAL_SELFIP": "{{inputs.zone1_external_selfip}}",
-          "ROKSBNKCTL_ZONE1_INTERNAL_SELFIP": "{{inputs.zone1_internal_selfip}}",
-          "ROKSBNKCTL_ZONE2_EXT_VLAN_CIDR": "{{inputs.zone2_ext_vlan_cidr}}",
-          "ROKSBNKCTL_ZONE2_INT_VLAN_CIDR": "{{inputs.zone2_int_vlan_cidr}}",
-          "ROKSBNKCTL_ZONE2_INT_SNAT_CIDR": "{{inputs.zone2_int_snat_cidr}}",
-          "ROKSBNKCTL_ZONE2_INT_VIP_CIDR": "{{inputs.zone2_int_vip_cidr}}",
-          "ROKSBNKCTL_ZONE2_EXTERNAL_SELFIP": "{{inputs.zone2_external_selfip}}",
-          "ROKSBNKCTL_ZONE2_INTERNAL_SELFIP": "{{inputs.zone2_internal_selfip}}",
-          "ROKSBNKCTL_ZONE3_EXT_VLAN_CIDR": "{{inputs.zone3_ext_vlan_cidr}}",
-          "ROKSBNKCTL_ZONE3_INT_VLAN_CIDR": "{{inputs.zone3_int_vlan_cidr}}",
-          "ROKSBNKCTL_ZONE3_INT_SNAT_CIDR": "{{inputs.zone3_int_snat_cidr}}",
-          "ROKSBNKCTL_ZONE3_INT_VIP_CIDR": "{{inputs.zone3_int_vip_cidr}}",
-          "ROKSBNKCTL_ZONE3_EXTERNAL_SELFIP": "{{inputs.zone3_external_selfip}}",
-          "ROKSBNKCTL_ZONE3_INTERNAL_SELFIP": "{{inputs.zone3_internal_selfip}}",
-          "ROKSBNKCTL_CLUSTER_CREATE": "false",
-          "HOME": "/home/runner",
-          "ROKSBNKCTL_GENERIC_CA_B64": "{{inputs.registry_ca_b64}}",
-          "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}"
-        },
-        "args": [
-          "roksbnkctl",
-          "init",
-          "-w",
-          "bnk",
-          "--override-from-env",
-          "--non-interactive"
-        ],
-        "timeout_seconds": 300
-      },
-      {
-        "name": "bnk-up",
-        "env": {
-          "HOME": "/home/runner"
-        },
-        "args": [
-          "roksbnkctl",
-          "-w",
-          "bnk",
-          "bnk",
-          "up",
-          "--auto"
-        ],
-        "timeout_seconds": 3600,
-        "retry": {
-          "max_attempts": 3,
-          "backoff_seconds": 300
-        }
-      },
-      {
-        "name": "bnk-status",
-        "env": {
-          "HOME": "/home/runner"
-        },
-        "args": [
-          "roksbnkctl",
-          "-w",
-          "bnk",
-          "bnk",
-          "status"
-        ],
-        "timeout_seconds": 300
-      }
-    ],
-    "destroy": [
-      {
-        "name": "bnk-down",
-        "env": {
-          "HOME": "/home/runner"
-        },
-        "args": [
-          "roksbnkctl",
-          "-w",
-          "bnk",
-          "bnk",
-          "down",
-          "--auto"
-        ],
-        "timeout_seconds": 1800
-      }
-    ]
+  "dependencies": {
+    "required": [],
+    "optional": []
   },
   "inputs": {
     "required": [
@@ -206,7 +88,6 @@
         "name": "bigip_password",
         "type": "string",
         "source": "user",
-        "sensitive": true,
         "description": "BIG-IP password for CIS (optional)."
       },
       {
@@ -249,7 +130,7 @@
         "name": "registry_generic_host",
         "type": "string",
         "source": "user",
-        "description": "The mirror's host \u2014 for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
+        "description": "The mirror's host — for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
       },
       {
         "name": "registry_repo_prefix",
@@ -267,7 +148,6 @@
         "name": "registry_password",
         "type": "string",
         "source": "user",
-        "sensitive": true,
         "description": "Password / access token for that user. Stored base64 in the workspace config, never logged."
       },
       {
@@ -280,14 +160,13 @@
         "name": "flp_external_url",
         "type": "string",
         "source": "user",
-        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own \u2014 `flp output flp_external_endpoint` on the workspace that does."
+        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own — `flp output flp_external_endpoint` on the workspace that does."
       },
       {
         "name": "flp_root_ca_b64",
         "type": "string",
         "source": "user",
-        "sensitive": true,
-        "description": "That proxy's base64 root CA, which the cluster's CWC must trust \u2014 `flp output flp_root_ca`. Already base64: it is stored verbatim."
+        "description": "That proxy's base64 root CA, which the cluster's CWC must trust — `flp output flp_root_ca`. Already base64: it is stored verbatim."
       },
       {
         "name": "zone1_ext_vlan_cidr",
@@ -401,13 +280,13 @@
         "name": "registry_ca_b64",
         "type": "string",
         "source": "user",
-        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) \u2014 this is the CA you generated for the registry."
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry."
       },
       {
         "name": "registry_ca_sha256",
         "type": "string",
         "source": "user",
-        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
+        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:…, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
       },
       {
         "name": "bnkforge_url",
@@ -425,8 +304,7 @@
         "name": "bnkforge_password",
         "type": "string",
         "source": "user",
-        "sensitive": true,
-        "description": "Password for that login. Passed to the step as an environment variable only \u2014 never on the command line."
+        "description": "Password for that login. Passed to the step as an environment variable only — never on the command line."
       },
       {
         "name": "bnkforge_project",
@@ -439,9 +317,32 @@
         "type": "string",
         "source": "user",
         "default": "false",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out."
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out."
       }
     ]
   },
-  "references": []
+  "outputs": {
+    "key_outputs": [
+      {
+        "name": "cluster_id",
+        "type": "string",
+        "description": "ID of the adopted ROKS cluster."
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "description": "Name of the adopted ROKS cluster."
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "description": "IBM Cloud region."
+      },
+      {
+        "name": "vpc_id",
+        "type": "string",
+        "description": "The cluster's VPC ID."
+      }
+    ]
+  }
 }
