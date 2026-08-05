@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-mirror",
     "path": "roksbnkctl/mirror",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "category": "bnk",
     "description": "Replicate the BNK supply chain (F5's artifact registry) into a private OCI registry, then verify it \u2014 the mirror half of a disconnected install. Host-side registry-to-registry copy; no cluster required.",
     "estimated_time_minutes": 25
@@ -16,7 +16,7 @@
       "supports_init": false,
       "supports_plan": false,
       "supports_apply": true,
-      "supports_destroy": false,
+      "supports_destroy": true,
       "supports_refresh": false,
       "supports_drift": false
     },

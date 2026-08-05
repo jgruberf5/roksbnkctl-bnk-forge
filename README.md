@@ -231,8 +231,12 @@ demo's tested `bnk.yaml` field for field (adopt the cluster, `cos:` supply chain
 TGW). It differs only in `resources.{registry_cos,tgw_jumphost,client_vpc}`, which
 the BNK-phase override forces off regardless of config.
 
-The mirror module declares **`supports_destroy: false`** — you do not un-mirror a
-registry — so teardown touches only the BNK layer.
+Every module supports destroy, because **destroy is that phase's `down`**: the
+install runs `bnk down`, the registration runs `tgw disconnect`, and the mirror
+runs **`registry delete`** — which removes every artifact it replicated (by
+digest, from `registry-mirror.json`) and clears the mirror record, so a later
+`bnk up` reverts to pulling from FAR rather than a mirror that no longer holds
+what it needs.
 
 Additional form fields: `registry_generic_host` (the mirror's **private** IP/DNS
 over the TGW), `registry_password`, `flp_external_url` + `flp_root_ca_b64` (from
