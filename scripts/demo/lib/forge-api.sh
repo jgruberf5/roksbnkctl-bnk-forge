@@ -66,13 +66,20 @@ timing_summary() {
     local tag pid; tag=$(basename "$f" .project); pid=$(cat "$f")
     for mid in $(cat "$STATE/$tag.modules" 2>/dev/null); do
       local row
+      # No 2>/dev/null on the parse: an earlier version escaped the quotes inside
+      # an f-string, python raised a SyntaxError, and the redirect swallowed it —
+      # so the table silently never printed.
       row=$(forge_api GET "/api/project-modules/$mid/deployments" 2>/dev/null | python3 -c '
-import sys,json
-try: ds=json.load(sys.stdin).get("deployments") or []
-except Exception: raise SystemExit
+import sys, json
+try:
+    ds = json.load(sys.stdin).get("deployments") or []
+except Exception:
+    raise SystemExit
 for d in ds:
-    if d.get("action")=="apply" and d.get("status")=="success" and d.get("duration_seconds"):
-        print(f"{d[\"duration_seconds\"]:.0f}"); break' 2>/dev/null)
+    if d.get("action") == "apply" and d.get("status") == "success" and d.get("duration_seconds"):
+        print(int(d["duration_seconds"]))
+        break
+')
       if [[ -n "$row" ]]; then
         [[ $any == 0 ]] && { printf '\n   %-46s %s\n' "module (Forge-recorded apply)" "duration" >&2; any=1; }
         printf '   %-46s %s\n' "$tag/module $mid" "$(hms "$row")" >&2
