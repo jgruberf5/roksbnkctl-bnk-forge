@@ -26,9 +26,14 @@ source "$HERE/lib/forge-api.sh"
 
 # Parsed before anything prompts: a typo should not cost you a password first.
 ACTION="${1:-up}"
+# Optional second argument: stop after this phase. Useful when iterating on one
+# blueprint — there is no sense rebuilding the FLP and reinstalling BNK to test a
+# change to Harbor.
+STOP_AFTER="${2:-all}"
+case "$STOP_AFTER" in all|harbor|flp|disco) ;; *) printf 'unknown phase %q (all|harbor|flp|disco)\n' "$STOP_AFTER" >&2; exit 2 ;; esac
 case "$ACTION" in
   up|down) ;;
-  *) printf 'usage: %s [up|down]\n  up    deploy (default)\n  down  destroy what it built and delete the projects (catalog untouched)\n' \
+  *) printf 'usage: %s [up|down]\n  up    deploy (default)\n  down  destroy what it built and delete the projects (catalog untouched)\n\noptional 2nd arg: all (default) | harbor | flp | disco — stop after that phase\n' \
        "$(basename "$0")" >&2; exit 2 ;;
 esac
 
@@ -151,6 +156,14 @@ deploy() {
   esac
   local tmp="$STATE/.$tag.create"   # separate line: under `set -u`, expanding $tag
                                     # in the same `local` that declares it is unbound
+  # Stale state points at a project someone deleted in the UI. Adopting it means
+  # re-applying module ids that no longer exist, which fails obscurely far from
+  # the cause — so check the project is really there and fall through to a fresh
+  # deploy if it is not.
+  if [[ -s "$STATE/$tag.project" ]] && ! forge_api GET "/api/projects/$(cat "$STATE/$tag.project")" >/dev/null 2>&1; then
+    warn "$tag state references project $(cat "$STATE/$tag.project"), which no longer exists — deploying fresh"
+    rm -f "$STATE/$tag.project" "$STATE/$tag.modules"
+  fi
   if [[ -s "$STATE/$tag.project" ]]; then
     DEPLOY_PID=$(cat "$STATE/$tag.project"); DEPLOY_MODS=$(cat "$STATE/$tag.modules")
     say "resuming $tag from project $DEPLOY_PID (delete $STATE/$tag.project to redeploy)"
@@ -281,6 +294,12 @@ HARBOR_PIN=$(ssh "${SSH_OPTS[@]}" "ubuntu@$HARBOR_FIP" "sudo openssl x509 -in /o
 HARBOR_IP=$(ssh "${SSH_OPTS[@]}" "ubuntu@$HARBOR_FIP" "hostname -I | awk '{print \$1}'" 2>/dev/null | tr -d '\r\n')
 ok "mirror at $HARBOR_IP (private) — CA captured, pin ${HARBOR_PIN:0:16}…"
 
+if [[ "$STOP_AFTER" == "harbor" ]]; then
+  timing_summary
+  ok "stopped after the Harbor phase (--> $0 up to continue, $0 down to remove it)"
+  exit 0
+fi
+
 # ── 3. FLP ───────────────────────────────────────────────────────────────────
 phase "3/4  F5 License Proxy appliance"
 say "A standalone VSI in the services VPC — no cluster. The proxy is the only"
@@ -317,6 +336,12 @@ FLP_CA=$(ssh "${SSH_OPTS[@]}" \
   "ubuntu@$FLP_IP" "sudo base64 -w0 /opt/flp/ca.crt" 2>/dev/null | tr -d '\r\n')
 [[ -n "$FLP_CA" ]] || die "could not read the FLP root CA (jumped via $HARBOR_FIP)"
 ok "FLP at https://$FLP_IP:8443 — root CA captured"
+
+if [[ "$STOP_AFTER" == "flp" ]]; then
+  timing_summary
+  ok "stopped after the FLP phase"
+  exit 0
+fi
 
 # ── 4+5. the disconnected chain ──────────────────────────────────────────────
 phase "4/4  Register the cluster, install BNK"
