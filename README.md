@@ -49,11 +49,22 @@ See [Adopting an existing cluster](#adopting-an-existing-cluster) and
 
 ## The runner image
 
-All four container modules pin **roksbnkctl v1.35.0** (`sha256:41c9961e…`) — the
-first release carrying the FLP-VSI and COS env overrides these forms need (they
-shipped in v1.34.0). The image carries the whole toolchain
+All four container modules pin **roksbnkctl v1.36.0** (`sha256:910ca678…`) — the
+first release carrying `registry adopt`, which is what lets the disconnected
+install use a mirror another deployment populated without reaching back to the
+FAR source. The image carries the whole toolchain
 (terraform, helm, kubectl, oc, the ibmcloud CLI), so a step needs nothing on the
 host.
+
+> **The install adopts the mirror; it does not re-replicate it.** `bnk up` refuses
+> to render against a mirror the workspace has no record of, and that record is
+> workspace-scoped — the deployment that filled the registry cannot hand it over.
+> Before roksbnkctl v1.36.0 the only way to write one was to re-run `registry
+> replicate`, which needs the FAR source reachable at install time; an air-gapped
+> operator usually does not have that, which is the whole reason they mirrored.
+> `roksbnkctl registry adopt` derives the record from the configured target and
+> sanity-checks the mirror, with no source access. The install runs it, gated on
+> `registry_target`, so the connected blueprint never sees it.
 
 > **A self-signed mirror now needs its CA supplied out of band.** As of
 > roksbnkctl **v1.35.0**, `registry replicate` refuses to adopt a self-signed
@@ -246,7 +257,7 @@ over one deployment-scoped workspace:
 | Demo Workflow | Module | Steps |
 |---|---|---|
 | `wf-mirror.yaml` | `roksbnkctl-FAR-mirror` | `init` → `registry replicate --target generic` → `registry verify` |
-| `wf-install.yaml` | `roksbnkctl-bnk-install` | `cluster register` → `bnk up --auto` → `bnk status` |
+| `wf-install.yaml` | `roksbnkctl-bnk-install` | `init` → `registry adopt` → `bnk up --auto` → `bnk status` |
 
 `depends_on` serializes them exactly as `argo submit` did, and `state.scope:
 deployment` is the PVC: the mirror phase's workspace — including the registry CA it

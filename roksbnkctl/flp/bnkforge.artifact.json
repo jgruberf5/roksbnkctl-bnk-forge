@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-flp",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "kind": "container_image",
   "description": "Deploy the F5 License Proxy as a standalone IBM Cloud VSI appliance (no cluster) with roksbnkctl's flp phase. Procedural container_image artifact run by the container engine.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:41c9961ede908daacfd14570ee684455bbc48a3387935bdbaee93047dff11b97"
+    "digest": "sha256:910ca6786c8b44649fdcf812cfe8d8618fd8aa92a63270fa633740b2a90a1640"
   },
   "lifecycle": {
     "supports_apply": true,

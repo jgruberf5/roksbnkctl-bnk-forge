@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-bnk-install",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "kind": "container_image",
   "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy — never the cluster.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:41c9961ede908daacfd14570ee684455bbc48a3387935bdbaee93047dff11b97"
+    "digest": "sha256:910ca6786c8b44649fdcf812cfe8d8618fd8aa92a63270fa633740b2a90a1640"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -95,7 +95,7 @@
       },
       {
         "name": "registry-record",
-        "description": "Populate this workspace's registry-mirror.json. `bnk up` refuses to render against a mirror it has no record of (guardRegistryMirror), and that record is workspace-scoped — the deployment that filled the registry cannot hand it over. Only `registry replicate` writes it, so this re-runs it here: every artifact is already present at the same digest, so copyOCI skips the transfer and this costs digest lookups rather than a second mirror. Skipped entirely off the mirror path.",
+        "description": "Record the mirror this workspace did not populate, so `bnk up` will render against it. The record is workspace-scoped and the deployment that filled the registry cannot hand it over, so the install has to write its own. `adopt` derives it from the configured target and sanity-checks the mirror; it needs no FAR access, which is the point — an air-gapped install should not have to reach the source it mirrored to avoid. Requires roksbnkctl v1.36.0. Skipped entirely off the mirror path.",
         "when": "{{inputs.registry_target}}",
         "env": {
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
@@ -149,11 +149,9 @@
           "-w",
           "bnk",
           "registry",
-          "replicate",
-          "--target",
-          "generic"
+          "adopt"
         ],
-        "timeout_seconds": 3600,
+        "timeout_seconds": 600,
         "retries": 1
       },
       {

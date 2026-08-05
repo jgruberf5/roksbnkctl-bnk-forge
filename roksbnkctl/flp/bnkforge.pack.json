@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-flp",
     "path": "roksbnkctl/flp",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "category": "bnk",
     "description": "Deploy the F5 License Proxy as a standalone IBM Cloud VSI appliance (no cluster) with roksbnkctl's flp phase. Procedural container_image artifact run by the container engine.",
     "estimated_time_minutes": 20
