@@ -1,0 +1,348 @@
+{
+  "schema_version": 1,
+  "module": {
+    "name": "roksbnkctl-cwc-guard",
+    "path": "roksbnkctl/cwc-guard",
+    "version": "1.0.0",
+    "category": "bnk",
+    "description": "Clears F5's f5-spk-cwc ReadWriteOnce Multi-Attach deadlock so BNK licensing can activate. Runs alongside the BNK install; harmless once F5 ships the fix.",
+    "estimated_time_minutes": 5
+  },
+  "deployment_pack": {
+    "engine": "container",
+    "runner_profile": "container-default",
+    "working_directory": ".",
+    "lifecycle": {
+      "supports_init": false,
+      "supports_plan": false,
+      "supports_apply": true,
+      "supports_destroy": true,
+      "supports_refresh": false,
+      "supports_drift": false
+    },
+    "entrypoints": {}
+  },
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "source": "user",
+        "description": "Prefix for resource names roksbnkctl creates (e.g. acme-eu)."
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "source": "user",
+        "description": "Name or ID of the EXISTING ROKS cluster to adopt. It is never created and never destroyed by this blueprint."
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "description": "Region the cluster lives in. Inherits from the selected credential template."
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "source": "user",
+        "description": "IBM Cloud resource group. Inherits from the selected credential template."
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "source": "user",
+        "description": "The EXISTING Transit Gateway the cluster's VPC is reached over. `cluster register` attaches the VPC to it; a VPC already attached is adopted, not re-created."
+      }
+    ],
+    "optional": [
+      {
+        "name": "registry_cos_name",
+        "type": "string",
+        "source": "user",
+        "description": "Overrides the registry COS instance `cluster register` looks for. Blank = probe <prefix>-registry-cos, <cluster>-registry-cos, <cluster>-cos."
+      },
+      {
+        "name": "manifest_version",
+        "type": "string",
+        "source": "user",
+        "description": "BNK manifest release to install. Blank = the roksbnkctl default."
+      },
+      {
+        "name": "bigip_url",
+        "type": "string",
+        "source": "user",
+        "description": "BIG-IP management URL for the BNK CIS controller (optional)."
+      },
+      {
+        "name": "bigip_username",
+        "type": "string",
+        "source": "user",
+        "description": "BIG-IP username for CIS (optional)."
+      },
+      {
+        "name": "bigip_password",
+        "type": "string",
+        "source": "user",
+        "description": "BIG-IP password for CIS (optional)."
+      },
+      {
+        "name": "cos_instance",
+        "type": "string",
+        "source": "user",
+        "description": "COS instance holding the FAR auth key + subscription JWT. Blank = bnk-supply-chain."
+      },
+      {
+        "name": "cos_bucket",
+        "type": "string",
+        "source": "user",
+        "description": "Bucket holding the FAR auth key + subscription JWT. Blank = bnk-artifacts. Account-suffixed buckets (bnk-artifacts-<account>) must be named explicitly."
+      },
+      {
+        "name": "cos_region",
+        "type": "string",
+        "source": "user",
+        "description": "Region of that bucket. Blank = us-south."
+      },
+      {
+        "name": "far_auth_file",
+        "type": "string",
+        "source": "user",
+        "description": "Object name of the FAR auth tarball in the bucket. Blank = f5-far-auth-key.tgz."
+      },
+      {
+        "name": "subscription_jwt_file",
+        "type": "string",
+        "source": "user",
+        "description": "Object name of the subscription JWT in the bucket. Blank = subscription.jwt."
+      },
+      {
+        "name": "registry_target",
+        "type": "string",
+        "source": "user",
+        "description": "Mirror backend: generic (a private OCI registry such as Harbor) or icr."
+      },
+      {
+        "name": "registry_generic_host",
+        "type": "string",
+        "source": "user",
+        "description": "The mirror's host — for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
+      },
+      {
+        "name": "registry_repo_prefix",
+        "type": "string",
+        "source": "user",
+        "description": "Project / repository prefix inside the mirror (a Harbor project, an Artifactory repo key)."
+      },
+      {
+        "name": "registry_username",
+        "type": "string",
+        "source": "user",
+        "description": "Username the mirror is pushed to and pulled from."
+      },
+      {
+        "name": "registry_password",
+        "type": "string",
+        "source": "user",
+        "description": "Password / access token for that user. Stored base64 in the workspace config, never logged."
+      },
+      {
+        "name": "license_mode",
+        "type": "string",
+        "source": "user",
+        "description": "connected | disconnected | f5licenseproxy. Blank = connected."
+      },
+      {
+        "name": "flp_external_url",
+        "type": "string",
+        "source": "user",
+        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own — `flp output flp_external_endpoint` on the workspace that does."
+      },
+      {
+        "name": "flp_root_ca_b64",
+        "type": "string",
+        "source": "user",
+        "description": "That proxy's base64 root CA, which the cluster's CWC must trust — `flp output flp_root_ca`. Already base64: it is stored verbatim."
+      },
+      {
+        "name": "zone1_ext_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: external VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_int_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_int_snat_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_int_vip_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_external_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: external self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone1_internal_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 1: internal self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_ext_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: external VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_int_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_int_snat_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_int_vip_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_external_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: external self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone2_internal_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 2: internal self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_ext_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: external VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_int_vlan_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal VLAN CIDR (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_int_snat_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_int_vip_cidr",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_external_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: external self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "zone3_internal_selfip",
+        "type": "string",
+        "source": "user",
+        "description": "Zone 3: internal self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "registry_ca_b64",
+        "type": "string",
+        "source": "user",
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry."
+      },
+      {
+        "name": "registry_ca_sha256",
+        "type": "string",
+        "source": "user",
+        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:…, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "source": "user",
+        "description": "Register the adopted cluster with a BNK Forge instance (e.g. https://forge.example.com). Blank = skip registration entirely."
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "source": "user",
+        "description": "Login for that Forge."
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "source": "user",
+        "description": "Password for that login. Passed to the step as an environment variable only — never on the command line."
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "source": "user",
+        "description": "Target project the cluster is registered into. Blank = the workspace's configured project."
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "source": "user",
+        "default": "false",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out."
+      }
+    ]
+  },
+  "outputs": {
+    "key_outputs": [
+      {
+        "name": "cluster_id",
+        "type": "string",
+        "description": "ID of the adopted ROKS cluster."
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "description": "Name of the adopted ROKS cluster."
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "description": "IBM Cloud region."
+      },
+      {
+        "name": "vpc_id",
+        "type": "string",
+        "description": "The cluster's VPC ID."
+      }
+    ]
+  }
+}

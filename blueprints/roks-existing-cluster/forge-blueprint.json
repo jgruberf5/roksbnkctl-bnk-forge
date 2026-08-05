@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-existing-bnk-roksbnkctl",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "name": "BNK on an existing IBM ROKS cluster (existing Transit Gateway)",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` — it is never created, and a teardown removes only the BNK layer, never the cluster."
   },
@@ -488,6 +488,22 @@
         "bnkforge_password": "${bnkforge_password}",
         "bnkforge_project": "${bnkforge_project}",
         "bnkforge_insecure": "${bnkforge_insecure}"
+      }
+    },
+    {
+      "id": "roksbnkctl-cwc-guard",
+      "module": "roksbnkctl/cwc-guard",
+      "version": "1.0.0",
+      "name": "cwc Multi-Attach guard",
+      "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled — on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
+      "optional": false,
+      "depends_on": [
+        "roksbnkctl-cluster-registry"
+      ],
+      "inputs": {
+        "cwc_namespace": "f5-utils",
+        "cwc_deployment": "f5-spk-cwc",
+        "cwc_selector": "app=cwc"
       }
     }
   ],

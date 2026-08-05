@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "name": "roksbnkctl-cwc-guard",
+  "version": "1.0.0",
+  "kind": "container_image",
+  "description": "Clears F5's f5-spk-cwc Multi-Attach deadlock so BNK licensing can activate. The cluster-wide-controller Deployment mounts a ReadWriteOnce PVC but ships with a RollingUpdate strategy, so when the F5 Lifecycle Operator rolls it the new pod is scheduled before the old one is terminated, cannot attach the volume, and sticks in ContainerCreating forever. The rollout never completes, the License CR never reaches Active, and `bnk up` times out on its license gate after 15 minutes. Runs alongside the BNK install rather than before it, because the Deployment only appears once the operator creates it.",
+  "container_image": {
+    "registry_host": "ghcr.io",
+    "repository": "jgruberf5/roksbnkctl-tools-runner",
+    "digest": "sha256:910ca6786c8b44649fdcf812cfe8d8618fd8aa92a63270fa633740b2a90a1640"
+  },
+  "lifecycle": {
+    "supports_apply": true,
+    "supports_destroy": true
+  },
+  "credentials": {
+    "cloud": "ibmcloud"
+  },
+  "state": {
+    "mount_path": "/work",
+    "home_env": {
+      "HOME": "/home/runner",
+      "ROKSBNKCTL_HOME": "/work/.roksbnkctl"
+    },
+    "scope": "deployment"
+  },
+  "execution": {
+    "engine": "container",
+    "limits": {
+      "cpus": "2",
+      "memory": "2g"
+    }
+  },
+  "steps": {
+    "apply": [
+      {
+        "name": "patch-strategy",
+        "description": "Force strategy=Recreate so the old pod is terminated before the new one is scheduled, freeing the RWO volume. The retry block IS the wait loop: patching a Deployment that does not exist yet exits 1, so this polls until the operator creates it. Patching one already set to Recreate reports 'no change' and exits 0 — which is what makes this harmless once F5 ships the fix.",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_HOME": "/work/.roksbnkctl",
+          "KUBECONFIG": "/work/.kube/config"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "kubectl",
+          "-n",
+          "{{inputs.cwc_namespace}}",
+          "patch",
+          "deployment",
+          "{{inputs.cwc_deployment}}",
+          "--type=merge",
+          "-p",
+          "{\"spec\":{\"strategy\":{\"type\":\"Recreate\",\"rollingUpdate\":null}}}"
+        ],
+        "retry": {
+          "max_attempts": 30,
+          "backoff_seconds": 60
+        },
+        "timeout_seconds": 300
+      },
+      {
+        "name": "scale-down",
+        "description": "Clear a deadlock that already formed. Patching the strategy prevents the NEXT rollout from deadlocking but does not free a volume already held by a pod that will never go Ready, so the replicas are cycled.",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_HOME": "/work/.roksbnkctl",
+          "KUBECONFIG": "/work/.kube/config"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "kubectl",
+          "-n",
+          "{{inputs.cwc_namespace}}",
+          "scale",
+          "deployment",
+          "{{inputs.cwc_deployment}}",
+          "--replicas=0"
+        ],
+        "timeout_seconds": 300
+      },
+      {
+        "name": "await-detach",
+        "description": "Wait for the pods to actually go, which is what releases the ReadWriteOnce volume. Exits 0 when the selector matches nothing, so this is safe whether or not a pod was running.",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_HOME": "/work/.roksbnkctl",
+          "KUBECONFIG": "/work/.kube/config"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "kubectl",
+          "-n",
+          "{{inputs.cwc_namespace}}",
+          "wait",
+          "--for=delete",
+          "pod",
+          "-l",
+          "{{inputs.cwc_selector}}",
+          "--timeout=300s"
+        ],
+        "timeout_seconds": 420
+      },
+      {
+        "name": "scale-up",
+        "description": "Bring the single controller back. With Recreate in force it attaches the volume cleanly.",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_HOME": "/work/.roksbnkctl",
+          "KUBECONFIG": "/work/.kube/config"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "kubectl",
+          "-n",
+          "{{inputs.cwc_namespace}}",
+          "scale",
+          "deployment",
+          "{{inputs.cwc_deployment}}",
+          "--replicas=1"
+        ],
+        "timeout_seconds": 300
+      },
+      {
+        "name": "await-ready",
+        "description": "Do not report success until the controller is actually rolled out — otherwise this module goes green while licensing is still blocked behind it.",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_HOME": "/work/.roksbnkctl",
+          "KUBECONFIG": "/work/.kube/config"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "kubectl",
+          "-n",
+          "{{inputs.cwc_namespace}}",
+          "rollout",
+          "status",
+          "deployment/{{inputs.cwc_deployment}}",
+          "--timeout=600s"
+        ],
+        "timeout_seconds": 720
+      }
+    ],
+    "destroy": [
+      {
+        "name": "noop",
+        "description": "Nothing to undo: this module changes a Deployment's update strategy, which goes away with BNK itself when roksbnkctl-bnk-install is destroyed. Present so a project teardown has something to run rather than stalling on a module that declares no destroy.",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_HOME": "/work/.roksbnkctl",
+          "KUBECONFIG": "/work/.kube/config"
+        },
+        "args": [
+          "roksbnkctl",
+          "version"
+        ],
+        "timeout_seconds": 120
+      }
+    ]
+  },
+  "inputs": {
+    "required": [],
+    "optional": [
+      {
+        "name": "cwc_namespace",
+        "type": "string",
+        "source": "user",
+        "default": "f5-utils",
+        "description": "Namespace the cluster-wide-controller runs in."
+      },
+      {
+        "name": "cwc_deployment",
+        "type": "string",
+        "source": "user",
+        "default": "f5-spk-cwc",
+        "description": "Name of the cluster-wide-controller Deployment."
+      },
+      {
+        "name": "cwc_selector",
+        "type": "string",
+        "source": "user",
+        "default": "app=cwc",
+        "description": "Label selector for its pods, used to wait for the RWO volume to detach."
+      }
+    ]
+  },
+  "references": []
+}

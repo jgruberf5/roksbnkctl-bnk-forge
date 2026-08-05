@@ -19,12 +19,12 @@ across them — so `bnk-install` sees the cluster `cluster-registry` adopted.
 These blueprints work on a ROKS cluster **you already have**. Creating one from
 scratch is roksbnkctl's own `cluster up`, run from the CLI.
 
-Five blueprints ship here, over five modules:
+Five blueprints ship here, over six modules:
 
 | Blueprint | Builds | Modules |
 |---|---|---|
-| [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json) | BNK onto a cluster **you already own**, over an existing Transit Gateway | `cluster-registry → bnk-install` |
-| [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json) | the **air-gapped** install, from a registry you have already mirrored | `cluster-registry → bnk-install` |
+| [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json) | BNK onto a cluster **you already own**, over an existing Transit Gateway | `cluster-registry → bnk-install ∥ cwc-guard` |
+| [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json) | the **air-gapped** install, from a registry you have already mirrored | `cluster-registry → bnk-install ∥ cwc-guard` |
 | [Private Harbor registry on an IBM Cloud VSI](blueprints/harbor-registry/forge-blueprint.json) | a private OCI registry on the Transit Gateway, CA published as an output | `harbor` |
 | [Mirror F5 artifacts from FAR](blueprints/far-mirror/forge-blueprint.json) | the supply chain replicated into **any** private registry — no cluster needed | `FAR-mirror` |
 | [Deploying F5 License Proxy as an IBM Cloud VSI](blueprints/flp-vsi/forge-blueprint.json) | the FLP as a **standalone VSI appliance**, no cluster | `flp` |
@@ -279,13 +279,8 @@ over the TGW), `registry_password`, `flp_external_url` + `flp_root_ca_b64` (from
 `flp output` on the workspace that owns the proxy — or the FLP-VSI blueprint
 below), and `cos_bucket`.
 
-> **Two caveats.**
-> 1. The demo pairs `bnk up` with a **cwc-guard sidecar** that clears F5's
->    ReadWriteOnce Multi-Attach deadlock on a **reused** cluster. A Forge container
->    step is one container with no sidecar and no shell, so that guard is not
->    reproduced. On a cluster where BNK was previously installed, licensing can
->    stall until `f5-spk-cwc` is patched to `Recreate` and cycled by hand.
-> 2. `cos_bucket` / `cos_instance` / `manifest_version` need the `ROKSBNKCTL_COS_*`
+> **One caveat.**
+> 1. `cos_bucket` / `cos_instance` / `manifest_version` need the `ROKSBNKCTL_COS_*`
 >    overrides, which land in roksbnkctl **after v1.33.1** — see the note under
 >    [The FLP-VSI blueprint](#the-flp-vsi-blueprint). With the v1.33.1 pin those
 >    fields are ignored and the built-in COS defaults apply.
@@ -404,6 +399,7 @@ roksbnkctl/cluster-registry/ pack + artifact                        # adopt an E
 roksbnkctl/bnk-install/      pack + artifact                        # install BNK onto the adopted cluster;      destroy: bnk down
 roksbnkctl/far-mirror/       pack + artifact                        # FAR -> private registry replicate + verify; destroy: registry delete
 roksbnkctl/flp/              pack + artifact                        # standalone FLP VSI appliance (no cluster);  destroy: flp down
+roksbnkctl/cwc-guard/        pack + artifact                        # clears F5's cwc RWO Multi-Attach deadlock;  destroy: no-op
 blueprints/roks-existing-cluster/forge-blueprint.json               # "BNK on an existing IBM ROKS cluster (existing Transit Gateway)"
 blueprints/roks-disconnected/forge-blueprint.json                   # "BNK on a disconnected IBM ROKS cluster (private registry + FLP)"
 blueprints/harbor-registry/forge-blueprint.json                     # "Private Harbor registry on an IBM Cloud VSI" (+ optional FAR mirror)

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-disconnected-bnk-roksbnkctl",
-    "version": "3.1.0",
+    "version": "3.2.0",
     "name": "BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Install BIG-IP Next for Kubernetes onto an EXISTING IBM ROKS cluster that has no egress: images come from a private registry you have already mirrored, licensing from an F5 License Proxy. Registers the cluster with BNK Forge first, so it can be watched while BNK installs. Populate the mirror beforehand with the FAR mirror blueprint, or let the Harbor blueprint do it when it builds the registry."
   },
@@ -597,6 +597,22 @@
         "bnkforge_project": "${bnkforge_project}",
         "bnkforge_insecure": "${bnkforge_insecure}",
         "flp_namespace": "${flp_namespace}"
+      }
+    },
+    {
+      "id": "roksbnkctl-cwc-guard",
+      "module": "roksbnkctl/cwc-guard",
+      "version": "1.0.0",
+      "name": "cwc Multi-Attach guard",
+      "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled — on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
+      "optional": false,
+      "depends_on": [
+        "roksbnkctl-cluster-registry"
+      ],
+      "inputs": {
+        "cwc_namespace": "f5-utils",
+        "cwc_deployment": "f5-spk-cwc",
+        "cwc_selector": "app=cwc"
       }
     }
   ],
