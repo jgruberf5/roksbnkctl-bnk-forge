@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-bnk-install",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "kind": "container_image",
   "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy — never the cluster.",
   "container_image": {
@@ -80,7 +80,8 @@
           "ROKSBNKCTL_CLUSTER_CREATE": "false",
           "HOME": "/home/runner",
           "ROKSBNKCTL_GENERIC_CA_B64": "{{inputs.registry_ca_b64}}",
-          "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}"
+          "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
         },
         "args": [
           "roksbnkctl",
@@ -95,7 +96,8 @@
       {
         "name": "bnk-up",
         "env": {
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
         },
         "args": [
           "roksbnkctl",
@@ -114,7 +116,8 @@
       {
         "name": "bnk-status",
         "env": {
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
         },
         "args": [
           "roksbnkctl",
@@ -130,7 +133,8 @@
       {
         "name": "bnk-down",
         "env": {
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
         },
         "args": [
           "roksbnkctl",
@@ -440,6 +444,12 @@
         "source": "user",
         "default": "false",
         "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out."
+      },
+      {
+        "name": "flp_namespace",
+        "type": "string",
+        "source": "user",
+        "description": "Kubernetes namespace the F5 License Proxy client resources go into. Blank keeps the default the subscription JWT implies."
       }
     ]
   },

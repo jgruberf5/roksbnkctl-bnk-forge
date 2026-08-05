@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-existing-bnk-roksbnkctl",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "name": "BNK on an existing IBM ROKS cluster (existing Transit Gateway)",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` — it is never created, and a teardown removes only the BNK layer, never the cluster."
   },
@@ -190,7 +190,8 @@
         "label": "Zone1 Ext Vlan Cidr",
         "description": "Zone 1: external VLAN CIDR (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 16
+        "order": 16,
+        "example": "10.155.15.0/24"
       },
       {
         "name": "zone1_int_vlan_cidr",
@@ -198,7 +199,8 @@
         "label": "Zone1 Int Vlan Cidr",
         "description": "Zone 1: internal VLAN CIDR (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 17
+        "order": 17,
+        "example": "10.254.99.0/24"
       },
       {
         "name": "zone1_int_snat_cidr",
@@ -206,7 +208,8 @@
         "label": "Zone1 Int Snat Cidr",
         "description": "Zone 1: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 18
+        "order": 18,
+        "example": "10.10.11.0/24"
       },
       {
         "name": "zone1_int_vip_cidr",
@@ -214,7 +217,8 @@
         "label": "Zone1 Int Vip Cidr",
         "description": "Zone 1: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 19
+        "order": 19,
+        "example": "10.135.15.0/24"
       },
       {
         "name": "zone1_external_selfip",
@@ -222,7 +226,8 @@
         "label": "Zone1 External Selfip",
         "description": "Zone 1: external self-IP (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 20
+        "order": 20,
+        "example": "10.155.15.101"
       },
       {
         "name": "zone1_internal_selfip",
@@ -230,7 +235,8 @@
         "label": "Zone1 Internal Selfip",
         "description": "Zone 1: internal self-IP (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 21
+        "order": 21,
+        "example": "10.254.99.101"
       },
       {
         "name": "zone2_ext_vlan_cidr",
@@ -238,7 +244,8 @@
         "label": "Zone2 Ext Vlan Cidr",
         "description": "Zone 2: external VLAN CIDR (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 22
+        "order": 22,
+        "example": "10.156.16.0/24"
       },
       {
         "name": "zone2_int_vlan_cidr",
@@ -246,7 +253,8 @@
         "label": "Zone2 Int Vlan Cidr",
         "description": "Zone 2: internal VLAN CIDR (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 23
+        "order": 23,
+        "example": "10.254.100.0/24"
       },
       {
         "name": "zone2_int_snat_cidr",
@@ -254,7 +262,8 @@
         "label": "Zone2 Int Snat Cidr",
         "description": "Zone 2: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 24
+        "order": 24,
+        "example": "10.10.21.0/24"
       },
       {
         "name": "zone2_int_vip_cidr",
@@ -262,7 +271,8 @@
         "label": "Zone2 Int Vip Cidr",
         "description": "Zone 2: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 25
+        "order": 25,
+        "example": "10.136.16.0/24"
       },
       {
         "name": "zone2_external_selfip",
@@ -270,7 +280,8 @@
         "label": "Zone2 External Selfip",
         "description": "Zone 2: external self-IP (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 26
+        "order": 26,
+        "example": "10.156.16.101"
       },
       {
         "name": "zone2_internal_selfip",
@@ -278,7 +289,8 @@
         "label": "Zone2 Internal Selfip",
         "description": "Zone 2: internal self-IP (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 27
+        "order": 27,
+        "example": "10.254.100.101"
       },
       {
         "name": "zone3_ext_vlan_cidr",
@@ -286,7 +298,8 @@
         "label": "Zone3 Ext Vlan Cidr",
         "description": "Zone 3: external VLAN CIDR (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 28
+        "order": 28,
+        "example": "10.157.17.0/24"
       },
       {
         "name": "zone3_int_vlan_cidr",
@@ -294,7 +307,8 @@
         "label": "Zone3 Int Vlan Cidr",
         "description": "Zone 3: internal VLAN CIDR (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 29
+        "order": 29,
+        "example": "10.254.101.0/24"
       },
       {
         "name": "zone3_int_snat_cidr",
@@ -302,7 +316,8 @@
         "label": "Zone3 Int Snat Cidr",
         "description": "Zone 3: internal SNAT CIDR (SNAT addresses) (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 30
+        "order": 30,
+        "example": "10.10.31.0/24"
       },
       {
         "name": "zone3_int_vip_cidr",
@@ -310,7 +325,8 @@
         "label": "Zone3 Int Vip Cidr",
         "description": "Zone 3: internal VIP CIDR (listener IPs) (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 31
+        "order": 31,
+        "example": "10.137.17.0/24"
       },
       {
         "name": "zone3_external_selfip",
@@ -318,7 +334,8 @@
         "label": "Zone3 External Selfip",
         "description": "Zone 3: external self-IP (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 32
+        "order": 32,
+        "example": "10.157.17.101"
       },
       {
         "name": "zone3_internal_selfip",
@@ -326,7 +343,8 @@
         "label": "Zone3 Internal Selfip",
         "description": "Zone 3: internal self-IP (all 6 zone fields required for the zone to apply).",
         "default": "",
-        "order": 33
+        "order": 33,
+        "example": "10.254.101.101"
       },
       {
         "name": "bnkforge_url",
@@ -375,7 +393,7 @@
     {
       "id": "roksbnkctl-cluster-registry",
       "module": "roksbnkctl/cluster-registry",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "name": "roksbnkctl Cluster Registry",
       "description": "Adopt the existing cluster and register it with BNK Forge — first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -424,7 +442,7 @@
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,

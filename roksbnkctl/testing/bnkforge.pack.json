@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-testing",
     "path": "roksbnkctl/testing",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "category": "bnk",
     "description": "Deploy the roksbnkctl testing phase (client VPC + workloads). Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases.",
     "estimated_time_minutes": 15
@@ -100,7 +100,7 @@
         "name": "existing_transit_gateway",
         "type": "string",
         "source": "user",
-        "description": "Adopt an existing Transit Gateway by name/ID \u2014 the new cluster + testing VPC attach to it. Blank = create one."
+        "description": "Adopt an existing Transit Gateway by name/ID — the new cluster + testing VPC attach to it. Blank = create one."
       },
       {
         "name": "testing_vpc_name",

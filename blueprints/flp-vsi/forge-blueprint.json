@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-flp-vsi-roksbnkctl",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "name": "Deploying F5 License Proxy as an IBM Cloud VSI",
     "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC — no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
   },
@@ -252,6 +252,15 @@
         "description": "Object name of the subscription JWT in the bucket. Blank = subscription.jwt.",
         "default": "",
         "order": 23
+      },
+      {
+        "name": "flp_namespace",
+        "type": "string",
+        "label": "FLP namespace",
+        "description": "Kubernetes namespace the F5 License Proxy client resources go into. Blank keeps the default the subscription JWT implies.",
+        "example": "f5licenseproxy",
+        "default": "",
+        "order": 24
       }
     ]
   },
@@ -259,7 +268,7 @@
     {
       "id": "roksbnkctl-flp",
       "module": "roksbnkctl/flp",
-      "version": "1.0.6",
+      "version": "1.1.0",
       "name": "roksbnkctl FLP (VSI)",
       "description": "roksbnkctl flp up in vsi mode — a standalone F5 License Proxy appliance in an existing VPC.",
       "optional": false,
@@ -287,7 +296,8 @@
         "cos_bucket": "${cos_bucket}",
         "cos_region": "${cos_region}",
         "far_auth_file": "${far_auth_file}",
-        "subscription_jwt_file": "${subscription_jwt_file}"
+        "subscription_jwt_file": "${subscription_jwt_file}",
+        "flp_namespace": "${flp_namespace}"
       }
     }
   ],

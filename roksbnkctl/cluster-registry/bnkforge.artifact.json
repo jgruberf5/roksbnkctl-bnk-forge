@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-registry",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "kind": "container_image",
   "description": "Adopt an EXISTING IBM Cloud ROKS cluster into the workspace and register it with BNK Forge, so the cluster is visible and monitorable BEFORE anything is installed onto it. Runs first in the graph; the cluster itself is never created or destroyed.",
   "container_image": {
@@ -80,7 +80,8 @@
           "ROKSBNKCTL_CLUSTER_CREATE": "false",
           "HOME": "/home/runner",
           "ROKSBNKCTL_GENERIC_CA_B64": "{{inputs.registry_ca_b64}}",
-          "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}"
+          "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
         },
         "args": [
           "roksbnkctl",
@@ -95,7 +96,8 @@
       {
         "name": "cluster-register",
         "env": {
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
         },
         "args": [
           "roksbnkctl",
@@ -114,7 +116,8 @@
         "when": "{{inputs.bnkforge_url}}",
         "env": {
           "HOME": "/home/runner",
-          "KUBECONFIG": "/work/.kube/config"
+          "KUBECONFIG": "/work/.kube/config",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
         },
         "args": [
           "roksbnkctl",
@@ -133,7 +136,8 @@
           "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
           "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
           "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
-          "KUBECONFIG": "/work/.kube/config"
+          "KUBECONFIG": "/work/.kube/config",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
         },
         "args": [
           "roksbnkctl",
@@ -152,7 +156,8 @@
       {
         "name": "tgw-disconnect",
         "env": {
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
         },
         "args": [
           "roksbnkctl",
@@ -462,6 +467,12 @@
         "source": "user",
         "default": "false",
         "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out."
+      },
+      {
+        "name": "flp_namespace",
+        "type": "string",
+        "source": "user",
+        "description": "Kubernetes namespace the F5 License Proxy client resources go into. Blank keeps the default the subscription JWT implies."
       }
     ]
   },

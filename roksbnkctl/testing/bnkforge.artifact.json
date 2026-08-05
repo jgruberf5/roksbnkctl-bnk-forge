@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-testing",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "kind": "container_image",
   "description": "Deploy the roksbnkctl testing phase (client VPC + workloads). Procedural container_image artifact run by the container engine; shares the deployment workspace with the other roksbnkctl phases.",
   "container_image": {
@@ -66,7 +66,8 @@
           "ROKSBNKCTL_ZONE3_INT_SNAT_CIDR": "{{inputs.zone3_int_snat_cidr}}",
           "ROKSBNKCTL_ZONE3_INT_VIP_CIDR": "{{inputs.zone3_int_vip_cidr}}",
           "ROKSBNKCTL_ZONE3_EXTERNAL_SELFIP": "{{inputs.zone3_external_selfip}}",
-          "ROKSBNKCTL_ZONE3_INTERNAL_SELFIP": "{{inputs.zone3_internal_selfip}}"
+          "ROKSBNKCTL_ZONE3_INTERNAL_SELFIP": "{{inputs.zone3_internal_selfip}}",
+          "ROKSBNKCTL_TESTING_SSH_KEY_NAME": "{{inputs.testing_ssh_key_name}}"
         },
         "args": [
           "roksbnkctl",
@@ -190,7 +191,7 @@
         "name": "existing_transit_gateway",
         "type": "string",
         "source": "user",
-        "description": "Adopt an existing Transit Gateway by name/ID \u2014 the new cluster + testing VPC attach to it. Blank = create one."
+        "description": "Adopt an existing Transit Gateway by name/ID — the new cluster + testing VPC attach to it. Blank = create one."
       },
       {
         "name": "testing_vpc_name",
@@ -323,6 +324,12 @@
         "type": "string",
         "source": "user",
         "description": "Zone 3: internal self-IP (all 6 zone fields required for the zone to apply)."
+      },
+      {
+        "name": "testing_ssh_key_name",
+        "type": "string",
+        "source": "user",
+        "description": "Name of an existing IBM Cloud VPC SSH key to install on the testing VSI, so it can be reached for debugging."
       }
     ]
   },
