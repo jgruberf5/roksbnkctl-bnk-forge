@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-bnk-adopt",
     "path": "roksbnkctl/bnk-adopt",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "category": "bnk",
     "description": "Adopt an EXISTING IBM Cloud ROKS cluster over an existing Transit Gateway and install BIG-IP Next for Kubernetes on it. The cluster is registered, never created \u2014 and never destroyed.",
     "estimated_time_minutes": 45
@@ -287,6 +287,37 @@
         "type": "string",
         "source": "user",
         "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "source": "user",
+        "description": "Register the adopted cluster with a BNK Forge instance (e.g. https://forge.example.com). Blank = skip registration entirely."
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "source": "user",
+        "description": "Login for that Forge."
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "source": "user",
+        "description": "Password for that login. Passed to the step as an environment variable only \u2014 never on the command line."
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "source": "user",
+        "description": "Target project the cluster is registered into. Blank = the workspace's configured project."
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "source": "user",
+        "default": "false",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out."
       }
     ]
   },

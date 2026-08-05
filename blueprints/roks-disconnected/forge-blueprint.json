@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-disconnected-bnk-roksbnkctl",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "name": "BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "The air-gapped install: mirror the BNK supply chain into your private registry, then install BIG-IP Next for Kubernetes onto an existing ROKS cluster that has no Internet egress \u2014 images from the mirror, licensing brokered by an F5 License Proxy, both reached privately over an existing Transit Gateway. BNK Forge is the CI: the same roksbnkctl step sequence the disconnected-cluster CI demo runs under Argo Workflows."
   },
@@ -407,6 +407,47 @@
         "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output.",
         "default": "",
         "order": 41
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "label": "BNK Forge URL",
+        "description": "Register the adopted cluster with a BNK Forge instance so it appears on the Kubernetes page (e.g. https://forge.example.com). Blank = skip registration.",
+        "default": "",
+        "order": 42
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "label": "BNK Forge username",
+        "description": "Login for that Forge.",
+        "default": "",
+        "order": 43
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "label": "BNK Forge password",
+        "description": "Password for that login. Reaches the step as an environment variable only, never on the command line.",
+        "default": "",
+        "sensitive": true,
+        "order": 44
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "label": "BNK Forge project",
+        "description": "Project the cluster is registered into. Blank = the workspace's configured project.",
+        "default": "",
+        "order": 45
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "label": "Skip Forge TLS verification",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
+        "default": "false",
+        "order": 46
       }
     ]
   },
@@ -442,7 +483,7 @@
     {
       "id": "roksbnkctl-bnk-adopt",
       "module": "roksbnkctl/bnk-adopt",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "name": "roksbnkctl BNK (disconnected install)",
       "description": "init -> cluster register -> bnk up -> bnk status, pulling from the mirror and licensing via the FLP.",
       "optional": false,
@@ -492,7 +533,12 @@
         "registry_target": "generic",
         "license_mode": "f5licenseproxy",
         "registry_ca_b64": "${registry_ca_b64}",
-        "registry_ca_sha256": "${registry_ca_sha256}"
+        "registry_ca_sha256": "${registry_ca_sha256}",
+        "bnkforge_url": "${bnkforge_url}",
+        "bnkforge_username": "${bnkforge_username}",
+        "bnkforge_password": "${bnkforge_password}",
+        "bnkforge_project": "${bnkforge_project}",
+        "bnkforge_insecure": "${bnkforge_insecure}"
       }
     }
   ],

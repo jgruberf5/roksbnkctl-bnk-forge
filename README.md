@@ -158,6 +158,32 @@ connection that pre-existed; it exits 0 "nothing to do".
 `<prefix>-registry-cos`, `<cluster>-registry-cos` and `<cluster>-cos`; if yours is
 named otherwise, set `registry_cos_name`.
 
+### Registering the cluster with BNK Forge
+
+Adopting a cluster into the roksbnkctl workspace does not make it visible *in
+Forge*. Fill in **`bnkforge_url`** (plus username/password) and the module also
+runs `roksbnkctl bnkforge register`, so the cluster lands on Forge's Kubernetes
+page before BNK is installed on it. Leave the URL blank and both steps are
+skipped — the `when` gate keeps the sequence unchanged for anyone who does not
+want it.
+
+It takes two steps, not one:
+
+```
+cluster register <name>  →  kubeconfig --download  →  bnkforge register
+```
+
+The middle one is load-bearing. `bnkforge register` sends the cluster's
+kubeconfig in its request body, reading the **forge kubeconfig** that
+`cluster up` writes — and `cluster register` does *not* write one, because it
+never provisions anything. `kubeconfig --download` fetches the admin config to
+`~/.kube/config`, which is the documented fallback that `register` then finds.
+
+The password reaches the step as `BNK_FORGE_PASSWORD` in the step environment,
+never as an argv token — the process table is readable and step logs are
+persisted. `bnkforge_insecure` defaults to **false**; set it to `true` only for a
+Forge with a self-signed certificate.
+
 ### 1. Connected — [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json)
 
 One module. Charts and images come from F5's registry, licensing from the

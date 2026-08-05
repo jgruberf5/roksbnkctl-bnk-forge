@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-existing-bnk-roksbnkctl",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "name": "BNK on an existing IBM ROKS cluster (existing Transit Gateway)",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` \u2014 it is never created, and a teardown removes only the BNK layer, never the cluster."
   },
@@ -327,6 +327,47 @@
         "description": "Zone 3: internal self-IP (all 6 zone fields required for the zone to apply).",
         "default": "",
         "order": 33
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "label": "BNK Forge URL",
+        "description": "Register the adopted cluster with a BNK Forge instance so it appears on the Kubernetes page (e.g. https://forge.example.com). Blank = skip registration.",
+        "default": "",
+        "order": 34
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "label": "BNK Forge username",
+        "description": "Login for that Forge.",
+        "default": "",
+        "order": 35
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "label": "BNK Forge password",
+        "description": "Password for that login. Reaches the step as an environment variable only, never on the command line.",
+        "default": "",
+        "sensitive": true,
+        "order": 36
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "label": "BNK Forge project",
+        "description": "Project the cluster is registered into. Blank = the workspace's configured project.",
+        "default": "",
+        "order": 37
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "label": "Skip Forge TLS verification",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
+        "default": "false",
+        "order": 38
       }
     ]
   },
@@ -334,7 +375,7 @@
     {
       "id": "roksbnkctl-bnk-adopt",
       "module": "roksbnkctl/bnk-adopt",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "name": "roksbnkctl BNK (adopt existing cluster)",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,
@@ -372,7 +413,12 @@
         "zone3_int_snat_cidr": "${zone3_int_snat_cidr}",
         "zone3_int_vip_cidr": "${zone3_int_vip_cidr}",
         "zone3_external_selfip": "${zone3_external_selfip}",
-        "zone3_internal_selfip": "${zone3_internal_selfip}"
+        "zone3_internal_selfip": "${zone3_internal_selfip}",
+        "bnkforge_url": "${bnkforge_url}",
+        "bnkforge_username": "${bnkforge_username}",
+        "bnkforge_password": "${bnkforge_password}",
+        "bnkforge_project": "${bnkforge_project}",
+        "bnkforge_insecure": "${bnkforge_insecure}"
       }
     }
   ],

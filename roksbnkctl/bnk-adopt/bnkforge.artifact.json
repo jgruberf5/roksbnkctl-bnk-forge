@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-bnk-adopt",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "kind": "container_image",
   "description": "Adopt an EXISTING IBM Cloud ROKS cluster over an existing Transit Gateway and install BIG-IP Next for Kubernetes on it. The cluster is registered, never created \u2014 and never destroyed.",
   "container_image": {
@@ -108,6 +108,42 @@
           "{{inputs.registry_cos_name}}"
         ],
         "timeout_seconds": 900
+      },
+      {
+        "name": "kubeconfig-fetch",
+        "when": "{{inputs.bnkforge_url}}",
+        "env": {
+          "HOME": "/home/runner"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "kubeconfig",
+          "--download"
+        ],
+        "timeout_seconds": 600
+      },
+      {
+        "name": "bnkforge-register",
+        "when": "{{inputs.bnkforge_url}}",
+        "env": {
+          "HOME": "/home/runner",
+          "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
+          "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "bnkforge",
+          "register",
+          "--project",
+          "{{inputs.bnkforge_project}}",
+          "--insecure={{inputs.bnkforge_insecure}}"
+        ],
+        "timeout_seconds": 600
       },
       {
         "name": "bnk-up",
@@ -440,6 +476,38 @@
         "type": "string",
         "source": "user",
         "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "source": "user",
+        "description": "Register the adopted cluster with a BNK Forge instance (e.g. https://forge.example.com). Blank = skip registration entirely."
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "source": "user",
+        "description": "Login for that Forge."
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "description": "Password for that login. Passed to the step as an environment variable only \u2014 never on the command line."
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "source": "user",
+        "description": "Target project the cluster is registered into. Blank = the workspace's configured project."
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "source": "user",
+        "default": "false",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out."
       }
     ]
   },
