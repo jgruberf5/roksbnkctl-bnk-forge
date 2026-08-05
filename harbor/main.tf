@@ -21,11 +21,26 @@ data "ibm_is_image" "vsi" {
 }
 
 # ── Services VPC (created, or adopted) ───────────────────────────────────────
+# MANUAL address prefixes, not "auto". Auto assigns IBM's per-zone defaults
+# (us-east: 10.241.0.0/18, 10.241.64.0/18, 10.241.128.0/18), which constrains
+# subnet_cidr to those ranges — and, more importantly, makes the VPC advertise
+# the whole /18 over a Transit Gateway. A roksbnkctl cluster VPC uses those same
+# defaults, so two auto-prefixed VPCs on one gateway collide no matter how the
+# subnets inside them are carved up. Declaring exactly one prefix means this VPC
+# advertises only what it actually uses.
 resource "ibm_is_vpc" "services" {
   count                     = var.create_vpc ? 1 : 0
   name                      = "${local.name}-services-vpc"
   resource_group            = data.ibm_resource_group.rg.id
-  address_prefix_management = "auto"
+  address_prefix_management = "manual"
+}
+
+resource "ibm_is_vpc_address_prefix" "services" {
+  count = var.create_vpc ? 1 : 0
+  name  = "${local.name}-services-prefix"
+  vpc   = ibm_is_vpc.services[0].id
+  zone  = local.zone
+  cidr  = var.subnet_cidr
 }
 
 # Harbor is the only component that needs egress — it pulls the BNK supply chain
@@ -40,6 +55,7 @@ resource "ibm_is_public_gateway" "services" {
 
 resource "ibm_is_subnet" "services" {
   count           = var.create_vpc ? 1 : 0
+  depends_on      = [ibm_is_vpc_address_prefix.services]
   name            = "${local.name}-services-subnet"
   vpc             = ibm_is_vpc.services[0].id
   zone            = local.zone
