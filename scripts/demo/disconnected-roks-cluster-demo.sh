@@ -243,6 +243,32 @@ if [[ "$ACTION" == "down" ]]; then
       warn "project $pid has modules that did not destroy — leaving it in place"
     fi
   done
+  # The registration project is created by roksbnkctl inside the cluster-registry
+  # module (`bnkforge register --project`), not by this script, so there is no
+  # state file for it and the loop above cannot see it. roksbnkctl has no
+  # deregister verb — bnkforge offers enable/disable/status/register only — so the
+  # module cannot undo its own registration either. Clean it up here: it did not
+  # exist before the demo ran, so `down` should not leave it behind. Only when it
+  # is empty; a project someone else put modules in is not ours to delete.
+  if [[ -n "${BNKFORGE_PROJECT:-}" ]]; then
+    reg_json=$(forge_api GET /api/projects 2>/dev/null | python3 -c '
+import sys, json
+want = sys.argv[1]
+d = json.load(sys.stdin)
+for p in (d if isinstance(d, list) else d.get("projects", [])):
+    if p.get("name") == want:
+        print(p["id"], p.get("module_count") or 0)
+        break' "$BNKFORGE_PROJECT" 2>/dev/null)
+    if [[ -n "$reg_json" ]]; then
+      read -r reg_id reg_mods <<< "$reg_json"
+      if [[ "$reg_mods" == "0" ]]; then
+        forge_delete_project "$reg_id"
+        ok "registration project '$BNKFORGE_PROJECT' ($reg_id) deleted"
+      else
+        warn "registration project '$BNKFORGE_PROJECT' has $reg_mods module(s) — left in place"
+      fi
+    fi
+  fi
   timing_summary
   ok "down complete — resources destroyed, projects deleted, catalog untouched, cluster and Transit Gateway intact"
   exit 0
