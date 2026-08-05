@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-disconnected-bnk-roksbnkctl",
-    "version": "3.3.0",
+    "version": "3.3.1",
     "name": "BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Install BIG-IP Next for Kubernetes onto an EXISTING IBM ROKS cluster that has no egress: images come from a private registry you have already mirrored, licensing from an F5 License Proxy. Registers the cluster with BNK Forge first, so it can be watched while BNK installs. Populate the mirror beforehand with the FAR mirror blueprint, or let the Harbor blueprint do it when it builds the registry."
   },
@@ -45,7 +45,7 @@
     },
     {
       "type": "f5_license_proxy",
-      "description": "A running F5 License Proxy the cluster can reach privately — deploy one with the 'Deploying F5 License Proxy as an IBM Cloud VSI' blueprint, then paste its external_endpoint and root_ca_b64 here."
+      "description": "A running F5 License Proxy the cluster can reach privately \u2014 deploy one with the 'Deploying F5 License Proxy as an IBM Cloud VSI' blueprint, then paste its external_endpoint and root_ca_b64 here."
     },
     {
       "type": "transit_gateway",
@@ -53,13 +53,13 @@
     },
     {
       "type": "cos_bucket",
-      "description": "An orchestration COS bucket holding the FAR auth tarball and the subscription JWT — the only artifacts not served from the mirror."
+      "description": "An orchestration COS bucket holding the FAR auth tarball and the subscription JWT \u2014 the only artifacts not served from the mirror."
     }
   ],
   "input_summary": [
     {
       "label": "Two phases",
-      "value": "Mirror (init -> registry replicate --target generic -> registry verify) then Install (cluster register -> bnk up -> bnk status), sharing one deployment workspace — the same split, and the same shared state, as the demo's two Argo Workflows over one PVC."
+      "value": "Mirror (init -> registry replicate --target generic -> registry verify) then Install (cluster register -> bnk up -> bnk status), sharing one deployment workspace \u2014 the same split, and the same shared state, as the demo's two Argo Workflows over one PVC."
     },
     {
       "label": "Registry trust",
@@ -67,7 +67,7 @@
     },
     {
       "label": "Known gap",
-      "value": "The demo pairs `bnk up` with a cwc-guard sidecar that clears F5's ReadWriteOnce Multi-Attach deadlock on a REUSED cluster. A Forge container step is a single container with no sidecar, so that guard is not reproduced here — on a cluster where BNK was previously installed, licensing may stall until f5-spk-cwc is cycled by hand."
+      "value": "The demo pairs `bnk up` with a cwc-guard sidecar that clears F5's ReadWriteOnce Multi-Attach deadlock on a REUSED cluster. A Forge container step is a single container with no sidecar, so that guard is not reproduced here \u2014 on a cluster where BNK was previously installed, licensing may stall until f5-spk-cwc is cycled by hand."
     }
   ],
   "inputs": {
@@ -136,7 +136,7 @@
         "name": "flp_external_url",
         "type": "string",
         "label": "FLP endpoint",
-        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own — `flp output flp_external_endpoint` on the workspace that does.",
+        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own \u2014 `flp output flp_external_endpoint` on the workspace that does.",
         "example": "https://10.241.0.5:8443",
         "order": 8
       },
@@ -144,7 +144,7 @@
         "name": "flp_root_ca_b64",
         "type": "string",
         "label": "FLP root CA (base64)",
-        "description": "That proxy's base64 root CA, which the cluster's CWC must trust — `flp output flp_root_ca`. Already base64: it is stored verbatim.",
+        "description": "That proxy's base64 root CA, which the cluster's CWC must trust \u2014 `flp output flp_root_ca`. Already base64: it is stored verbatim.",
         "sensitive": true,
         "order": 9
       },
@@ -414,7 +414,7 @@
         "name": "registry_ca_b64",
         "type": "string",
         "label": "Registry CA (base64)",
-        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry.",
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) \u2014 this is the CA you generated for the registry.",
         "default": "",
         "order": 40
       },
@@ -422,7 +422,7 @@
         "name": "registry_ca_sha256",
         "type": "string",
         "label": "Registry CA SHA-256 pin",
-        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:…, colon-separated, or raw `openssl x509 -fingerprint -sha256` output.",
+        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output.",
         "default": "",
         "order": 41
       },
@@ -463,7 +463,7 @@
         "name": "bnkforge_insecure",
         "type": "string",
         "label": "Skip Forge TLS verification",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out.",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
         "default": "false",
         "order": 46
       },
@@ -482,9 +482,9 @@
     {
       "id": "roksbnkctl-cluster-registry",
       "module": "roksbnkctl/cluster-registry",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "name": "roksbnkctl Cluster Registry",
-      "description": "Adopt the existing cluster and register it with BNK Forge — first, so it is visible and monitorable while BNK installs.",
+      "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
       "optional": false,
       "depends_on": [],
       "inputs": {
@@ -540,7 +540,7 @@
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "3.1.0",
+      "version": "3.1.1",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, pulling from the mirror and licensing via the FLP.",
       "optional": false,
@@ -602,9 +602,9 @@
     {
       "id": "roksbnkctl-cwc-guard",
       "module": "roksbnkctl/cwc-guard",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "name": "cwc Multi-Attach guard",
-      "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled — on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
+      "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled \u2014 on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
       "optional": false,
       "depends_on": [
         "roksbnkctl-cluster-registry"

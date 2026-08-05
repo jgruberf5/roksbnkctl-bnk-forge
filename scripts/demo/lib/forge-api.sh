@@ -116,7 +116,25 @@ forge_api() {
   fi
   code="${out##*$'\n'}"; out="${out%$'\n'*}"
   printf '%s' "$out"
-  [[ "$code" =~ ^2 ]] || { printf '\n' >&2; warn "HTTP $code on $method $path"; return 1; }
+  if [[ ! "$code" =~ ^2 ]]; then
+    printf '\n' >&2
+    warn "HTTP $code on $method $path"
+    # Forge explains itself in the body — which validation failed, which variable
+    # was the wrong type. Callers capture stdout and drop it on failure, so
+    # without this the operator sees a bare status code and has to replay the
+    # request by hand to learn anything.
+    printf '%s' "$out" | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin); e=d.get('error') or d.get('detail') or d
+    m=e.get('message') if isinstance(e,dict) else e
+    if m: print('     '+str(m)[:700])
+except Exception:
+    b=sys.stdin.read().strip()
+    if b: print('     '+b[:300])
+" >&2 || true
+    return 1
+  fi
 }
 
 # JSON-quote an arbitrary string (handles quotes/backslashes in passwords).
@@ -177,7 +195,19 @@ name,region,cred,vars_ = sys.argv[1], sys.argv[2], int(sys.argv[3]), json.loads(
 print(json.dumps({"name":name,"description":"roksbnkctl disconnected demo","cloud_provider":"ibm",
   "environment":"development","region":region,"credential_template_id":cred,
   "backend_type":"local","variables":vars_}))' "$name" "$region" "$cred" "$vars")
-  resp=$(forge_api POST "/api/stacks/releases/$rid/projects" "$body") || return 1
+  if ! resp=$(forge_api POST "/api/stacks/releases/$rid/projects" "$body"); then
+    # Forge reports a required variable sent as "" as "missing", which reads like
+    # the script forgot to send it at all. Name the ones that went out empty so
+    # the next question is "why is this shell variable unset" and not "which of
+    # these two dozen values did we drop".
+    printf '%s' "$body" | python3 -c "
+import sys,json
+v=(json.load(sys.stdin).get('variables') or {})
+empty=sorted(k for k,x in v.items() if x=='' or x is None)
+print('     sent %d variables; empty: %s' % (len(v), ', '.join(empty) or 'none'))
+" >&2 || true
+    return 1
+  fi
   printf '%s' "$resp" | python3 -c "
 import sys,json
 d=json.load(sys.stdin)

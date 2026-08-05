@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-registry",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "kind": "container_image",
   "description": "Adopt an EXISTING IBM Cloud ROKS cluster into the workspace and register it with BNK Forge, so the cluster is visible and monitorable BEFORE anything is installed onto it. Runs first in the graph; the cluster itself is never created or destroyed.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:910ca6786c8b44649fdcf812cfe8d8618fd8aa92a63270fa633740b2a90a1640"
+    "digest": "sha256:e4d2b6bfa7b4e424f445afa01cb2017f871924e90c25e6bc3b3002c50435bf65"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -154,6 +154,28 @@
     ],
     "destroy": [
       {
+        "name": "bnkforge-unregister",
+        "when": "{{inputs.bnkforge_url}}",
+        "env": {
+          "HOME": "/home/runner",
+          "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
+          "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "bnkforge",
+          "unregister",
+          "--project",
+          "{{inputs.bnkforge_project}}",
+          "--insecure={{inputs.bnkforge_insecure}}"
+        ],
+        "timeout_seconds": 600
+      },
+      {
         "name": "tgw-disconnect",
         "env": {
           "HOME": "/home/runner",
@@ -276,7 +298,7 @@
         "name": "registry_generic_host",
         "type": "string",
         "source": "user",
-        "description": "The mirror's host — for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
+        "description": "The mirror's host \u2014 for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
       },
       {
         "name": "registry_repo_prefix",
@@ -307,14 +329,14 @@
         "name": "flp_external_url",
         "type": "string",
         "source": "user",
-        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own — `flp output flp_external_endpoint` on the workspace that does."
+        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own \u2014 `flp output flp_external_endpoint` on the workspace that does."
       },
       {
         "name": "flp_root_ca_b64",
         "type": "string",
         "source": "user",
         "sensitive": true,
-        "description": "That proxy's base64 root CA, which the cluster's CWC must trust — `flp output flp_root_ca`. Already base64: it is stored verbatim."
+        "description": "That proxy's base64 root CA, which the cluster's CWC must trust \u2014 `flp output flp_root_ca`. Already base64: it is stored verbatim."
       },
       {
         "name": "zone1_ext_vlan_cidr",
@@ -428,13 +450,13 @@
         "name": "registry_ca_b64",
         "type": "string",
         "source": "user",
-        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry."
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) \u2014 this is the CA you generated for the registry."
       },
       {
         "name": "registry_ca_sha256",
         "type": "string",
         "source": "user",
-        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:…, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
+        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
       },
       {
         "name": "bnkforge_url",
@@ -453,7 +475,7 @@
         "type": "string",
         "source": "user",
         "sensitive": true,
-        "description": "Password for that login. Passed to the step as an environment variable only — never on the command line."
+        "description": "Password for that login. Passed to the step as an environment variable only \u2014 never on the command line."
       },
       {
         "name": "bnkforge_project",
@@ -466,7 +488,7 @@
         "type": "string",
         "source": "user",
         "default": "false",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out."
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out."
       },
       {
         "name": "flp_namespace",

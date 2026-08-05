@@ -3,9 +3,9 @@
   "module": {
     "name": "roksbnkctl-bnk-install",
     "path": "roksbnkctl/bnk-install",
-    "version": "3.1.0",
+    "version": "3.1.1",
     "category": "bnk",
-    "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy — never the cluster.",
+    "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
     "estimated_time_minutes": 30
   },
   "deployment_pack": {
@@ -130,7 +130,7 @@
         "name": "registry_generic_host",
         "type": "string",
         "source": "user",
-        "description": "The mirror's host — for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
+        "description": "The mirror's host \u2014 for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
       },
       {
         "name": "registry_repo_prefix",
@@ -160,13 +160,13 @@
         "name": "flp_external_url",
         "type": "string",
         "source": "user",
-        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own — `flp output flp_external_endpoint` on the workspace that does."
+        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own \u2014 `flp output flp_external_endpoint` on the workspace that does."
       },
       {
         "name": "flp_root_ca_b64",
         "type": "string",
         "source": "user",
-        "description": "That proxy's base64 root CA, which the cluster's CWC must trust — `flp output flp_root_ca`. Already base64: it is stored verbatim."
+        "description": "That proxy's base64 root CA, which the cluster's CWC must trust \u2014 `flp output flp_root_ca`. Already base64: it is stored verbatim."
       },
       {
         "name": "zone1_ext_vlan_cidr",
@@ -280,13 +280,13 @@
         "name": "registry_ca_b64",
         "type": "string",
         "source": "user",
-        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry."
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) \u2014 this is the CA you generated for the registry."
       },
       {
         "name": "registry_ca_sha256",
         "type": "string",
         "source": "user",
-        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:…, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
+        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
       },
       {
         "name": "bnkforge_url",
@@ -304,7 +304,7 @@
         "name": "bnkforge_password",
         "type": "string",
         "source": "user",
-        "description": "Password for that login. Passed to the step as an environment variable only — never on the command line."
+        "description": "Password for that login. Passed to the step as an environment variable only \u2014 never on the command line."
       },
       {
         "name": "bnkforge_project",
@@ -317,7 +317,7 @@
         "type": "string",
         "source": "user",
         "default": "false",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out."
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out."
       }
     ]
   },

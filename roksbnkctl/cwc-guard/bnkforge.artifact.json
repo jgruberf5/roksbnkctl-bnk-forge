@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cwc-guard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "kind": "container_image",
   "description": "Clears F5's f5-spk-cwc Multi-Attach deadlock so BNK licensing can activate. The cluster-wide-controller Deployment mounts a ReadWriteOnce PVC but ships with a RollingUpdate strategy, so when the F5 Lifecycle Operator rolls it the new pod is scheduled before the old one is terminated, cannot attach the volume, and sticks in ContainerCreating forever. The rollout never completes, the License CR never reaches Active, and `bnk up` times out on its license gate after 15 minutes. Runs alongside the BNK install rather than before it, because the Deployment only appears once the operator creates it.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:910ca6786c8b44649fdcf812cfe8d8618fd8aa92a63270fa633740b2a90a1640"
+    "digest": "sha256:e4d2b6bfa7b4e424f445afa01cb2017f871924e90c25e6bc3b3002c50435bf65"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -35,7 +35,7 @@
     "apply": [
       {
         "name": "patch-strategy",
-        "description": "Force strategy=Recreate so the old pod is terminated before the new one is scheduled, freeing the RWO volume. The retry block IS the wait loop: patching a Deployment that does not exist yet exits 1, so this polls until the operator creates it. Patching one already set to Recreate reports 'no change' and exits 0 — which is what makes this harmless once F5 ships the fix.",
+        "description": "Force strategy=Recreate so the old pod is terminated before the new one is scheduled, freeing the RWO volume. The retry block IS the wait loop: patching a Deployment that does not exist yet exits 1, so this polls until the operator creates it. Patching one already set to Recreate reports 'no change' and exits 0 \u2014 which is what makes this harmless once F5 ships the fix.",
         "env": {
           "HOME": "/home/runner",
           "ROKSBNKCTL_HOME": "/work/.roksbnkctl",
@@ -131,7 +131,7 @@
       },
       {
         "name": "await-ready",
-        "description": "Do not report success until the controller is actually rolled out — otherwise this module goes green while licensing is still blocked behind it.",
+        "description": "Do not report success until the controller is actually rolled out \u2014 otherwise this module goes green while licensing is still blocked behind it.",
         "env": {
           "HOME": "/home/runner",
           "ROKSBNKCTL_HOME": "/work/.roksbnkctl",
