@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "4.2.0",
+    "version": "4.3.0",
     "name": "Private Harbor registry on an IBM Cloud VSI",
     "description": "A private Harbor OCI registry on an IBM Cloud VSI, attached to a Transit Gateway so air-gapped cluster nodes reach it privately. Its TLS certificate is issued by terraform, so the CA is a module output rather than something to fetch off the box. Optionally replicates the BNK supply chain from FAR on the way up — the mirror takes the registry address and CA straight from the harbor module, so one deployment leaves a registry a disconnected install can use immediately."
   },
@@ -284,7 +284,7 @@
     {
       "id": "harbor-registry",
       "module": "harbor",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "name": "Harbor registry (VSI)",
       "description": "Services VPC + Transit Gateway attachment + Harbor on a VSI, installed by cloud-init.",
       "optional": false,
