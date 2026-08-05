@@ -2,11 +2,11 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "name": "Private Harbor registry on an IBM Cloud VSI",
     "description": "Stand up the private OCI registry a disconnected BNK install pulls from: a Harbor VSI in a services VPC, attached to an existing Transit Gateway so an air-gapped cluster reaches it privately. This is the first of the four disconnected-deployment blueprints \u2014 its registry_host and vpc_id outputs feed the mirror, FLP and BNK install blueprints."
   },
-  "category": "infra",
+  "category": "infrastructure",
   "cloud_provider": "ibm",
   "icon": "archive",
   "color": "cyan",
