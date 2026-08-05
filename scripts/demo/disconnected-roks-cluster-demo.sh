@@ -66,8 +66,8 @@ phase "Target environment"
 ask REGION               "IBM Cloud region"                    "us-east"
 ask ZONE                 "Zone"                                "${REGION}-1"
 ask RESOURCE_GROUP       "Resource group"                      "default"
-ask PREFIX               "Resource prefix"                     "fdisco"
-ask CLUSTER_NAME         "EXISTING cluster to adopt"           "$PREFIX"
+ask PREFIX               "IBM resource prefix"                 "f5demo"
+ask CLUSTER_NAME         "EXISTING cluster to adopt"           "fdisco"
 ask TRANSIT_GATEWAY      "EXISTING Transit Gateway"            "bnkci-testing"
 ask SSH_KEY_NAME         "IBM Cloud VPC SSH key name"
 ask SSH_KEY_FILE         "…matching private key on this host"  "$HOME/.ssh/id_rsa"
@@ -76,6 +76,16 @@ ask SERVICES_SPARE_CIDR  "Spare services prefix"               "10.243.1.0/24"
 ask COS_BUCKET           "COS bucket holding the FAR key + JWT"
 ask BNKFORGE_PROJECT     "Forge project to register the cluster into" "roksbnkctl-existing-cluster"
 ask_secret HARBOR_ADMIN_PASSWORD "Harbor admin password to set"
+
+# Forge project names. Deliberately not derived from PREFIX: PREFIX names IBM
+# resources and has to stay short and DNS-safe, while these are labels a human
+# reads in the UI and should say what they are.
+PROJECT_HARBOR="${PROJECT_HARBOR:-f5demo-harbor-registry}"
+PROJECT_FLP="${PROJECT_FLP:-f5demo-roksbnkctl-flp}"
+PROJECT_DISCO="${PROJECT_DISCO:-f5demo-roksbnkctl-disconnected-cluster}"
+# The Forge project the adopted cluster is REGISTERED into — the one whose
+# Kubernetes page you watch while BNK installs.
+BNKFORGE_PROJECT="${BNKFORGE_PROJECT:-f5demo-roksbnkctl-existing-cluster}"
 
 COS_INSTANCE="${COS_INSTANCE:-bnk-supply-chain}"
 COS_REGION="${COS_REGION:-us-south}"
@@ -272,7 +282,7 @@ print(json.dumps({"prefix":k["prefix"]+"-svc","region":k["region"],"resource_gro
   "$TRANSIT_GATEWAY" "$SERVICES_SUBNET_CIDR" "$SERVICES_SPARE_CIDR" "$HARBOR_PROJECT,bnk-status" \
   "$HARBOR_PROJECT" "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" "$FAR_AUTH_FILE" \
   "$SUBSCRIPTION_JWT_FILE" "$MANIFEST_VERSION")
-deploy harbor "$HARBOR_REL" "$PREFIX-harbor" "$HARBOR_VARS"
+deploy harbor "$HARBOR_REL" "$PROJECT_HARBOR" "$HARBOR_VARS"
 HARBOR_PID="$DEPLOY_PID"
 
 ibm_ready
@@ -315,7 +325,7 @@ print(json.dumps({"prefix":k[0]+"-flp","region":k[1],"resource_group":k[2],"flp_
  "far_auth_file":k[9],"subscription_jwt_file":k[10]}))' \
   "$PREFIX" "$REGION" "$RESOURCE_GROUP" "$HARBOR_VPC" "$ZONE" "$SSH_KEY_NAME" \
   "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE")
-deploy flp "$FLP_REL" "$PREFIX-flp" "$FLP_VARS"
+deploy flp "$FLP_REL" "$PROJECT_FLP" "$FLP_VARS"
 FLP_PID="$DEPLOY_PID"
 
 # roksbnkctl names the appliance "flp-vsi" unprefixed (terraform/modules/flp_vsi/
@@ -366,7 +376,7 @@ print(json.dumps({
   "$FLP_IP" "$FLP_CA" "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" \
   "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE" "$MANIFEST_VERSION" \
   "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" "$BNKFORGE_PROJECT" "${FORGE_INSECURE:+true}")
-deploy disco "$DISCO_REL" "$PREFIX-disconnected" "$DISCO_VARS"
+deploy disco "$DISCO_REL" "$PROJECT_DISCO" "$DISCO_VARS"
 DISCO_PID="$DEPLOY_PID"; DISCO_MODS="$DEPLOY_MODS"
 
 
