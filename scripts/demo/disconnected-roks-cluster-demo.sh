@@ -82,10 +82,28 @@ ask_secret HARBOR_ADMIN_PASSWORD "Harbor admin password to set"
 # reads in the UI and should say what they are.
 PROJECT_HARBOR="${PROJECT_HARBOR:-f5demo-harbor-registry}"
 PROJECT_FLP="${PROJECT_FLP:-f5demo-roksbnkctl-flp}"
-PROJECT_DISCO="${PROJECT_DISCO:-f5demo-roksbnkctl-disconnected-cluster}"
+PROJECT_DISCO="${PROJECT_DISCO:-f5demo-roksbnkctl-disconnected}"
 # The Forge project the adopted cluster is REGISTERED into — the one whose
 # Kubernetes page you watch while BNK installs.
 BNKFORGE_PROJECT="${BNKFORGE_PROJECT:-f5demo-roksbnkctl-existing-cluster}"
+
+# Forge validates project names as IBM Cloud resource names: lowercase letters,
+# digits and '-', starting alphanumeric, 35 chars max. It rejects at POST time,
+# which on a fresh run is after Harbor and the FAR mirror have already been
+# built — twenty minutes spent to learn a name is one character too long. Check
+# every name up front instead, and name the offender.
+assert_project_names() {
+  local bad=0 n
+  for n in "$PROJECT_HARBOR" "$PROJECT_FLP" "$PROJECT_DISCO" "$BNKFORGE_PROJECT"; do
+    if (( ${#n} > 35 )); then
+      warn "project name '$n' is ${#n} chars; Forge allows 35"; bad=1
+    elif [[ ! "$n" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+      warn "project name '$n' must be lowercase letters, digits and '-', starting alphanumeric"; bad=1
+    fi
+  done
+  (( bad )) && die "fix the project names above before running"
+  return 0
+}
 
 COS_INSTANCE="${COS_INSTANCE:-bnk-supply-chain}"
 COS_REGION="${COS_REGION:-us-south}"
@@ -275,6 +293,8 @@ for p in (d if isinstance(d, list) else d.get("projects", [])):
 fi
 
 # ── 1. catalog ───────────────────────────────────────────────────────────────
+assert_project_names
+
 phase "1/4  Sync the module + blueprint catalog"
 forge_sync_source "roksbnkctl-bnk-forge"
 HARBOR_REL=$(forge_latest_release "ibm-harbor-registry") || die "no valid Harbor blueprint release found"
