@@ -2,7 +2,7 @@
 # disconnected-roks-cluster-demo.sh — drive the whole air-gapped BNK deployment
 # through the BNK Forge REST API.
 #
-#   Harbor registry  →  FAR mirror  →  FLP appliance  →  cluster registry → BNK install
+#   Harbor registry + FAR mirror  →  FLP appliance  →  cluster registry → BNK install
 #
 # Everything runs as BNK Forge deployments; this script only calls the API,
 # waits, and carries the handoffs the API cannot (Harbor's CA and the FLP's root
@@ -154,12 +154,14 @@ deploy() {
     echo "$DEPLOY_PID" > "$STATE/$tag.project"; echo "$DEPLOY_MODS" > "$STATE/$tag.modules"
     # Optional modules arrive disabled; this demo wants every module the
     # blueprint declares, and has supplied inputs for all of them.
-    # NOTE: optional modules are left DISABLED. Enabling one here would also wipe
-    # the blueprint's depends_on edges (update_module recomputes the whole
-    # project's dependencies from library metadata), and the harbor blueprint's
-    # optional mirror cannot work anyway: its registry host and CA are declared
-    # `source: module`, and the container-engine path never runs the dependency
-    # wiring that resolves those. The mirror runs as its own deployment below.
+    # Optional modules arrive DISABLED; this demo wants every module the blueprint
+    # declares and has supplied inputs for all of them.
+    for m in $DEPLOY_MODS; do forge_enable_module "$m"; done
+    # Enabling still wipes the blueprint's depends_on edges — update_module
+    # recomputes the whole project's dependencies from library metadata, and a
+    # blueprint's edges live in the manifest. Put them back before anything is
+    # dispatched, or the mirror races the Harbor it depends on.
+    forge_restore_dependencies "$rel" $DEPLOY_MODS
     # Apply the first module only; Forge's dependency graph triggers the rest as
     # each one's dependencies are met. Applying them all races the orchestrator.
     forge_apply "$(echo "$DEPLOY_MODS" | awk '{print $1}')"
@@ -170,7 +172,7 @@ deploy() {
 # ── teardown ─────────────────────────────────────────────────────────────────
 if [[ "${1:-}" == "teardown" ]]; then
   phase "Teardown"
-  for f in disco flp mirror harbor; do            # reverse of creation order
+  for f in disco flp harbor; do            # reverse of creation order
     [[ -f "$STATE/$f.project" ]] || continue
     pid=$(cat "$STATE/$f.project")
     say "destroying project $pid ($f) …"
@@ -193,20 +195,20 @@ if [[ "${1:-}" == "teardown" ]]; then
 fi
 
 # ── 1. catalog ───────────────────────────────────────────────────────────────
-phase "1/5  Sync the module + blueprint catalog"
+phase "1/4  Sync the module + blueprint catalog"
 forge_sync_source "roksbnkctl-bnk-forge"
 HARBOR_REL=$(forge_latest_release "ibm-harbor-registry") || die "no valid Harbor blueprint release found"
 DISCO_REL=$(forge_latest_release "ibm-roks-disconnected-bnk-roksbnkctl") || die "no valid disconnected blueprint release found"
 FLP_REL=$(forge_latest_release "ibm-flp-vsi-roksbnkctl") || die "no valid FLP blueprint release found"
-MIRROR_REL=$(forge_latest_release "ibm-far-mirror") || die "no valid FAR mirror blueprint release found"
-for r in "$HARBOR_REL" "$MIRROR_REL" "$FLP_REL" "$DISCO_REL"; do forge_import_release "$r"; done
-ok "releases imported — harbor=$HARBOR_REL mirror=$MIRROR_REL flp=$FLP_REL disconnected=$DISCO_REL"
+for r in "$HARBOR_REL" "$FLP_REL" "$DISCO_REL"; do forge_import_release "$r"; done
+ok "releases imported — harbor=$HARBOR_REL flp=$FLP_REL disconnected=$DISCO_REL"
 
 # ── 2. Harbor ────────────────────────────────────────────────────────────────
-phase "2/5  Private Harbor registry"
-say "Creates the services VPC, attaches it to $TRANSIT_GATEWAY, and installs Harbor."
-say "Its TLS certificate is issued by terraform, so the CA is a module output and"
-say "the mirror below takes it as an input — nothing has to be fetched off the box."
+phase "2/4  Private Harbor registry + FAR mirror"
+say "One deployment: the services VPC, the Transit Gateway attachment, Harbor, and"
+say "the FAR mirror that fills it. Harbor's certificate is issued by terraform, so"
+say "its CA is a module output and the mirror is wired to it directly — nothing is"
+say "copied by hand, and nothing is fetched off the box."
 say "Harbor's hostname is its PRIVATE IP so the token realm is reachable from"
 say "no-egress worker nodes; the cert SAN covers the floating IP too."
 HARBOR_VARS=$(python3 -c '
@@ -248,27 +250,8 @@ HARBOR_PIN=$(ssh "${SSH_OPTS[@]}" "ubuntu@$HARBOR_FIP" "sudo openssl x509 -in /o
 HARBOR_IP=$(ssh "${SSH_OPTS[@]}" "ubuntu@$HARBOR_FIP" "hostname -I | awk '{print \$1}'" 2>/dev/null | tr -d '\r\n')
 ok "mirror at $HARBOR_IP (private) — CA captured, pin ${HARBOR_PIN:0:16}…"
 
-# ── 2b. mirror ───────────────────────────────────────────────────────────────
-phase "2b/5  Mirror the BNK supply chain into Harbor"
-say "Its own deployment, no cluster involved. Takes the registry address and the"
-say "CA captured above, replicates every artifact out of FAR, then verifies each"
-say "one by digest. Already-present artifacts are skipped, so a re-run is cheap."
-MIRROR_VARS=$(python3 -c '
-import json,sys
-k=sys.argv[1:]
-print(json.dumps({"prefix":k[0],"region":k[1],"resource_group":k[2],
- "registry_generic_host":k[3],"registry_repo_prefix":k[4],
- "registry_username":"admin","registry_password":k[5],
- "registry_ca_b64":k[6],"registry_ca_sha256":k[7],
- "cos_instance":k[8],"cos_bucket":k[9],"cos_region":k[10],
- "far_auth_file":k[11],"subscription_jwt_file":k[12],"manifest_version":k[13]}))' \
-  "$PREFIX" "$REGION" "$RESOURCE_GROUP" "$HARBOR_IP" "$HARBOR_PROJECT" "$HARBOR_ADMIN_PASSWORD" \
-  "$HARBOR_CA" "$HARBOR_PIN" "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" \
-  "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE" "$MANIFEST_VERSION")
-deploy mirror "$MIRROR_REL" "$PREFIX-far-mirror" "$MIRROR_VARS"
-
 # ── 3. FLP ───────────────────────────────────────────────────────────────────
-phase "3/5  F5 License Proxy appliance"
+phase "3/4  F5 License Proxy appliance"
 say "A standalone VSI in the services VPC — no cluster. The proxy is the only"
 say "component needing egress to F5; the cluster reaches it privately."
 resolve HARBOR_VPC "Services VPC id" vsi_field "$PREFIX-svc-harbor" vpc
@@ -278,7 +261,6 @@ import json,sys
 k=sys.argv[1:]
 print(json.dumps({"prefix":k[0]+"-flp","region":k[1],"resource_group":k[2],"flp_vsi_vpc":k[3],
  "flp_vsi_zone":k[4],"flp_vsi_ssh_key":k[5],"flp_vsi_floating_ip":True,
- "far_auth_local_file":"","subscription_jwt_local_file":"",
  "cos_instance":k[6],"cos_bucket":k[7],"cos_region":k[8],
  "far_auth_file":k[9],"subscription_jwt_file":k[10]}))' \
   "$PREFIX" "$REGION" "$RESOURCE_GROUP" "$HARBOR_VPC" "$ZONE" "$SSH_KEY_NAME" \
@@ -306,7 +288,7 @@ FLP_CA=$(ssh "${SSH_OPTS[@]}" \
 ok "FLP at https://$FLP_IP:8443 — root CA captured"
 
 # ── 4+5. the disconnected chain ──────────────────────────────────────────────
-phase "4/5  Register the cluster, install BNK"
+phase "4/4  Register the cluster, install BNK"
 say "Two modules. Registration runs FIRST so the cluster is on Forge's Kubernetes"
 say "page and watchable while BNK installs onto it. The mirror is already populated."
 DISCO_VARS=$(python3 -c '
@@ -332,7 +314,7 @@ deploy disco "$DISCO_REL" "$PREFIX-disconnected" "$DISCO_VARS"
 DISCO_PID="$DEPLOY_PID"; DISCO_MODS="$DEPLOY_MODS"
 
 
-phase "5/5  Verify"
+phase "Verify"
 say "BNK should be Active, licensed through the proxy, every image from the mirror."
 cat <<EOF >&2
 
