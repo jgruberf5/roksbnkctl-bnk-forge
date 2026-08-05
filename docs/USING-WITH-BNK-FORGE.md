@@ -36,7 +36,7 @@ you mirror the image to a private registry.)
    `https://github.com/jgruberf5/roksbnkctl-bnk-forge.git`. Branch: `main`.
 4. Save and let it **sync**. The sync ingests:
    - **seven artifacts** — `roksbnkctl-cluster` / `-bnk` / `-testing` / `-gateway`
-     (the new-cluster phases), `roksbnkctl-bnk-install` + `roksbnkctl-FAR-mirror` (the
+     `roksbnkctl-cluster-registry` + `roksbnkctl-bnk-install` + `roksbnkctl-FAR-mirror` (the
      existing-cluster path), and `roksbnkctl-flp` — each `kind: container_image`; and
    - **four blueprints** — *IBM ROKS + BNK (roksbnkctl)*, *BNK on an existing IBM
      ROKS cluster*, *BNK on a disconnected IBM ROKS cluster*, and *Deploying F5

@@ -4,23 +4,25 @@ A [BNK Forge](https://github.com/jgruberf5) **module source** that runs
 [roksbnkctl](https://github.com/jgruberf5/roksbnkctl) from a blueprint to
 provision an IBM Cloud ROKS cluster and install BIG-IP Next for Kubernetes (BNK).
 
-It ships **one BNK Forge artifact component per roksbnkctl phase**
-(`roksbnkctl-cluster`, `roksbnkctl-bnk`, `roksbnkctl-testing`, `roksbnkctl-gateway`
-— each `kind: container_image` wrapping the published `roksbnkctl-tools-runner`
-image), plus a **blueprint** that composes them as a **dependency graph**
-(`cluster → bnk → testing / gateway`). BNK Forge's **container engine** runs each
-phase as a governed container step (argv only, no shell) on either a **Docker** or
-**Kubernetes** substrate. Because the phases are separate modules, **each phase can
-be deployed / re-run independently**, while a **deployment-scoped shared workspace**
-(`state.scope: deployment`) keeps roksbnkctl's single `/work` state (tfstate,
-generated keys, `cluster-outputs.json`) shared across them — so `bnk` sees the
-cluster `cluster` created.
+It ships **one BNK Forge artifact component per roksbnkctl phase** —
+`roksbnkctl-cluster-registry`, `roksbnkctl-bnk-install`, `roksbnkctl-FAR-mirror`
+and `roksbnkctl-flp`, each `kind: container_image` wrapping the published
+`roksbnkctl-tools-runner` image — plus the `opentofu` module `harbor`, and
+blueprints that compose them as **dependency graphs**. BNK Forge's **container
+engine** runs each phase as a governed container step (argv only, no shell) on
+either a **Docker** or **Kubernetes** substrate. Because the phases are separate
+modules, **each phase can be deployed / re-run independently**, while a
+**deployment-scoped shared workspace** (`state.scope: deployment`) keeps
+roksbnkctl's single `/work` state (tfstate, generated keys, kubeconfig) shared
+across them — so `bnk-install` sees the cluster `cluster-registry` adopted.
 
-Six blueprints ship here, over nine modules:
+These blueprints work on a ROKS cluster **you already have**. Creating one from
+scratch is roksbnkctl's own `cluster up`, run from the CLI.
+
+Five blueprints ship here, over five modules:
 
 | Blueprint | Builds | Modules |
 |---|---|---|
-| [IBM ROKS + BNK (roksbnkctl)](forge-blueprint.json) | a **new** ROKS cluster, then BNK on it | `cluster → bnk → testing / gateway` |
 | [BNK on an existing IBM ROKS cluster](blueprints/roks-existing-cluster/forge-blueprint.json) | BNK onto a cluster **you already own**, over an existing Transit Gateway | `cluster-registry → bnk-install` |
 | [BNK on a disconnected IBM ROKS cluster](blueprints/roks-disconnected/forge-blueprint.json) | the **air-gapped** install, from a registry you have already mirrored | `cluster-registry → bnk-install` |
 | [Private Harbor registry on an IBM Cloud VSI](blueprints/harbor-registry/forge-blueprint.json) | a private OCI registry on the Transit Gateway, **optionally filled from FAR** | `harbor → [FAR-mirror]` |
@@ -38,10 +40,9 @@ See [Adopting an existing cluster](#adopting-an-existing-cluster) and
 
 ## The runner image
 
-The four ROKS phase modules pin **roksbnkctl v1.33.1** (`sha256:4f50d886…`).
-The three modules whose forms need the FLP-VSI and COS env overrides — `flp`,
-`FAR-mirror`, `bnk-install` — pin **v1.35.0** (`sha256:41c9961e…`), the first release
-carrying them (they shipped in v1.34.0). The image carries the whole toolchain
+All four container modules pin **roksbnkctl v1.35.0** (`sha256:41c9961e…`) — the
+first release carrying the FLP-VSI and COS env overrides these forms need (they
+shipped in v1.34.0). The image carries the whole toolchain
 (terraform, helm, kubectl, oc, the ibmcloud CLI), so a step needs nothing on the
 host.
 
@@ -347,17 +348,14 @@ this repo must be registered as **both** — and the module source first, so the
 module exists in the catalog when the blueprint deploys (otherwise project
 creation fails with `BLUEPRINT_MODULES_MISSING`):
 
-1. Register this repo as a Git **module source**. The module sync discovers the
-   seven `container`-engine packs — `roksbnkctl/{cluster,bnk,testing,gateway,flp,bnk-install,far-mirror}/bnkforge.pack.json`
-   — and registers a module for each, backed by the sibling `bnkforge.artifact.json`
-   the container engine runs at deploy.
+1. Register this repo as a Git **module source**. The module sync discovers
+   **five** packs — four `container`-engine ones,
+   `roksbnkctl/{cluster-registry,bnk-install,far-mirror,flp}/bnkforge.pack.json`,
+   each backed by the sibling `bnkforge.artifact.json` the container engine runs
+   at deploy, plus the `opentofu` module `harbor/`.
 2. Register this repo as a Git **blueprint source**. The blueprint sync walks the
-   repo for files named exactly `forge-blueprint.json` and imports **all four**:
-   [`forge-blueprint.json`](forge-blueprint.json) — **IBM ROKS + BNK (roksbnkctl)**,
-   the four phase modules wired by a `depends_on` graph — and
-   [`blueprints/flp-vsi/forge-blueprint.json`](blueprints/flp-vsi/forge-blueprint.json)
-   — **Deploying F5 License Proxy as an IBM Cloud VSI**, the single-module
-   standalone appliance.
+   repo for files named exactly `forge-blueprint.json` and imports **all five**,
+   every one under `blueprints/`.
 3. On a project with an IBM credential template selected, deploy a blueprint and
    fill the form. For the FLP-VSI blueprint, add the two **project secrets**
    (`f5_far_auth_key`, `f5_subscription_jwt`) first.
@@ -367,16 +365,15 @@ A step-by-step UI walkthrough lives in [`docs/USING-WITH-BNK-FORGE.md`](docs/USI
 ## Layout
 
 ```
-roksbnkctl/cluster/   bnkforge.pack.json + bnkforge.artifact.json   # phase 1: ROKS cluster (provision/attach); destroy: tgw disconnect + cluster down
-roksbnkctl/bnk/       bnkforge.pack.json + bnkforge.artifact.json   # phase 2: install BNK   (depends_on cluster);  destroy: bnk down
-roksbnkctl/testing/   bnkforge.pack.json + bnkforge.artifact.json   # phase 3: testing       (depends_on cluster);  destroy: testing down
-roksbnkctl/gateway/   bnkforge.pack.json + bnkforge.artifact.json   # phase 4: gateway       (depends_on bnk,testing); destroy: gateway down
-roksbnkctl/flp/       bnkforge.pack.json + bnkforge.artifact.json   # standalone FLP VSI appliance (no cluster); destroy: flp down
-roksbnkctl/bnk-install/ bnkforge.pack.json + bnkforge.artifact.json   # adopt an EXISTING cluster + install BNK; destroy: bnk down + tgw disconnect
-roksbnkctl/far-mirror/    bnkforge.pack.json + bnkforge.artifact.json   # FAR -> private registry replicate + verify (no destroy)
-forge-blueprint.json                                                # composes the 4 phases via depends_on (cloud_provider: ibm)
+harbor/                 *.tf + cloud-init.yaml.tftpl + pack        # opentofu: private Harbor registry VSI + services VPC; TLS issued by terraform
+roksbnkctl/cluster-registry/ pack + artifact                        # adopt an EXISTING cluster, register it with Forge; destroy: tgw disconnect
+roksbnkctl/bnk-install/      pack + artifact                        # install BNK onto the adopted cluster;      destroy: bnk down
+roksbnkctl/far-mirror/       pack + artifact                        # FAR -> private registry replicate + verify; destroy: registry delete
+roksbnkctl/flp/              pack + artifact                        # standalone FLP VSI appliance (no cluster);  destroy: flp down
 blueprints/roks-existing-cluster/forge-blueprint.json               # "BNK on an existing IBM ROKS cluster (existing Transit Gateway)"
 blueprints/roks-disconnected/forge-blueprint.json                   # "BNK on a disconnected IBM ROKS cluster (private registry + FLP)"
+blueprints/harbor-registry/forge-blueprint.json                     # "Private Harbor registry on an IBM Cloud VSI" (+ optional FAR mirror)
+blueprints/far-mirror/forge-blueprint.json                          # "Mirror F5 artifacts from FAR into a private registry"
 blueprints/flp-vsi/forge-blueprint.json                             # "Deploying F5 License Proxy as an IBM Cloud VSI" (roksbnkctl/flp only)
 docs/USING-WITH-BNK-FORGE.md                                        # UI walkthrough for a manual test
 docs/specs/                                                         # the design specs (historical; bnk-forge has since implemented them)
