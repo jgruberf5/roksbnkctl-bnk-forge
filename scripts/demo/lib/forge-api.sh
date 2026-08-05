@@ -257,6 +257,48 @@ print(",".join(str(x.get("id",x) if isinstance(x,dict) else x) for x in ds))' 2>
   done <<< "$plan"
 }
 
+# forge_cluster_id_by_name <name> -> id, or empty
+forge_cluster_id_by_name() {
+  forge_api GET /api/k8s/clusters 2>/dev/null | python3 -c '
+import sys, json
+want = sys.argv[1]
+d = json.load(sys.stdin)
+cs = d if isinstance(d, list) else (d.get("clusters") or [])
+for c in cs:
+    if c.get("name") == want:
+        print(c.get("id"))
+        break' "$1" 2>/dev/null
+}
+
+# forge_watch_cluster <cluster-name> <interval-seconds>
+#
+# Registering the cluster first is what puts it on Forge's Kubernetes page while
+# BNK installs into it. On its own that shows an EMPTY cluster: a scan is
+# enqueued once, at registration, and nothing rescans afterwards. The project
+# columns that describe periodic sync — k8s_sync_enabled and
+# k8s_sync_interval_seconds — exist on the model and in the API schema but no
+# task reads them, so the sync they describe never runs.
+#
+# So the demo drives it. A no-op PUT to the cluster enqueues a fresh scan
+# (routes/k8s/clusters.py update_cluster), which is how namespaces and pods
+# appear as BNK creates them. Deliberately NOT `bnkforge register` again: that
+# DELETEs the cluster and re-POSTs it, so the thing you are watching would
+# vanish and come back with a new id.
+#
+# Echoes the watcher pid; the caller kills it when the phase ends.
+forge_watch_cluster() {
+  local name="$1" interval="${2:-60}"
+  (
+    local id=""
+    while :; do
+      [[ -z "$id" ]] && id=$(forge_cluster_id_by_name "$name")
+      [[ -n "$id" ]] && forge_api PUT "/api/k8s/clusters/$id" '{}' >/dev/null 2>&1
+      sleep "$interval"
+    done
+  ) &
+  echo $!
+}
+
 # forge_module_status <module-id>
 forge_module_status() {
   forge_api GET "/api/project-modules/$1/status" \

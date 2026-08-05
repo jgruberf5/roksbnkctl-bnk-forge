@@ -376,7 +376,19 @@ print(json.dumps({
   "$FLP_IP" "$FLP_CA" "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" \
   "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE" "$MANIFEST_VERSION" \
   "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" "$BNKFORGE_PROJECT" "${FORGE_INSECURE:+true}")
+# Keep the cluster's inventory fresh in Forge while BNK installs into it — the
+# whole reason registration runs first. Forge scans once at registration and
+# never again, so without this you watch an empty cluster for 40 minutes.
+CLUSTER_WATCH_PID=$(forge_watch_cluster "$CLUSTER_NAME" 60)
+say "rescanning $CLUSTER_NAME every 60s so BNK appears on the Kubernetes page as it installs"
+
 deploy disco "$DISCO_REL" "$PROJECT_DISCO" "$DISCO_VARS"
+
+[[ -n "${CLUSTER_WATCH_PID:-}" ]] && kill "$CLUSTER_WATCH_PID" 2>/dev/null
+# One last scan so the finished state is what the page shows.
+CID=$(forge_cluster_id_by_name "$CLUSTER_NAME")
+[[ -n "$CID" ]] && forge_api PUT "/api/k8s/clusters/$CID" '{}' >/dev/null 2>&1 \
+  && ok "final cluster rescan queued — the Kubernetes page reflects the installed BNK"
 DISCO_PID="$DEPLOY_PID"; DISCO_MODS="$DEPLOY_MODS"
 
 
