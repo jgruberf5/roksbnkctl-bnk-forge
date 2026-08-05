@@ -321,9 +321,11 @@ implement `secret_files` hid this; the ones that do turn it into a hard failure:
 
     Required secret 'f5_far_auth_key' is not set on this project.
 
-Supply the two artifacts through `cos_instance` / `cos_bucket` / `far_auth_file` /
-`subscription_jwt_file`. If you would rather hold them as project secrets, upload them
-and point `far_auth_local_file` / `subscription_jwt_local_file` at where they land:
+The two artifacts come from COS — `cos_instance` / `cos_bucket` / `cos_region` /
+`far_auth_file` / `subscription_jwt_file` — as they do for every module here. The
+`*_local_file` inputs are gone with the declaration: `secret_files` was the only thing
+that put a file into the run workspace, so with it removed there is nothing for a local
+path to point at.
 
 | Project secret | Lands at | What it is |
 |---|---|---|

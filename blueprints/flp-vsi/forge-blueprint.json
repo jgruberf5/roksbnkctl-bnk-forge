@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-flp-vsi-roksbnkctl",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "name": "Deploying F5 License Proxy as an IBM Cloud VSI",
     "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC — no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
   },
@@ -198,22 +198,6 @@
         "order": 16
       },
       {
-        "name": "far_auth_local_file",
-        "type": "string",
-        "label": "FAR auth file path",
-        "description": "Where the FAR auth tarball lands in the run workspace, from the f5_far_auth_key project secret. Clear this AND the JWT path to pull the supply chain from COS instead.",
-        "default": "/work/far-auth.tgz",
-        "order": 17
-      },
-      {
-        "name": "subscription_jwt_local_file",
-        "type": "string",
-        "label": "Subscription JWT path",
-        "description": "Where the subscription JWT lands in the run workspace, from the f5_subscription_jwt project secret. Clear this AND the FAR path to pull from COS instead.",
-        "default": "/work/subscription.jwt",
-        "order": 18
-      },
-      {
         "name": "cos_instance",
         "type": "string",
         "label": "COS instance",
@@ -268,7 +252,7 @@
     {
       "id": "roksbnkctl-flp",
       "module": "roksbnkctl/flp",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "name": "roksbnkctl FLP (VSI)",
       "description": "roksbnkctl flp up in vsi mode — a standalone F5 License Proxy appliance in an existing VPC.",
       "optional": false,
@@ -290,8 +274,6 @@
         "flp_status_registry_host": "${flp_status_registry_host}",
         "flp_status_registry_ca_b64": "${flp_status_registry_ca_b64}",
         "manifest_version": "${manifest_version}",
-        "far_auth_local_file": "${far_auth_local_file}",
-        "subscription_jwt_local_file": "${subscription_jwt_local_file}",
         "cos_instance": "${cos_instance}",
         "cos_bucket": "${cos_bucket}",
         "cos_region": "${cos_region}",
