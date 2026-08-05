@@ -59,6 +59,13 @@ resource "ibm_is_vpc_address_prefix" "services_spare" {
   vpc   = ibm_is_vpc.services[0].id
   zone  = local.zone
   cidr  = var.services_spare_cidr
+  # is_default matters: a subnet created by POOL allocation (an ibm_is_subnet
+  # with total_ipv4_address_count and no CIDR — what roksbnkctl's FLP VSI does)
+  # draws from the zone's DEFAULT prefix. Manually-created prefixes are not
+  # default, so without this the FLP fails "Cannot allocate subnet space - No
+  # matching pool in zone" even with the whole prefix free. Harbor's own subnet
+  # names an explicit CIDR and does not care.
+  is_default = true
 }
 
 resource "ibm_is_subnet" "services" {
