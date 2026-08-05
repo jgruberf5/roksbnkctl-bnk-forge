@@ -167,10 +167,18 @@ if [[ "${1:-}" == "teardown" ]]; then
     pid=$(cat "$STATE/$f.project")
     say "destroying project $pid ($f) …"
     forge_destroy_project "$pid" || warn "destroy-all returned non-zero for $pid"
+    # Wait for "destroyed", not merely a terminal state — see forge_wait_module.
+    # The project must not be deleted while any module still holds resources: the
+    # delete abandons the in-flight destroys and orphans whatever they owned.
+    local_ok=1
     for mid in $(cat "$STATE/$f.modules" 2>/dev/null); do
-      forge_wait_module "$mid" "module $mid" 3600 || true
+      forge_wait_module "$mid" "module $mid" 3600 destroyed || local_ok=0
     done
-    forge_delete_project "$pid"; rm -f "$STATE/$f.project" "$STATE/$f.modules"
+    if [[ $local_ok == 1 ]]; then
+      forge_delete_project "$pid"; rm -f "$STATE/$f.project" "$STATE/$f.modules"
+    else
+      warn "project $pid still has modules that did not destroy — leaving it in place"
+    fi
   done
   ok "teardown complete — the adopted cluster and the Transit Gateway are left intact"
   exit 0

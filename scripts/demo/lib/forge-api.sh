@@ -128,16 +128,26 @@ forge_module_status() {
     | python3 -c 'import sys,json; print(json.load(sys.stdin).get("status",""))' 2>/dev/null
 }
 
-# forge_wait_module <module-id> <label> [timeout-seconds]
-# Succeeds on "applied"/"destroyed"; fails loudly on any *_failed, and prints
-# the module's error so a failure is diagnosable without opening the UI.
+# forge_wait_module <module-id> <label> [timeout-seconds] [want: applied|destroyed]
+#
+# `want` matters. Accepting either terminal state is right for an apply but wrong
+# for a destroy: a module that has not STARTED destroying is still "applied", so a
+# teardown reads it as already finished, returns immediately, and the caller deletes
+# the project out from under modules that are still holding real resources. Forge
+# tears down in reverse dependency order, so the modules a teardown polls first are
+# exactly the ones still sitting at "applied". Default stays "applied" for apply
+# callers; the teardown passes "destroyed".
 forge_wait_module() {
-  local id="$1" label="$2" limit="${3:-5400}" waited=0 st last=""
+  local id="$1" label="$2" limit="${3:-5400}" want="${4:-applied}" waited=0 st last=""
   while :; do
     st=$(forge_module_status "$id")
     [[ "$st" != "$last" && -n "$st" ]] && { say "$label: $st"; last="$st"; }
+    # A module that never deployed has nothing to tear down.
+    if [[ "$want" == "destroyed" && ( "$st" == "not_initialized" || -z "$st" ) ]]; then
+      ok "$label — nothing deployed"; return 0
+    fi
     case "$st" in
-      applied|destroyed) ok "$label complete"; return 0 ;;
+      "$want") ok "$label complete"; return 0 ;;
       # plan_failed is terminal too — the plan never became an apply, so the module
       # sits there forever. Match any *_failed rather than listing them, so a state
       # this script has not seen yet still stops the run instead of hanging to timeout.
