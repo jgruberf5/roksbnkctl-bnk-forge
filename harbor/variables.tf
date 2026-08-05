@@ -107,3 +107,17 @@ variable "registry_allowed_cidrs" {
   type        = string
   default     = ""
 }
+
+variable "services_spare_cidr" {
+  description = <<-EOT
+    A SECOND address prefix in the services VPC, reserved for appliances that
+    allocate their own subnet from the VPC's free pool — roksbnkctl's FLP VSI
+    does exactly that (ibm_is_subnet with a pool allocation, no explicit CIDR).
+    With manual prefix management, a prefix that exactly equals subnet_cidr
+    leaves nothing to allocate and the FLP fails "Cannot allocate subnet space -
+    No matching pool in zone". Must not overlap subnet_cidr or the cluster VPC.
+    Empty disables it.
+  EOT
+  type        = string
+  default     = "10.243.1.0/24"
+}

@@ -3,7 +3,7 @@
   "module": {
     "name": "harbor-registry",
     "path": "harbor",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "category": "infra",
     "description": "Private Harbor OCI registry on an IBM Cloud VSI \u2014 the mirror a disconnected BNK install pulls its charts and images from. Creates (or adopts) the services VPC, attaches it to an existing Transit Gateway, and installs Harbor with a self-signed cert covering both its private and floating IPs.",
     "estimated_time_minutes": 15
@@ -147,6 +147,13 @@
         "type": "string",
         "source": "user",
         "description": "CIDRs allowed to reach :443 privately over the Transit Gateway. Blank = the RFC-1918 ranges."
+      },
+      {
+        "name": "services_spare_cidr",
+        "type": "string",
+        "source": "user",
+        "default": "10.243.1.0/24",
+        "description": "A second address prefix in the services VPC, reserved for appliances that allocate their own subnet from the VPC pool \u2014 roksbnkctl's FLP VSI does. A prefix that exactly equals the subnet leaves nothing to allocate. Must not overlap the subnet or the cluster VPC. Blank disables it."
       }
     ]
   },

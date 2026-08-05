@@ -53,6 +53,14 @@ resource "ibm_is_public_gateway" "services" {
   resource_group = data.ibm_resource_group.rg.id
 }
 
+resource "ibm_is_vpc_address_prefix" "services_spare" {
+  count = var.create_vpc && var.services_spare_cidr != "" ? 1 : 0
+  name  = "${local.name}-services-spare-prefix"
+  vpc   = ibm_is_vpc.services[0].id
+  zone  = local.zone
+  cidr  = var.services_spare_cidr
+}
+
 resource "ibm_is_subnet" "services" {
   count           = var.create_vpc ? 1 : 0
   depends_on      = [ibm_is_vpc_address_prefix.services]

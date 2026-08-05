@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "name": "Private Harbor registry on an IBM Cloud VSI",
     "description": "Stand up the private OCI registry a disconnected BNK install pulls from: a Harbor VSI in a services VPC, attached to an existing Transit Gateway so an air-gapped cluster reaches it privately. This is the first of the four disconnected-deployment blueprints \u2014 its registry_host and vpc_id outputs feed the mirror, FLP and BNK install blueprints."
   },
@@ -205,6 +205,14 @@
         "description": "Harbor needs egress to mirror from F5's registry. Turn this off only if the subnet already has an egress path.",
         "default": true,
         "order": 18
+      },
+      {
+        "name": "services_spare_cidr",
+        "type": "string",
+        "label": "Spare services prefix",
+        "description": "A second address prefix in the services VPC, reserved for appliances that allocate their own subnet from the VPC pool \u2014 roksbnkctl's FLP VSI does. A prefix that exactly equals the subnet leaves nothing to allocate. Must not overlap the subnet or the cluster VPC. Blank disables it.",
+        "default": "10.243.1.0/24",
+        "order": 19
       }
     ]
   },
@@ -212,7 +220,7 @@
     {
       "id": "harbor-registry",
       "module": "harbor",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "name": "Harbor registry (VSI)",
       "description": "Services VPC + Transit Gateway attachment + Harbor on a VSI, installed by cloud-init.",
       "optional": false,
@@ -235,7 +243,8 @@
         "create_vpc": "${create_vpc}",
         "existing_vpc_id": "${existing_vpc_id}",
         "existing_subnet_id": "${existing_subnet_id}",
-        "public_gateway": "${public_gateway}"
+        "public_gateway": "${public_gateway}",
+        "services_spare_cidr": "${services_spare_cidr}"
       }
     }
   ],
