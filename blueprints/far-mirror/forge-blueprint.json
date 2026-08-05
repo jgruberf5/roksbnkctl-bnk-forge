@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-far-mirror",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "name": "Mirror F5 artifacts from FAR into a private registry",
     "description": "Replicate the BIG-IP Next for Kubernetes supply chain out of F5's Artifact Registry into a private OCI registry, then verify every artifact by digest. Needs no cluster: this is the step that makes a disconnected install possible, and it can run long before one. Point it at any registry you already run, or deploy one with the Harbor blueprint — when Harbor is part of the same deployment the registry address and its CA are wired in automatically."
   },
@@ -29,9 +29,18 @@
     "The registry is ready for a disconnected BNK install to pull from"
   ],
   "prerequisites": [
-    "A reachable OCI registry with a project/repository the credentials can push to",
-    "That registry's CA, if it is self-signed — or its SHA-256 pin",
-    "A COS bucket holding the FAR auth key and the subscription JWT"
+    {
+      "type": "credential_template",
+      "description": "An IBM Cloud credential template on the project — the mirror reads the FAR auth key and subscription JWT from COS with it."
+    },
+    {
+      "type": "container_registry",
+      "description": "A reachable OCI registry with a project/repository the supplied credentials can push into. Harbor does not create the project on first push; a missing one answers 401, which reads like a bad credential."
+    },
+    {
+      "type": "custom",
+      "description": "That registry's CA if it is self-signed, or its SHA-256 pin — roksbnkctl refuses to adopt a captured CA without one. Deploy the registry with the Harbor blueprint and this is wired in automatically."
+    }
   ],
   "input_summary": [
     {
