@@ -127,6 +127,16 @@ resolve() {
 # forge_wait_module returns immediately for a module that is already applied.
 deploy() {
   local tag="$1" rel="$2" name="$3" vars="$4"
+  # Blueprint directory for this phase — the dependency graph is read from the file
+  # rather than the API, which serves catalog metadata only.
+  local tag_bp
+  case "$tag" in
+    harbor) tag_bp="harbor-registry" ;;
+    flp)    tag_bp="flp-vsi" ;;
+    disco)  tag_bp="roks-disconnected" ;;
+    mirror) tag_bp="far-mirror" ;;
+    *)      tag_bp="$tag" ;;
+  esac
   local tmp="$STATE/.$tag.create"   # separate line: under `set -u`, expanding $tag
                                     # in the same `local` that declares it is unbound
   if [[ -s "$STATE/$tag.project" ]]; then
@@ -161,7 +171,7 @@ deploy() {
     # recomputes the whole project's dependencies from library metadata, and a
     # blueprint's edges live in the manifest. Put them back before anything is
     # dispatched, or the mirror races the Harbor it depends on.
-    forge_restore_dependencies "$rel" $DEPLOY_MODS
+    forge_restore_dependencies "$HERE/../../blueprints/$tag_bp/forge-blueprint.json" $DEPLOY_MODS
     # Apply the first module only; Forge's dependency graph triggers the rest as
     # each one's dependencies are met. Applying them all races the orchestrator.
     forge_apply "$(echo "$DEPLOY_MODS" | awk '{print $1}')"

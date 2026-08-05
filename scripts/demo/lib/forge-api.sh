@@ -141,31 +141,52 @@ forge_enable_module() {
   forge_api PUT "/api/project-modules/$1" '{"enabled":true}' >/dev/null
 }
 
-# forge_restore_dependencies <release-id> <module-id...>
+# forge_restore_dependencies <blueprint-file> <module-id...>
 #
 # Re-applies the blueprint's depends_on graph after enabling. created_module_ids
 # comes back in blueprint module order, so position maps a blueprint module id to
 # the project module id it became.
+#
+# The graph is read from the blueprint FILE in this repo, not from the API. An
+# earlier version asked /api/blueprint-catalog/releases/<id> for it; that endpoint
+# returns catalog metadata only — no modules, no manifest — so the helper silently
+# restored nothing and every deployment came out with a flat graph. This repo is
+# the module source, so the file is the same content the release was built from.
+#
+# Verifies afterwards and DIES on a mismatch. Losing these edges is invisible in
+# the API response and only shows up as a module racing the thing it depends on,
+# which is exactly the failure that is hardest to attribute later.
 forge_restore_dependencies() {
-  local rid="$1"; shift
+  local bp="$1"; shift
+  [[ -f "$bp" ]] || die "blueprint file not found for dependency restore: $bp"
   local plan
-  plan=$(forge_api GET "/api/blueprint-catalog/releases/$rid" \
-         | python3 -c 'import sys,json
-ids = sys.argv[1:]
-d = json.load(sys.stdin)
-mods = (d.get("manifest") or d).get("modules") or []
+  plan=$(python3 -c 'import sys,json
+bp, ids = sys.argv[1], sys.argv[2:]
+mods = json.load(open(bp))["modules"]
 pos = {m["id"]: i for i, m in enumerate(mods)}
 for i, m in enumerate(mods):
     if i >= len(ids):
         continue
     deps = [ids[pos[x]] for x in (m.get("depends_on") or []) if pos.get(x, len(ids)) < len(ids)]
     if deps:
-        print(ids[i], ",".join(deps))' "$@") || return 0
-  local mid deps
+        print(ids[i], ",".join(deps))' "$bp" "$@") \
+    || die "could not read the dependency graph from $bp"
+
+  [[ -z "$plan" ]] && return 0
+  local mid deps got
   while read -r mid deps; do
     [[ -z "$mid" ]] && continue
     forge_api PUT "/api/project-modules/$mid/dependencies" "{\"dependencies\":[$deps]}" >/dev/null \
-      && say "restored dependency: module $mid depends on [$deps]"
+      || die "could not set dependencies on module $mid"
+    # Read it back. A 200 does not prove the edge landed.
+    got=$(forge_api GET "/api/project-modules/$mid/dependencies" \
+          | python3 -c 'import sys,json
+d=json.load(sys.stdin)
+ds=d if isinstance(d,list) else (d.get("dependencies") or [])
+print(",".join(str(x.get("id",x) if isinstance(x,dict) else x) for x in ds))' 2>/dev/null)
+    [[ "$got" == "$deps" ]] \
+      || die "dependency restore did not take on module $mid: wanted [$deps], got [${got:-none}]"
+    say "dependency restored + verified: module $mid depends on [$deps]"
   done <<< "$plan"
 }
 
