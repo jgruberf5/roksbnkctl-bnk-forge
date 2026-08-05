@@ -118,6 +118,34 @@ resolve() {
   ask "$var" "$desc"
 }
 
+# deploy <tag> <release-id> <project-name> <vars-json>  -> sets DEPLOY_PID / DEPLOY_MODS
+#
+# Resumable: a phase whose project id is already on disk is adopted rather than
+# deployed again. The whole run takes over an hour, and a failure in a later phase
+# should not mean rebuilding the VPC and the appliances that already came up
+# clean — re-running the script simply continues from where it stopped.
+# forge_wait_module returns immediately for a module that is already applied.
+deploy() {
+  local tag="$1" rel="$2" name="$3" vars="$4"
+  local tmp="$STATE/.$tag.create"   # separate line: under `set -u`, expanding $tag
+                                    # in the same `local` that declares it is unbound
+  if [[ -s "$STATE/$tag.project" ]]; then
+    DEPLOY_PID=$(cat "$STATE/$tag.project"); DEPLOY_MODS=$(cat "$STATE/$tag.modules")
+    say "resuming $tag from project $DEPLOY_PID (delete $STATE/$tag.project to redeploy)"
+  else
+    DEPLOY_MODS=$(forge_create_project "$rel" "$name" "$REGION" \
+                    "$FORGE_CREDENTIAL_TEMPLATE_ID" "$vars" 2> >(tee "$tmp" >&2)) \
+      || die "could not create the $tag project"
+    DEPLOY_PID=$(awk '/^PROJECT/{print $2}' "$tmp")
+    [[ -n "$DEPLOY_PID" ]] || die "$tag project was created but returned no project id"
+    echo "$DEPLOY_PID" > "$STATE/$tag.project"; echo "$DEPLOY_MODS" > "$STATE/$tag.modules"
+    # Apply the first module only; Forge's dependency graph triggers the rest as
+    # each one's dependencies are met. Applying them all races the orchestrator.
+    forge_apply "$(echo "$DEPLOY_MODS" | awk '{print $1}')"
+  fi
+  for m in $DEPLOY_MODS; do forge_wait_module "$m" "$tag" 5400; done
+}
+
 # ── teardown ─────────────────────────────────────────────────────────────────
 if [[ "${1:-}" == "teardown" ]]; then
   phase "Teardown"
@@ -158,10 +186,8 @@ print(json.dumps({"prefix":k["prefix"]+"-svc","region":k["region"],"resource_gro
  "registry_projects":k["projects"],"create_vpc":True,"public_gateway":True}))' \
   "$PREFIX" "$REGION" "$RESOURCE_GROUP" "$ZONE" "$SSH_KEY_NAME" "$HARBOR_ADMIN_PASSWORD" \
   "$TRANSIT_GATEWAY" "$SERVICES_SUBNET_CIDR" "$SERVICES_SPARE_CIDR" "$HARBOR_PROJECT,bnk-status")
-HARBOR_MODS=$(forge_create_project "$HARBOR_REL" "$PREFIX-harbor" "$REGION" "$FORGE_CREDENTIAL_TEMPLATE_ID" "$HARBOR_VARS" 2> >(tee /tmp/.hp >&2)) || die "could not create the Harbor project"
-HARBOR_PID=$(awk '/^PROJECT/{print $2}' /tmp/.hp); echo "$HARBOR_PID" > "$STATE/harbor.project"; echo "$HARBOR_MODS" > "$STATE/harbor.modules"
-for m in $HARBOR_MODS; do forge_apply "$m"; done
-for m in $HARBOR_MODS; do forge_wait_module "$m" "harbor" 3600; done
+deploy harbor "$HARBOR_REL" "$PREFIX-harbor" "$HARBOR_VARS"
+HARBOR_PID="$DEPLOY_PID"
 
 ibm_ready
 resolve HARBOR_FIP "Harbor floating IP" fip_by_name "$PREFIX-svc-harbor-fip"
@@ -198,10 +224,8 @@ print(json.dumps({"prefix":k[0]+"-flp","region":k[1],"resource_group":k[2],"flp_
  "far_auth_file":k[9],"subscription_jwt_file":k[10]}))' \
   "$PREFIX" "$REGION" "$RESOURCE_GROUP" "$HARBOR_VPC" "$ZONE" "$SSH_KEY_NAME" \
   "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE")
-FLP_MODS=$(forge_create_project "$FLP_REL" "$PREFIX-flp" "$REGION" "$FORGE_CREDENTIAL_TEMPLATE_ID" "$FLP_VARS" 2> >(tee /tmp/.fp >&2)) || die "could not create the FLP project"
-FLP_PID=$(awk '/^PROJECT/{print $2}' /tmp/.fp); echo "$FLP_PID" > "$STATE/flp.project"; echo "$FLP_MODS" > "$STATE/flp.modules"
-for m in $FLP_MODS; do forge_apply "$m"; done
-for m in $FLP_MODS; do forge_wait_module "$m" "flp" 3600; done
+deploy flp "$FLP_REL" "$PREFIX-flp" "$FLP_VARS"
+FLP_PID="$DEPLOY_PID"
 
 # roksbnkctl names the appliance "flp-vsi" unprefixed (terraform/modules/flp_vsi/
 # main.tf), so the lookup is by that literal name — and only one can exist per region.
@@ -212,7 +236,12 @@ echo "$FLP_IP" > "$STATE/flp.ip"
 # plane only, so reach it through Harbor with ProxyJump — which keeps the private key
 # on THIS host. Copying the key onto the bastion would leave it there for the life of
 # the VSI, readable by anyone who later gets on the box.
-FLP_CA=$(ssh "${SSH_OPTS[@]}" -o "ProxyJump=ubuntu@$HARBOR_FIP" \
+# ProxyCommand rather than ProxyJump: ProxyJump starts its own ssh to the bastion,
+# and -i applies only to the final hop, so the jump authenticates with the default
+# identities and is refused when the demo key is not one of them. Naming the key in
+# the ProxyCommand makes both hops use it.
+FLP_CA=$(ssh "${SSH_OPTS[@]}" \
+  -o "ProxyCommand=ssh -i $SSH_KEY_FILE -o StrictHostKeyChecking=no -W %h:%p ubuntu@$HARBOR_FIP" \
   "ubuntu@$FLP_IP" "sudo base64 -w0 /opt/flp/ca.crt" 2>/dev/null | tr -d '\r\n')
 [[ -n "$FLP_CA" ]] || die "could not read the FLP root CA (jumped via $HARBOR_FIP)"
 ok "FLP at https://$FLP_IP:8443 — root CA captured"
@@ -240,15 +269,9 @@ print(json.dumps({
   "$FLP_IP" "$FLP_CA" "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" \
   "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE" "$MANIFEST_VERSION" \
   "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" "$BNKFORGE_PROJECT" "${FORGE_INSECURE:+true}")
-DISCO_MODS=$(forge_create_project "$DISCO_REL" "$PREFIX-disconnected" "$REGION" "$FORGE_CREDENTIAL_TEMPLATE_ID" "$DISCO_VARS" 2> >(tee /tmp/.dp >&2)) || die "could not create the disconnected project"
-DISCO_PID=$(awk '/^PROJECT/{print $2}' /tmp/.dp); echo "$DISCO_PID" > "$STATE/disco.project"; echo "$DISCO_MODS" > "$STATE/disco.modules"
+deploy disco "$DISCO_REL" "$PREFIX-disconnected" "$DISCO_VARS"
+DISCO_PID="$DEPLOY_PID"; DISCO_MODS="$DEPLOY_MODS"
 
-# Apply the first module only: Forge's dependency graph auto-triggers the rest as
-# each one's dependencies are satisfied. Applying them all here races the
-# orchestrator and loses on the module lock.
-FIRST=$(echo "$DISCO_MODS" | awk '{print $1}')
-forge_apply "$FIRST"
-for m in $DISCO_MODS; do forge_wait_module "$m" "module $m" 5400; done
 
 phase "5/5  Verify"
 say "BNK should be Active, licensed through the proxy, every image from the mirror."
