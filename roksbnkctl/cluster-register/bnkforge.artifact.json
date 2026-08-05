@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "name": "roksbnkctl-bnk-adopt",
-  "version": "1.0.7",
+  "name": "roksbnkctl-cluster-register",
+  "version": "1.0.0",
   "kind": "container_image",
-  "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-register, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
+  "description": "Adopt an EXISTING IBM Cloud ROKS cluster into the workspace and register it with BNK Forge, so the cluster is visible and monitorable BEFORE anything is installed onto it. Runs first in the graph; the cluster itself is never created or destroyed.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
@@ -93,7 +93,7 @@
         "timeout_seconds": 300
       },
       {
-        "name": "bnk-up",
+        "name": "cluster-register",
         "env": {
           "HOME": "/home/runner"
         },
@@ -101,18 +101,17 @@
           "roksbnkctl",
           "-w",
           "bnk",
-          "bnk",
-          "up",
-          "--auto"
+          "cluster",
+          "register",
+          "{{inputs.cluster_name}}",
+          "--registry-cos-name",
+          "{{inputs.registry_cos_name}}"
         ],
-        "timeout_seconds": 3600,
-        "retry": {
-          "max_attempts": 3,
-          "backoff_seconds": 300
-        }
+        "timeout_seconds": 900
       },
       {
-        "name": "bnk-status",
+        "name": "kubeconfig-fetch",
+        "when": "{{inputs.bnkforge_url}}",
         "env": {
           "HOME": "/home/runner"
         },
@@ -120,15 +119,36 @@
           "roksbnkctl",
           "-w",
           "bnk",
-          "bnk",
-          "status"
+          "kubeconfig",
+          "--download"
         ],
-        "timeout_seconds": 300
+        "timeout_seconds": 600
+      },
+      {
+        "name": "bnkforge-register",
+        "when": "{{inputs.bnkforge_url}}",
+        "env": {
+          "HOME": "/home/runner",
+          "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
+          "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "bnkforge",
+          "register",
+          "--project",
+          "{{inputs.bnkforge_project}}",
+          "--insecure={{inputs.bnkforge_insecure}}"
+        ],
+        "timeout_seconds": 600
       }
     ],
     "destroy": [
       {
-        "name": "bnk-down",
+        "name": "tgw-disconnect",
         "env": {
           "HOME": "/home/runner"
         },
@@ -136,11 +156,11 @@
           "roksbnkctl",
           "-w",
           "bnk",
-          "bnk",
-          "down",
+          "tgw",
+          "disconnect",
           "--auto"
         ],
-        "timeout_seconds": 1800
+        "timeout_seconds": 900
       }
     ]
   },

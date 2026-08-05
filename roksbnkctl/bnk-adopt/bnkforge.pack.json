@@ -3,9 +3,9 @@
   "module": {
     "name": "roksbnkctl-bnk-adopt",
     "path": "roksbnkctl/bnk-adopt",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "category": "bnk",
-    "description": "Adopt an EXISTING IBM Cloud ROKS cluster over an existing Transit Gateway and install BIG-IP Next for Kubernetes on it. The cluster is registered, never created \u2014 and never destroyed.",
+    "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-register, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
     "estimated_time_minutes": 45
   },
   "deployment_pack": {

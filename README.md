@@ -160,6 +160,25 @@ named otherwise, set `registry_cos_name`.
 
 ### Registering the cluster with BNK Forge
 
+Registration is its **own module, first in the graph** — `roksbnkctl-cluster-register`.
+A project apply therefore begins by adopting the cluster and putting it on Forge's
+Kubernetes page, so it can be watched while BNK installs onto it. Everything else
+depends on that module:
+
+```
+cluster-register ──▶ bnk-adopt                    (existing cluster)
+cluster-register ──┐
+mirror ────────────┴▶ bnk-adopt                   (disconnected)
+```
+
+The mirror deliberately does **not** depend on registration — it needs no cluster
+at all, so it runs in parallel and the long replicate starts immediately.
+
+The module also owns the Transit Gateway attachment (its `destroy` is
+`tgw disconnect`), because `cluster register` is what creates it. `bnk-adopt`'s
+destroy is now just `bnk down`, and Forge's reverse-order teardown gets the
+sequence right: BNK first, then the detach.
+
 Adopting a cluster into the roksbnkctl workspace does not make it visible *in
 Forge*. Fill in **`bnkforge_url`** (plus username/password) and the module also
 runs `roksbnkctl bnkforge register`, so the cluster lands on Forge's Kubernetes
