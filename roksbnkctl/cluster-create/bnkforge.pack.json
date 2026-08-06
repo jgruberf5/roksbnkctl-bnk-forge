@@ -49,14 +49,16 @@
         "type": "string",
         "source": "user",
         "label": "IBM Cloud region",
-        "order": 3
+        "order": 3,
+        "description": "IBM Cloud region to create the cluster in. Inherits from the selected credential template."
       },
       {
         "name": "resource_group",
         "type": "string",
         "source": "user",
         "label": "Resource group",
-        "order": 4
+        "order": 4,
+        "description": "IBM Cloud resource group. Inherits from the selected credential template."
       }
     ],
     "optional": [
@@ -66,7 +68,8 @@
         "source": "user",
         "default": "4.18",
         "label": "OpenShift version",
-        "order": 5
+        "order": 5,
+        "description": "OpenShift version for the new cluster."
       },
       {
         "name": "workers_per_zone",
@@ -100,7 +103,8 @@
         "type": "string",
         "source": "user",
         "default": "",
-        "order": 9
+        "order": 9,
+        "description": "BNK Forge username used to register the new cluster."
       },
       {
         "name": "bnkforge_password",
@@ -108,21 +112,24 @@
         "source": "user",
         "default": "",
         "sensitive": true,
-        "order": 10
+        "order": 10,
+        "description": "BNK Forge password used to register the new cluster."
       },
       {
         "name": "bnkforge_project",
         "type": "string",
         "source": "user",
         "default": "",
-        "order": 11
+        "order": 11,
+        "description": "BNK Forge project to register the new cluster into."
       },
       {
         "name": "bnkforge_insecure",
         "type": "string",
         "source": "user",
         "default": "false",
-        "order": 12
+        "order": 12,
+        "description": "Skip TLS verification when the Forge certificate is self-signed."
       }
     ]
   },

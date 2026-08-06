@@ -11,6 +11,10 @@ deploy, sometimes an expensive one:
     routes to it
   * a pack category outside the set Forge accepts (it rejects the module at
     sync time, which then invalidates every blueprint referencing it)
+  * an input missing any of name/type/description/source, an invalid source, or
+    a source="module" input without from_module/from_output — Forge rejects the
+    whole pack for any of these, mirroring _validate_input() in its
+    module_metadata.py
 
 The last one cost a full debugging session: cwc-guard's pack was copied from
 bnk-install and demanded prefix/cluster_name/existing_transit_gateway, which the
@@ -31,6 +35,7 @@ import sys
 # Enforced by Forge at sync time; a bad value rejects the module and cascades
 # into "N invalid" for every blueprint that references it.
 CATEGORIES = {"infra", "k8s", "bnk", "app", "other"}
+SOURCES = {"user", "module", "auto"}
 
 
 def main() -> int:
@@ -57,6 +62,17 @@ def main() -> int:
             cat = p["module"].get("category")
             if cat not in CATEGORIES:
                 probs.append(f"{m['id']} pack category {cat!r} not in {sorted(CATEGORIES)}")
+            for grp in ("required", "optional"):
+                for x in p["inputs"].get(grp, []):
+                    for field in ("name", "type", "description", "source"):
+                        if not x.get(field):
+                            probs.append(f"{m['id']} input {x.get('name', '?')!r} missing {field!r}")
+                    if x.get("source") and x["source"] not in SOURCES:
+                        probs.append(f"{m['id']} input {x.get('name')!r} source {x['source']!r} not in {sorted(SOURCES)}")
+                    if x.get("source") == "module":
+                        for field in ("from_module", "from_output"):
+                            if field not in x:
+                                probs.append(f"{m['id']} input {x.get('name')!r} is source=module without {field!r}")
             if p["module"]["version"] != m.get("version"):
                 probs.append(f"{m['id']} pinned {m.get('version')} but pack on disk is {p['module']['version']}")
             missing = {x["name"] for x in p["inputs"].get("required", [])} - set((m.get("inputs") or {}).keys())
