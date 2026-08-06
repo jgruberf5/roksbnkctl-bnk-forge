@@ -5,7 +5,7 @@
     "path": "roksbnkctl/cluster-create",
     "version": "5.0.0",
     "category": "infra",
-    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then register it with BNK Forge. The counterpart to cluster-registry, which adopts a cluster you already own.",
+    "description": "Provision a NEW IBM ROKS cluster (named after the prefix) with its own VPC and Transit Gateway, then register it with BNK Forge. The counterpart to cluster-registry, which adopts a cluster you already own.",
     "estimated_time_minutes": 40
   },
   "deployment_pack": {
@@ -33,16 +33,8 @@
         "type": "string",
         "source": "user",
         "label": "Resource prefix",
-        "description": "Prefix for every IBM resource this creates (VPC, cluster, Transit Gateway).",
+        "description": "Prefix for every IBM resource this creates. The cluster itself is named EXACTLY this: roksbnkctl names a new cluster after the prefix, so there is no separate cluster name to choose.",
         "order": 1
-      },
-      {
-        "name": "cluster_name",
-        "type": "string",
-        "source": "user",
-        "label": "New cluster name",
-        "description": "Name for the ROKS cluster to CREATE. It must not already exist.",
-        "order": 2
       },
       {
         "name": "region",

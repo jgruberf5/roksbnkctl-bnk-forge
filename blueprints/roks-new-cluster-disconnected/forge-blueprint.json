@@ -63,18 +63,10 @@
       {
         "name": "prefix",
         "type": "string",
-        "label": "Resource prefix",
-        "description": "Prefix for resource names roksbnkctl creates (e.g. acme-eu).",
+        "label": "Resource prefix (and cluster name)",
+        "description": "Prefix for every IBM resource created here. The ROKS cluster is named exactly this \u2014 roksbnkctl names a new cluster after the prefix.",
         "example": "acme-eu",
         "order": 1
-      },
-      {
-        "name": "cluster_name",
-        "type": "string",
-        "label": "New cluster name",
-        "description": "Name for the ROKS cluster to CREATE. It must not already exist; this blueprint provisions the cluster, its VPC and its Transit Gateway.",
-        "example": "disco-demo",
-        "order": 2
       },
       {
         "name": "region",
@@ -487,7 +479,6 @@
       "depends_on": [],
       "inputs": {
         "prefix": "${prefix}",
-        "cluster_name": "${cluster_name}",
         "region": "${region}",
         "resource_group": "${resource_group}",
         "bnkforge_url": "${bnkforge_url}",
@@ -512,7 +503,7 @@
       ],
       "inputs": {
         "prefix": "${prefix}",
-        "cluster_name": "${cluster_name}",
+        "cluster_name": "${prefix}",
         "region": "${region}",
         "resource_group": "${resource_group}",
         "existing_transit_gateway": "",

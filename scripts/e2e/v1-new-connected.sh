@@ -13,8 +13,9 @@ source "$HERE/e2e-lib.sh"
 BP_ID="ibm-roks-new-bnk-roksbnkctl"
 BP_DIR="roks-new-cluster"
 PROJECT="${E2E_V1_PROJECT:-f5e2e-v1-new-connected}"
-CLUSTER="${E2E_V1_CLUSTER:-f5e2e-v1}"
 PREFIX_V1="${E2E_V1_PREFIX:-f5e2e1}"
+# roksbnkctl names a NEW cluster after the prefix — there is no separate name.
+CLUSTER="$PREFIX_V1"
 
 forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD"
 STATE="${STATE:-$HERE/.e2e-state}"; mkdir -p "$STATE"
@@ -29,17 +30,19 @@ forge_sync_source roksbnkctl >/dev/null
 REL=$(forge_latest_release "$BP_ID") || die "no release for $BP_ID"
 e2e_say "blueprint release $REL"
 
-VARS=$(python3 -c '
-import json,sys
-k=sys.argv[1:]
+VARS=$(E2E_PREFIX="$PREFIX_V1" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
+       E2E_OCP="${OPENSHIFT_VERSION:-4.18}" E2E_WPZ="${WORKERS_PER_ZONE:-2}" \
+       E2E_FURL="$FORGE_URL" E2E_FUSER="$FORGE_USER" E2E_FPASS="$FORGE_PASSWORD" \
+       E2E_FPROJ="$PROJECT-reg" E2E_FINSEC="${FORGE_INSECURE:+true}" \
+python3 -c '
+import json, os
+e = os.environ
 print(json.dumps({
- "prefix":k[0],"cluster_name":k[1],"region":k[2],"resource_group":k[3],
- "openshift_version":k[4],"workers_per_zone":k[5],
- "bnkforge_url":k[6],"bnkforge_username":k[7],"bnkforge_password":k[8],
- "bnkforge_project":k[9],"bnkforge_insecure":k[10]}))' \
- "$PREFIX_V1" "$CLUSTER" "$REGION" "$RESOURCE_GROUP" \
- "${OPENSHIFT_VERSION:-4.18}" "${WORKERS_PER_ZONE:-2}" \
- "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" "$PROJECT-reg" "${FORGE_INSECURE:+true}")
+ "prefix":e["E2E_PREFIX"], "region":e["E2E_REGION"], "resource_group":e["E2E_RG"],
+ "openshift_version":e["E2E_OCP"], "workers_per_zone":e["E2E_WPZ"],
+ "bnkforge_url":e["E2E_FURL"], "bnkforge_username":e["E2E_FUSER"],
+ "bnkforge_password":e["E2E_FPASS"], "bnkforge_project":e["E2E_FPROJ"],
+ "bnkforge_insecure":e["E2E_FINSEC"]}))')
 
 e2e_deploy "$BP_DIR" "$REL" "$PROJECT" "$VARS"
 

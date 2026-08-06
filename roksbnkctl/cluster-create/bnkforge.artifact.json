@@ -39,7 +39,6 @@
         "env": {
           "HOME": "/home/runner",
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
-          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
           "ROKSBNKCTL_REGION": "{{inputs.region}}",
           "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
@@ -62,7 +61,6 @@
         "env": {
           "HOME": "/home/runner",
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
-          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
           "ROKSBNKCTL_REGION": "{{inputs.region}}",
           "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
@@ -86,7 +84,6 @@
         "env": {
           "HOME": "/home/runner",
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
-          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
           "ROKSBNKCTL_REGION": "{{inputs.region}}",
           "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
@@ -117,7 +114,6 @@
         "env": {
           "HOME": "/home/runner",
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
-          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
           "ROKSBNKCTL_REGION": "{{inputs.region}}",
           "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
@@ -141,7 +137,6 @@
         "env": {
           "HOME": "/home/runner",
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
-          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
           "ROKSBNKCTL_REGION": "{{inputs.region}}",
           "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
@@ -169,7 +164,6 @@
         "env": {
           "HOME": "/home/runner",
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
-          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
           "ROKSBNKCTL_REGION": "{{inputs.region}}",
           "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
@@ -196,16 +190,8 @@
         "type": "string",
         "source": "user",
         "label": "Resource prefix",
-        "description": "Prefix for every IBM resource this creates (VPC, cluster, Transit Gateway).",
+        "description": "Prefix for every IBM resource this creates. The cluster itself is named EXACTLY this: roksbnkctl names a new cluster after the prefix, so there is no separate cluster name to choose.",
         "order": 1
-      },
-      {
-        "name": "cluster_name",
-        "type": "string",
-        "source": "user",
-        "label": "New cluster name",
-        "description": "Name for the ROKS cluster to CREATE. It must not already exist.",
-        "order": 2
       },
       {
         "name": "region",

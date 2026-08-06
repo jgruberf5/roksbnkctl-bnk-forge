@@ -17,8 +17,9 @@ source "$HERE/e2e-lib.sh"
 BP_ID="ibm-roks-new-disconnected-bnk-roksbnkctl"
 BP_DIR="roks-new-cluster-disconnected"
 PROJECT="${E2E_V2_PROJECT:-f5e2e-v2-new-disco}"
-CLUSTER="${E2E_V2_CLUSTER:-f5e2e-v2}"
 PREFIX_V2="${E2E_V2_PREFIX:-f5e2e2}"
+# roksbnkctl names a NEW cluster after the prefix — there is no separate name.
+CLUSTER="$PREFIX_V2"
 
 forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD"
 STATE="${STATE:-$HERE/.e2e-state}"; mkdir -p "$STATE"
@@ -38,27 +39,31 @@ forge_sync_source roksbnkctl >/dev/null
 REL=$(forge_latest_release "$BP_ID") || die "no release for $BP_ID"
 e2e_say "blueprint release $REL"
 
-VARS=$(python3 -c '
-import json,sys
-k=sys.argv[1:]
+VARS=$(E2E_PREFIX="$PREFIX_V2" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
+       E2E_OCP="${OPENSHIFT_VERSION:-4.18}" E2E_WPZ="${WORKERS_PER_ZONE:-2}" \
+       E2E_RHOST="$HARBOR_IP" E2E_RREPO="$HARBOR_PROJECT" E2E_RPASS="$HARBOR_ADMIN_PASSWORD" \
+       E2E_RCA="$HARBOR_CA" E2E_RPIN="$HARBOR_PIN" E2E_FLPIP="$FLP_IP" E2E_FLPCA="$FLP_CA" \
+       E2E_COSI="$COS_INSTANCE" E2E_COSB="$COS_BUCKET" E2E_COSR="$COS_REGION" \
+       E2E_FAR="$FAR_AUTH_FILE" E2E_JWT="$SUBSCRIPTION_JWT_FILE" E2E_MV="$MANIFEST_VERSION" \
+       E2E_RCOS="${REGISTRY_COS_NAME:-}" \
+       E2E_FURL="$FORGE_URL" E2E_FUSER="$FORGE_USER" E2E_FPASS="$FORGE_PASSWORD" \
+       E2E_FPROJ="$PROJECT-reg" E2E_FINSEC="${FORGE_INSECURE:+true}" \
+python3 -c '
+import json, os
+e = os.environ
 print(json.dumps({
- "prefix":k[0],"cluster_name":k[1],"region":k[2],"resource_group":k[3],
- "openshift_version":k[4],"workers_per_zone":k[5],
- "registry_generic_host":k[6],"registry_repo_prefix":k[7],
- "registry_username":"admin","registry_password":k[8],
- "registry_ca_b64":k[9],"registry_ca_sha256":k[10],
- "flp_external_url":"https://%s:8443"%k[11],"flp_root_ca_b64":k[12],
- "cos_instance":k[13],"cos_bucket":k[14],"cos_region":k[15],
- "far_auth_file":k[16],"subscription_jwt_file":k[17],"manifest_version":k[18],
- "registry_cos_name":k[19],
- "bnkforge_url":k[20],"bnkforge_username":k[21],"bnkforge_password":k[22],
- "bnkforge_project":k[23],"bnkforge_insecure":k[24]}))' \
- "$PREFIX_V2" "$CLUSTER" "$REGION" "$RESOURCE_GROUP" \
- "${OPENSHIFT_VERSION:-4.18}" "${WORKERS_PER_ZONE:-2}" \
- "$HARBOR_IP" "$HARBOR_PROJECT" "$HARBOR_ADMIN_PASSWORD" "$HARBOR_CA" "$HARBOR_PIN" \
- "$FLP_IP" "$FLP_CA" "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" \
- "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE" "$MANIFEST_VERSION" "${REGISTRY_COS_NAME:-}" \
- "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" "$PROJECT-reg" "${FORGE_INSECURE:+true}")
+ "prefix":e["E2E_PREFIX"], "region":e["E2E_REGION"], "resource_group":e["E2E_RG"],
+ "openshift_version":e["E2E_OCP"], "workers_per_zone":e["E2E_WPZ"],
+ "registry_generic_host":e["E2E_RHOST"], "registry_repo_prefix":e["E2E_RREPO"],
+ "registry_username":"admin", "registry_password":e["E2E_RPASS"],
+ "registry_ca_b64":e["E2E_RCA"], "registry_ca_sha256":e["E2E_RPIN"],
+ "flp_external_url":"https://%s:8443" % e["E2E_FLPIP"], "flp_root_ca_b64":e["E2E_FLPCA"],
+ "cos_instance":e["E2E_COSI"], "cos_bucket":e["E2E_COSB"], "cos_region":e["E2E_COSR"],
+ "far_auth_file":e["E2E_FAR"], "subscription_jwt_file":e["E2E_JWT"],
+ "manifest_version":e["E2E_MV"], "registry_cos_name":e["E2E_RCOS"],
+ "bnkforge_url":e["E2E_FURL"], "bnkforge_username":e["E2E_FUSER"],
+ "bnkforge_password":e["E2E_FPASS"], "bnkforge_project":e["E2E_FPROJ"],
+ "bnkforge_insecure":e["E2E_FINSEC"]}))')
 
 e2e_deploy "$BP_DIR" "$REL" "$PROJECT" "$VARS"
 
