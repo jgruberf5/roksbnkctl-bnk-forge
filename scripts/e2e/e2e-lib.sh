@@ -227,6 +227,18 @@ e2e_deploy() {
   e2e_say "project $E2E_PID, modules: $E2E_MODS"
   for m in $E2E_MODS; do forge_enable_module "$m"; done
   forge_restore_dependencies "$E2E_HERE/../../blueprints/$bp_dir/forge-blueprint.json" $E2E_MODS
+  # Re-assert the credential template immediately before dispatch. Forge's
+  # update_project does `if hasattr(project_data, "credential_template_id")`,
+  # and hasattr is always true for a declared Pydantic field — so ANY project
+  # update that omits it silently nulls it. Checking once at creation is not
+  # enough: projects 66 and 68 both read back 17 at creation and None by the time
+  # a module ran, and every "no IBM Cloud API key for workspace bnk" failure
+  # today traces to exactly that.
+  forge_api PUT "/api/projects/$E2E_PID" "{\"credential_template_id\": $FORGE_CREDENTIAL_TEMPLATE_ID}" >/dev/null 2>&1
+  ct=$(forge_api GET "/api/projects/$E2E_PID" 2>/dev/null \
+       | python3 -c 'import sys,json;print(json.load(sys.stdin).get("credential_template_id") or "")' 2>/dev/null)
+  [[ -n "$ct" ]] || die "project $E2E_PID lost its credential template again — steps would run without IBMCLOUD_API_KEY"
+  e2e_say "credential template $ct re-asserted before dispatch"
   forge_apply "$(echo "$E2E_MODS" | awk '{print $1}')"
   # Registration is the first module, so the cluster appears early and the rest
   # of the install is watchable on Forge's Kubernetes page while it happens.
