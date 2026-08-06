@@ -23,3 +23,5 @@ demo/answers.json
 # demo runtime — never commit credentials or run state
 scripts/demo/.env
 scripts/demo/.demo-state/
+scripts/e2e/.e2e-state/
+scripts/e2e/logs/
