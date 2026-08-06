@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-cluster-create",
     "path": "roksbnkctl/cluster-create",
-    "version": "5.0.0",
+    "version": "4.9.0",
     "category": "infra",
     "description": "Provision a NEW IBM ROKS cluster (named after the prefix) with its own VPC and Transit Gateway, then register it with BNK Forge. The counterpart to cluster-registry, which adopts a cluster you already own.",
     "estimated_time_minutes": 40
