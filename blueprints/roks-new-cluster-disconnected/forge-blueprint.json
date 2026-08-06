@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-disconnected-bnk-roksbnkctl",
-    "version": "5.0.0",
+    "version": "5.0.1",
     "name": "BNK on a NEW disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
-    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway and NO worker Internet egress, then install BIG-IP Next for Kubernetes onto it from a private registry you have already mirrored, licensed through an F5 License Proxy. Build the mirror and the proxy first with the Harbor and FLP blueprints."
+    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway and NO worker Internet egress, then install BIG-IP Next for Kubernetes onto it from a private registry you have already mirrored, licensed through an F5 License Proxy. Build the mirror and the proxy first with the Harbor and FLP blueprints. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -551,22 +551,6 @@
         "bnkforge_project": "${bnkforge_project}",
         "bnkforge_insecure": "${bnkforge_insecure}",
         "flp_namespace": "${flp_namespace}"
-      }
-    },
-    {
-      "id": "roksbnkctl-cwc-guard",
-      "module": "roksbnkctl/cwc-guard",
-      "version": "5.0.0",
-      "name": "cwc Multi-Attach guard",
-      "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled \u2014 on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
-      "optional": false,
-      "depends_on": [
-        "roksbnkctl-cluster-create"
-      ],
-      "inputs": {
-        "cwc_namespace": "f5-utils",
-        "cwc_deployment": "f5-spk-cwc",
-        "cwc_selector": "app=cwc"
       }
     }
   ],

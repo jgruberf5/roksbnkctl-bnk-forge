@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-bnk-roksbnkctl",
-    "version": "5.0.0",
+    "version": "5.0.1",
     "name": "BNK on a NEW IBM ROKS cluster (created end to end)",
-    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct \u2014 no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it."
+    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct \u2014 no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -455,22 +455,6 @@
         "bnkforge_password": "${bnkforge_password}",
         "bnkforge_project": "${bnkforge_project}",
         "bnkforge_insecure": "${bnkforge_insecure}"
-      }
-    },
-    {
-      "id": "roksbnkctl-cwc-guard",
-      "module": "roksbnkctl/cwc-guard",
-      "version": "5.0.0",
-      "name": "cwc Multi-Attach guard",
-      "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled \u2014 on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
-      "optional": false,
-      "depends_on": [
-        "roksbnkctl-cluster-create"
-      ],
-      "inputs": {
-        "cwc_namespace": "f5-utils",
-        "cwc_deployment": "f5-spk-cwc",
-        "cwc_selector": "app=cwc"
       }
     }
   ],
