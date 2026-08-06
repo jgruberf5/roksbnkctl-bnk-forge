@@ -201,6 +201,25 @@ e2e_deploy() {
     || die "could not create project '$project'"
   E2E_PID=$(awk '/^PROJECT/{print $2}' "$tmp")
   [[ -n "$E2E_PID" ]] || die "project created but no id returned"
+
+  # Forge injects IBMCLOUD_API_KEY into every container step from the PROJECT's
+  # credential template ({**credentials_env, **step_env}). No template means no
+  # key, and roksbnkctl fails deep inside `bnk up` with "no IBM Cloud API key for
+  # workspace bnk" — 15 minutes and three retries after the project was created.
+  # Project 66 came out with a null template despite the request carrying one, so
+  # verify rather than trust, and repair rather than fail: the cost of being wrong
+  # here is an hour of cloud time.
+  local ct
+  ct=$(forge_api GET "/api/projects/$E2E_PID" 2>/dev/null \
+       | python3 -c 'import sys,json;print(json.load(sys.stdin).get("credential_template_id") or "")' 2>/dev/null)
+  if [[ -z "$ct" ]]; then
+    warn "project $E2E_PID has no credential template — repairing to $FORGE_CREDENTIAL_TEMPLATE_ID"
+    forge_api PUT "/api/projects/$E2E_PID" "{\"credential_template_id\": $FORGE_CREDENTIAL_TEMPLATE_ID}" >/dev/null
+    ct=$(forge_api GET "/api/projects/$E2E_PID" 2>/dev/null \
+         | python3 -c 'import sys,json;print(json.load(sys.stdin).get("credential_template_id") or "")' 2>/dev/null)
+    [[ -n "$ct" ]] || die "project $E2E_PID still has no credential template — every step would run without IBMCLOUD_API_KEY"
+  fi
+  e2e_say "credential template $ct attached — IBMCLOUD_API_KEY will be injected"
   echo "$E2E_PID" > "$STATE/e2e.project"; echo "$E2E_MODS" > "$STATE/$E2E_PID.modules"
   e2e_say "project $E2E_PID, modules: $E2E_MODS"
   for m in $E2E_MODS; do forge_enable_module "$m"; done
