@@ -195,11 +195,18 @@ e2e_teardown() {
 # Point kubectl at the cluster under test, whatever created it.
 e2e_kubeconfig() {
   local cluster="$1"
+  # The CLI session expires, and an expired session fails the fetch while leaving
+  # kubectl pointed at whatever cluster it was on before — so the assertions
+  # would run green against the WRONG cluster. Re-authenticate every time.
+  ibmcloud login --apikey "$IBMCLOUD_API_KEY" -r "$REGION" -g "$RESOURCE_GROUP" --quiet >/dev/null 2>&1
   # `ibmcloud ks` resolves the cluster in the CLI's CURRENT region, which is
   # whatever the last command left it as. Pin it, or verification fails with
   # "cluster not found" at the end of an hour-long deploy.
   ibmcloud target -r "$REGION" >/dev/null 2>&1
   ibmcloud ks cluster config -c "$cluster" --admin >/dev/null 2>&1 \
     || { warn "could not fetch kubeconfig for $cluster in $REGION"; return 1; }
-  kubectl config current-context >/dev/null 2>&1
+  local ctx
+  ctx=$(kubectl config current-context 2>/dev/null)
+  [[ "$ctx" == "$cluster/"* ]] \
+    || { warn "kubectl context is '$ctx', expected $cluster — refusing to assert against the wrong cluster"; return 1; }
 }

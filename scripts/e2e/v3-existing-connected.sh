@@ -34,16 +34,24 @@ e2e_say "blueprint release $REL"
 CLUSTER_ID_BEFORE=$(ibmcloud ks cluster get -c "$CLUSTER" --output json 2>/dev/null \
                     | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null)
 
-VARS=$(python3 -c '
-import json,sys
-k=sys.argv[1:]
+VARS=$(E2E_PREFIX="$PREFIX" E2E_CLUSTER="$CLUSTER" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
+       E2E_TGW="$TRANSIT_GATEWAY" \
+       E2E_COSI="$COS_INSTANCE" E2E_COSB="$COS_BUCKET" E2E_COSR="$COS_REGION" \
+       E2E_FAR="$FAR_AUTH_FILE" E2E_JWT="$SUBSCRIPTION_JWT_FILE" E2E_MV="$MANIFEST_VERSION" \
+       E2E_FURL="$FORGE_URL" E2E_FUSER="$FORGE_USER" E2E_FPASS="$FORGE_PASSWORD" \
+       E2E_FPROJ="$PROJECT" E2E_FINSEC="${FORGE_INSECURE:+true}" \
+python3 -c '
+import json, os
+e = os.environ
 print(json.dumps({
- "prefix":k[0],"cluster_name":k[1],"region":k[2],"resource_group":k[3],
- "existing_transit_gateway":k[4],
- "bnkforge_url":k[5],"bnkforge_username":k[6],"bnkforge_password":k[7],
- "bnkforge_project":k[8],"bnkforge_insecure":k[9]}))' \
- "$PREFIX" "$CLUSTER" "$REGION" "$RESOURCE_GROUP" "$TRANSIT_GATEWAY" \
- "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" "$PROJECT" "${FORGE_INSECURE:+true}")
+ "prefix":e["E2E_PREFIX"], "cluster_name":e["E2E_CLUSTER"], "region":e["E2E_REGION"],
+ "resource_group":e["E2E_RG"], "existing_transit_gateway":e["E2E_TGW"],
+ "cos_instance":e["E2E_COSI"], "cos_bucket":e["E2E_COSB"], "cos_region":e["E2E_COSR"],
+ "far_auth_file":e["E2E_FAR"], "subscription_jwt_file":e["E2E_JWT"],
+ "manifest_version":e["E2E_MV"],
+ "bnkforge_url":e["E2E_FURL"], "bnkforge_username":e["E2E_FUSER"],
+ "bnkforge_password":e["E2E_FPASS"], "bnkforge_project":e["E2E_FPROJ"],
+ "bnkforge_insecure":e["E2E_FINSEC"]}))')
 
 e2e_deploy "$BP_DIR" "$REL" "$PROJECT" "$VARS"
 
