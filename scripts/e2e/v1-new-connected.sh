@@ -33,7 +33,7 @@ e2e_say "blueprint release $REL"
 VARS=$(E2E_PREFIX="$PREFIX_V1" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
        E2E_OCP="${OPENSHIFT_VERSION:-4.18}" E2E_WPZ="${WORKERS_PER_ZONE:-2}" \
        E2E_FURL="$FORGE_URL" E2E_FUSER="$FORGE_USER" E2E_FPASS="$FORGE_PASSWORD" \
-       E2E_FPROJ="$PROJECT-reg" E2E_FINSEC="${FORGE_INSECURE:+true}" \
+       E2E_FPROJ="$PROJECT" E2E_FINSEC="${FORGE_INSECURE:+true}" \
 python3 -c '
 import json, os
 e = os.environ

@@ -43,7 +43,7 @@ print(json.dumps({
  "bnkforge_url":k[5],"bnkforge_username":k[6],"bnkforge_password":k[7],
  "bnkforge_project":k[8],"bnkforge_insecure":k[9]}))' \
  "$PREFIX" "$CLUSTER" "$REGION" "$RESOURCE_GROUP" "$TRANSIT_GATEWAY" \
- "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" "$PROJECT-reg" "${FORGE_INSECURE:+true}")
+ "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" "$PROJECT" "${FORGE_INSECURE:+true}")
 
 e2e_deploy "$BP_DIR" "$REL" "$PROJECT" "$VARS"
 
