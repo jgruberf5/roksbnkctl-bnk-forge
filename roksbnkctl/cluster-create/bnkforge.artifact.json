@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "name": "roksbnkctl-cluster-create",
+  "version": "5.0.0",
+  "kind": "container_image",
+  "description": "Create a ROKS cluster, its VPC and its Transit Gateway with roksbnkctl, then register it with BNK Forge.",
+  "container_image": {
+    "registry_host": "ghcr.io",
+    "repository": "jgruberf5/roksbnkctl-tools-runner",
+    "digest": "sha256:d958b78636d050fbf70225959e7c5a4d1aa7fb557825aeba4f8ecfcd2ee5caf5"
+  },
+  "lifecycle": {
+    "supports_apply": true,
+    "supports_destroy": true
+  },
+  "credentials": {
+    "cloud": "ibmcloud"
+  },
+  "state": {
+    "mount_path": "/work",
+    "outputs_file": ".roksbnkctl/bnk/cluster-outputs.json",
+    "home_env": {
+      "HOME": "/home/runner",
+      "ROKSBNKCTL_HOME": "/work/.roksbnkctl"
+    },
+    "scope": "deployment"
+  },
+  "execution": {
+    "engine": "container",
+    "limits": {
+      "cpus": "2",
+      "memory": "2g"
+    }
+  },
+  "steps": {
+    "apply": [
+      {
+        "name": "init",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "true",
+          "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
+          "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "init",
+          "-w",
+          "bnk",
+          "--override-from-env",
+          "--non-interactive"
+        ],
+        "timeout_seconds": 300
+      },
+      {
+        "name": "cluster-up",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "true",
+          "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
+          "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "cluster",
+          "up",
+          "--auto"
+        ],
+        "timeout_seconds": 5400
+      },
+      {
+        "name": "bnkforge-register",
+        "when": "{{inputs.bnkforge_url}}",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "true",
+          "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
+          "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
+          "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
+          "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
+          "KUBECONFIG": "/work/.kube/config"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "bnkforge",
+          "register",
+          "--project",
+          "{{inputs.bnkforge_project}}",
+          "--insecure={{inputs.bnkforge_insecure}}"
+        ],
+        "timeout_seconds": 600
+      }
+    ],
+    "destroy": [
+      {
+        "name": "init-restore",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "true",
+          "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
+          "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "init",
+          "-w",
+          "bnk",
+          "--override-from-env",
+          "--non-interactive"
+        ],
+        "timeout_seconds": 300
+      },
+      {
+        "name": "bnkforge-unregister",
+        "when": "{{inputs.bnkforge_url}}",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "true",
+          "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
+          "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
+          "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
+          "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "bnkforge",
+          "unregister",
+          "--project",
+          "{{inputs.bnkforge_project}}",
+          "--insecure={{inputs.bnkforge_insecure}}"
+        ],
+        "timeout_seconds": 600
+      },
+      {
+        "name": "cluster-down",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "true",
+          "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
+          "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "cluster",
+          "down",
+          "--auto"
+        ],
+        "timeout_seconds": 5400
+      }
+    ]
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "source": "user",
+        "label": "Resource prefix",
+        "description": "Prefix for every IBM resource this creates (VPC, cluster, Transit Gateway).",
+        "order": 1
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "source": "user",
+        "label": "New cluster name",
+        "description": "Name for the ROKS cluster to CREATE. It must not already exist.",
+        "order": 2
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "label": "IBM Cloud region",
+        "order": 3
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "source": "user",
+        "label": "Resource group",
+        "order": 4
+      }
+    ],
+    "optional": [
+      {
+        "name": "openshift_version",
+        "type": "string",
+        "source": "user",
+        "default": "4.18",
+        "label": "OpenShift version",
+        "order": 5
+      },
+      {
+        "name": "workers_per_zone",
+        "type": "string",
+        "source": "user",
+        "default": "2",
+        "label": "Workers per zone",
+        "description": "Across three zones; 2 gives a 6-worker cluster.",
+        "order": 6
+      },
+      {
+        "name": "public_gateway",
+        "type": "string",
+        "source": "user",
+        "default": "true",
+        "label": "Worker Internet egress",
+        "description": "false builds a DISCONNECTED cluster whose workers have no egress \u2014 images must come from a private mirror and licensing from an F5 License Proxy.",
+        "order": 7
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "BNK Forge URL",
+        "description": "Blank skips registration entirely.",
+        "order": 8
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "order": 9
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "sensitive": true,
+        "order": 10
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "order": 11
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "source": "user",
+        "default": "false",
+        "order": 12
+      }
+    ]
+  },
+  "references": []
+}

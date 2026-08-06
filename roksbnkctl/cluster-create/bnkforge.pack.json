@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "module": {
+    "name": "roksbnkctl-cluster-create",
+    "path": "roksbnkctl/cluster-create",
+    "version": "5.0.0",
+    "category": "infrastructure",
+    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then register it with BNK Forge. The counterpart to cluster-registry, which adopts a cluster you already own.",
+    "estimated_time_minutes": 40
+  },
+  "deployment_pack": {
+    "engine": "container",
+    "runner_profile": "container-default",
+    "working_directory": ".",
+    "lifecycle": {
+      "supports_init": false,
+      "supports_plan": false,
+      "supports_apply": true,
+      "supports_destroy": true,
+      "supports_refresh": false,
+      "supports_drift": false
+    },
+    "entrypoints": {}
+  },
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "source": "user",
+        "label": "Resource prefix",
+        "description": "Prefix for every IBM resource this creates (VPC, cluster, Transit Gateway).",
+        "order": 1
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "source": "user",
+        "label": "New cluster name",
+        "description": "Name for the ROKS cluster to CREATE. It must not already exist.",
+        "order": 2
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "label": "IBM Cloud region",
+        "order": 3
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "source": "user",
+        "label": "Resource group",
+        "order": 4
+      }
+    ],
+    "optional": [
+      {
+        "name": "openshift_version",
+        "type": "string",
+        "source": "user",
+        "default": "4.18",
+        "label": "OpenShift version",
+        "order": 5
+      },
+      {
+        "name": "workers_per_zone",
+        "type": "string",
+        "source": "user",
+        "default": "2",
+        "label": "Workers per zone",
+        "description": "Across three zones; 2 gives a 6-worker cluster.",
+        "order": 6
+      },
+      {
+        "name": "public_gateway",
+        "type": "string",
+        "source": "user",
+        "default": "true",
+        "label": "Worker Internet egress",
+        "description": "false builds a DISCONNECTED cluster whose workers have no egress \u2014 images must come from a private mirror and licensing from an F5 License Proxy.",
+        "order": 7
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "BNK Forge URL",
+        "description": "Blank skips registration entirely.",
+        "order": 8
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "order": 9
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "sensitive": true,
+        "order": 10
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "order": 11
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "source": "user",
+        "default": "false",
+        "order": 12
+      }
+    ]
+  },
+  "outputs": {
+    "key_outputs": [
+      {
+        "name": "cluster_id",
+        "type": "string",
+        "description": "ID of the created ROKS cluster."
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "description": "Name of the created ROKS cluster."
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "description": "IBM Cloud region."
+      },
+      {
+        "name": "vpc_id",
+        "type": "string",
+        "description": "ID of the VPC created for the cluster."
+      },
+      {
+        "name": "transit_gateway_name",
+        "type": "string",
+        "description": "Name of the Transit Gateway created for the cluster. Downstream modules adopt this rather than creating their own."
+      }
+    ]
+  }
+}
