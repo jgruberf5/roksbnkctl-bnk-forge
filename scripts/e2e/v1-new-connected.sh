@@ -58,7 +58,9 @@ e2e_assert_ge "f5 pods Running"              "$(e2e_f5_pods_running)"     30
 e2e_assert    "no f5 pods stuck"             "$(e2e_f5_pods_not_running)" "0"
 # The distinguishing assertion: a CONNECTED install must NOT be licensed
 # through a proxy, and its images come from F5, not a mirror.
-e2e_assert    "licensing is direct, not FLP" "$(e2e_license_mode)"        "jwt"
+e2e_assert    "licensing is direct, not FLP" "$(e2e_license_mode)"        "connected"
 e2e_assert_ge "containers pulled from F5"    "$(e2e_containers_total)"    30
 e2e_assert    "no private mirror in use"     "$(e2e_containers_from_mirror "${HARBOR_IP:-10.243.0.4}")" "0"
+e2e_assert    "every container from repo.f5.com" "$(e2e_containers_from_registry repo.f5.com)" "$(e2e_containers_total)"
+e2e_assert    "every container from repo.f5.com" "$(e2e_containers_from_registry repo.f5.com)" "$(e2e_containers_total)"
 e2e_summary

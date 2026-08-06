@@ -80,6 +80,17 @@ e2e_containers_from_mirror() {
     kubectl -n $ns get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null
   done | grep -c "^${mirror}/"
 }
+# Containers served by a given registry host. Used positively: a connected
+# install must show every BNK container coming from repo.f5.com, not merely
+# "not from the mirror" — an image from anywhere else would pass that weaker
+# test.
+e2e_containers_from_registry() {
+  local host="$1"
+  for ns in f5-bnk f5-utils; do
+    kubectl -n $ns get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null
+  done | grep -c "^${host}/"
+}
+
 # Worker Internet egress. A public gateway on the cluster subnets is what
 # separates variant 1/3 from variant 2/4, so assert on it rather than trusting
 # the input we passed in.
