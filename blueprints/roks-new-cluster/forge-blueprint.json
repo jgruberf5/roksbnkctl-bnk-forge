@@ -93,7 +93,8 @@
         "source": "user",
         "default": "4.18",
         "label": "OpenShift version",
-        "order": 90
+        "order": 90,
+        "description": "OpenShift version for the new cluster."
       },
       {
         "name": "workers_per_zone",

@@ -46,6 +46,13 @@ def main() -> int:
         declared = {x["name"] for x in d["inputs"].get("required", []) + d["inputs"].get("optional", [])}
         ids = {m["id"] for m in d["modules"]}
         probs = []
+        # Blueprint inputs have the same requirement as pack inputs, and Forge
+        # reports it as inputs.optional.<n>.description — a positional path that
+        # tells you nothing about WHICH input, so catch it here by name.
+        for grp in ("required", "optional"):
+            for x in d["inputs"].get(grp, []):
+                if not x.get("description"):
+                    probs.append(f"blueprint input {x.get('name', '?')!r} has no description")
         for m in d["modules"]:
             for k, v in (m.get("inputs") or {}).items():
                 for ref in re.findall(r"\$\{([^}]+)\}", v if isinstance(v, str) else ""):
