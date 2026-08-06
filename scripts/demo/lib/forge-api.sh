@@ -350,12 +350,24 @@ forge_module_status() {
 # exactly the ones still sitting at "applied". Default stays "applied" for apply
 # callers; the teardown passes "destroyed".
 forge_wait_module() {
-  local id="$1" label="$2" limit="${3:-5400}" want="${4:-applied}" waited=0 st last=""
+  local id="$1" label="$2" limit="${3:-5400}" want="${4:-applied}" waited=0 st last="" blank=0
   while :; do
     st=$(forge_module_status "$id")
     [[ "$st" != "$last" && -n "$st" ]] && { say "$label: $st"; last="$st"; }
+    # An EMPTY status means the status could not be READ — forge_module_status
+    # sends errors to /dev/null, so a 000/5xx looks the same as a real answer.
+    # It emphatically does not mean "nothing is deployed": treating it that way
+    # let a teardown wave through a module that was still holding a cluster, a
+    # VPC and a Transit Gateway, and the project was then deleted out from under
+    # them. Retry, and give up loudly rather than optimistically.
+    if [[ -z "$st" ]]; then
+      (( blank++ ))
+      (( blank >= 5 )) && die "$label: could not read status $blank times running — refusing to assume it is gone"
+      sleep 20; (( waited += 20 )); continue
+    fi
+    blank=0
     # A module that never deployed has nothing to tear down.
-    if [[ "$want" == "destroyed" && ( "$st" == "not_initialized" || -z "$st" ) ]]; then
+    if [[ "$want" == "destroyed" && "$st" == "not_initialized" ]]; then
       ok "$label — nothing deployed"; return 0
     fi
     case "$st" in
