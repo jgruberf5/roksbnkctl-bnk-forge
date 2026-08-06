@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-flp-vsi-roksbnkctl",
-    "version": "4.9.0",
+    "version": "4.9.1",
     "name": "Deploying F5 License Proxy as an IBM Cloud VSI",
     "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC \u2014 no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
   },
@@ -37,14 +37,8 @@
       "description": "An existing IBM Cloud VPC to deploy the appliance into, reachable by the consuming cluster (same VPC, peered, or over a Transit Gateway). The proxy is the only component that needs egress to F5."
     },
     {
-      "type": "project_secret",
-      "name": "f5_far_auth_key",
-      "description": "The F5 FAR auth tarball (f5-far-auth-key.tgz), uploaded as a file secret. Materialized into the run workspace as far-auth.tgz."
-    },
-    {
-      "type": "project_secret",
-      "name": "f5_subscription_jwt",
-      "description": "The F5 subscription JWT, uploaded as a file secret. Materialized into the run workspace as subscription.jwt."
+      "type": "cos_objects",
+      "description": "The F5 FAR auth tarball and subscription JWT must already be in IBM COS (cos_instance/cos_bucket). The runner reads them from COS \u2014 project-local file secrets are not used."
     }
   ],
   "input_summary": [
@@ -98,6 +92,13 @@
         "description": "ID of the existing VPC to deploy the appliance into. Naming a VPC here is what makes this a standalone, cluster-less appliance.",
         "example": "r006-1a2b3c4d-5e6f-7890-abcd-ef1234567890",
         "order": 4
+      },
+      {
+        "name": "cos_bucket",
+        "type": "string",
+        "label": "COS bucket",
+        "description": "COS bucket holding the FAR supply chain. Blank = bnk-artifacts.",
+        "order": 20
       }
     ],
     "optional": [
@@ -204,14 +205,6 @@
         "description": "COS instance holding the FAR supply chain, used only when the local-file paths are cleared. Blank = bnk-supply-chain.",
         "default": "",
         "order": 19
-      },
-      {
-        "name": "cos_bucket",
-        "type": "string",
-        "label": "COS bucket",
-        "description": "COS bucket holding the FAR supply chain. Blank = bnk-artifacts.",
-        "default": "",
-        "order": 20
       },
       {
         "name": "cos_region",

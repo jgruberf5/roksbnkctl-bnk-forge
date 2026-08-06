@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-bnk-install",
     "path": "roksbnkctl/bnk-install",
-    "version": "4.9.0",
+    "version": "4.9.1",
     "category": "bnk",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
     "estimated_time_minutes": 17
@@ -318,6 +318,14 @@
         "source": "user",
         "default": "false",
         "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out."
+      },
+      {
+        "name": "cluster_vpc_id",
+        "type": "string",
+        "source": "module",
+        "from_module": "cluster",
+        "from_output": "vpc_id",
+        "description": "VPC the cluster already lives in. Wired from the cluster module's vpc_id output. `bnk up` bootstraps the cluster phase when the workspace has no terraform state, and without this it would try to CREATE a VPC that already exists."
       }
     ]
   },
