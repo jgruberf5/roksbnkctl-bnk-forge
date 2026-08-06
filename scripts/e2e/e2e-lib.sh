@@ -128,6 +128,22 @@ for p in (d if isinstance(d, list) else d.get("projects", [])):
         print(p["id"]); break' "$1" 2>/dev/null
 }
 
+# A freshly synced release is "discovered", not deployable: project creation
+# rejects it with BLUEPRINT_RELEASE_NOT_DEPLOYABLE until it is imported or
+# approved. Idempotent — importing an already-imported release is a no-op, so
+# this is safe to call on every run.
+forge_import_release() {
+  local rid="$1" state
+  state=$(forge_api GET "/api/blueprint-catalog/releases/$rid" 2>/dev/null \
+          | python3 -c 'import sys,json;print(json.load(sys.stdin).get("release_state",""))' 2>/dev/null)
+  case "$state" in
+    imported|approved) return 0 ;;
+  esac
+  forge_api POST "/api/blueprint-catalog/releases/$rid/import" '{}' >/dev/null \
+    || { warn "could not import release $rid"; return 1; }
+  e2e_say "release $rid imported (was '${state:-discovered}')"
+}
+
 # ── deploy / teardown ────────────────────────────────────────────────────────
 # One project per variant. Mirrors the demo script's deploy(): enable every
 # module (optional ones arrive disabled), put the blueprint's depends_on edges
@@ -136,6 +152,7 @@ for p in (d if isinstance(d, list) else d.get("projects", [])):
 e2e_deploy() {
   local bp_dir="$1" rel="$2" project="$3" vars="$4"
   local tmp="$STATE/.e2e.create" m
+  forge_import_release "$rel" || die "release $rel is not deployable"
   E2E_MODS=$(forge_create_project "$rel" "$project" "$REGION" \
                "$FORGE_CREDENTIAL_TEMPLATE_ID" "$vars" 2> >(tee "$tmp" >&2)) \
     || die "could not create project '$project'"
