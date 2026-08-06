@@ -178,7 +178,11 @@ e2e_teardown() {
 # Point kubectl at the cluster under test, whatever created it.
 e2e_kubeconfig() {
   local cluster="$1"
+  # `ibmcloud ks` resolves the cluster in the CLI's CURRENT region, which is
+  # whatever the last command left it as. Pin it, or verification fails with
+  # "cluster not found" at the end of an hour-long deploy.
+  ibmcloud target -r "$REGION" >/dev/null 2>&1
   ibmcloud ks cluster config -c "$cluster" --admin >/dev/null 2>&1 \
-    || { warn "could not fetch kubeconfig for $cluster"; return 1; }
+    || { warn "could not fetch kubeconfig for $cluster in $REGION"; return 1; }
   kubectl config current-context >/dev/null 2>&1
 }
