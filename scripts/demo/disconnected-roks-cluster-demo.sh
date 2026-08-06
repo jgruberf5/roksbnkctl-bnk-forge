@@ -263,11 +263,12 @@ if [[ "$ACTION" == "down" ]]; then
   done
   # The registration project is created by roksbnkctl inside the cluster-registry
   # module (`bnkforge register --project`), not by this script, so there is no
-  # state file for it and the loop above cannot see it. roksbnkctl has no
-  # deregister verb — bnkforge offers enable/disable/status/register only — so the
-  # module cannot undo its own registration either. Clean it up here: it did not
-  # exist before the demo ran, so `down` should not leave it behind. Only when it
-  # is empty; a project someone else put modules in is not ours to delete.
+  # state file for it and the loop above cannot see it. As of roksbnkctl v1.37.0
+  # the cluster-registry module unregisters the CLUSTER on destroy
+  # (`bnkforge unregister`), but the PROJECT that held it is still left behind —
+  # nothing owns it. Clean it up here: it did not exist before the demo ran, so
+  # `down` should not leave it behind. Only when it is empty; a project someone
+  # else put modules in is not ours to delete.
   if [[ -n "${BNKFORGE_PROJECT:-}" ]]; then
     reg_json=$(forge_api GET /api/projects 2>/dev/null | python3 -c '
 import sys, json

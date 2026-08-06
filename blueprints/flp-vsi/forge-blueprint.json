@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-flp-vsi-roksbnkctl",
-    "version": "2.4.1",
+    "version": "2.4.2",
     "name": "Deploying F5 License Proxy as an IBM Cloud VSI",
     "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC \u2014 no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
   },
@@ -10,7 +10,7 @@
   "cloud_provider": "ibm",
   "icon": "shield-check",
   "color": "purple",
-  "estimated_time": "5-15 minutes",
+  "estimated_time": "3-5 minutes",
   "difficulty": "intermediate",
   "maturity": "preview",
   "bnk_version": "2.3",
@@ -252,7 +252,7 @@
     {
       "id": "roksbnkctl-flp",
       "module": "roksbnkctl/flp",
-      "version": "2.4.1",
+      "version": "2.4.2",
       "name": "roksbnkctl FLP (VSI)",
       "description": "roksbnkctl flp up in vsi mode \u2014 a standalone F5 License Proxy appliance in an existing VPC.",
       "optional": false,

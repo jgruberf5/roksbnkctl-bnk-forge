@@ -3,10 +3,10 @@
   "module": {
     "name": "roksbnkctl-cwc-guard",
     "path": "roksbnkctl/cwc-guard",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "category": "bnk",
     "description": "Clears F5's f5-spk-cwc ReadWriteOnce Multi-Attach deadlock so BNK licensing can activate. Runs alongside the BNK install; harmless once F5 ships the fix.",
-    "estimated_time_minutes": 5
+    "estimated_time_minutes": 17
   },
   "deployment_pack": {
     "engine": "container",
