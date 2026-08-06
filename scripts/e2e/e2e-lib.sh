@@ -52,8 +52,11 @@ e2e_assert_ge() {
 e2e_license_state() {
   rk -n "${FLP_NAMESPACE:-f5-utils}" get licenses.k8s.f5net.com -o jsonpath='{.items[0].status.state}' 2>/dev/null
 }
+# The MODE column operators read is .spec.operationMode — there is no mode field
+# under status at all, so the obvious-looking status.mode silently returns empty
+# and the assertion fails against a perfectly good deployment.
 e2e_license_mode() {
-  rk -n "${FLP_NAMESPACE:-f5-utils}" get licenses.k8s.f5net.com -o jsonpath='{.items[0].status.mode}' 2>/dev/null
+  rk -n "${FLP_NAMESPACE:-f5-utils}" get licenses.k8s.f5net.com -o jsonpath='{.items[0].spec.operationMode}' 2>/dev/null
 }
 e2e_f5_pods_running() {
   rk get pods -A --no-headers 2>/dev/null | awk '$1 ~ /^f5-/ && $4 == "Running"' | wc -l
