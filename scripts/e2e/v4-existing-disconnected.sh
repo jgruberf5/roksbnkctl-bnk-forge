@@ -16,7 +16,10 @@ source "$HERE/e2e-lib.sh"
 BP_ID="ibm-roks-disconnected-bnk-roksbnkctl"
 BP_DIR="roks-disconnected"
 PROJECT="${E2E_V4_PROJECT:-f5e2e-v4-existing-disco}"
+# See v3: .env must not clobber an explicit override.
 CLUSTER="${E2E_V4_CLUSTER:-$CLUSTER_NAME}"
+PREFIX_V4="${E2E_V4_PREFIX:-$PREFIX}"
+TGW_V4="${E2E_V4_TGW:-$TRANSIT_GATEWAY}"
 
 forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD"
 STATE="${STATE:-$HERE/.e2e-state}"; mkdir -p "$STATE"
@@ -51,7 +54,7 @@ print(json.dumps({
  "far_auth_file":k[16],"subscription_jwt_file":k[17],"manifest_version":k[18],
  "bnkforge_url":k[19],"bnkforge_username":k[20],"bnkforge_password":k[21],
  "bnkforge_project":k[22],"bnkforge_insecure":k[23]}))' \
- "$PREFIX" "$CLUSTER" "$REGION" "$RESOURCE_GROUP" "$TRANSIT_GATEWAY" "${REGISTRY_COS_NAME:-}" \
+ "$PREFIX_V4" "$CLUSTER" "$REGION" "$RESOURCE_GROUP" "$TGW_V4" "${REGISTRY_COS_NAME:-}" \
  "$HARBOR_IP" "$HARBOR_PROJECT" "$HARBOR_ADMIN_PASSWORD" "$HARBOR_CA" "$HARBOR_PIN" \
  "$FLP_IP" "$FLP_CA" "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" \
  "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE" "$MANIFEST_VERSION" \

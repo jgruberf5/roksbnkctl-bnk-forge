@@ -15,7 +15,13 @@ source "$HERE/e2e-lib.sh"
 BP_ID="ibm-roks-existing-bnk-roksbnkctl"
 BP_DIR="roks-existing-cluster"
 PROJECT="${E2E_V3_PROJECT:-f5e2e-v3-existing-conn}"
+# .env is sourced AFTER the caller's environment, so `set -a; . .env` clobbers any
+# plain variable an operator exported — TRANSIT_GATEWAY and PREFIX both silently
+# reverted to the demo estate's values while the banner still read like the
+# override had taken. Dedicated E2E_* names cannot collide with .env.
 CLUSTER="${E2E_V3_CLUSTER:-$CLUSTER_NAME}"
+PREFIX_V3="${E2E_V3_PREFIX:-$PREFIX}"
+TGW_V3="${E2E_V3_TGW:-$TRANSIT_GATEWAY}"
 
 forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD"
 STATE="${STATE:-$HERE/.e2e-state}"; mkdir -p "$STATE"
@@ -25,7 +31,7 @@ if [[ "$ACTION" == "down" ]]; then
 fi
 
 e2e_head "Variant 3 — EXISTING cluster, connected"
-e2e_say "adopts $CLUSTER over Transit Gateway $TRANSIT_GATEWAY; creates no infrastructure"
+e2e_say "adopts $CLUSTER over Transit Gateway $TGW_V3 (prefix $PREFIX_V3); creates no infrastructure"
 forge_sync_source roksbnkctl >/dev/null
 REL=$(forge_latest_release "$BP_ID") || die "no release for $BP_ID"
 e2e_say "blueprint release $REL"
@@ -35,8 +41,8 @@ e2e_say "blueprint release $REL"
 CLUSTER_ID_BEFORE=$(roksbnkctl -w "${E2E_WS:-e2e}" ibmcloud ks cluster get --cluster "$CLUSTER" --output json 2>/dev/null \
                     | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null)
 
-VARS=$(E2E_PREFIX="$PREFIX" E2E_CLUSTER="$CLUSTER" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
-       E2E_TGW="$TRANSIT_GATEWAY" \
+VARS=$(E2E_PREFIX="$PREFIX_V3" E2E_CLUSTER="$CLUSTER" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
+       E2E_TGW="$TGW_V3" \
        E2E_COSI="$COS_INSTANCE" E2E_COSB="$COS_BUCKET" E2E_COSR="$COS_REGION" \
        E2E_FAR="$FAR_AUTH_FILE" E2E_JWT="$SUBSCRIPTION_JWT_FILE" E2E_MV="$MANIFEST_VERSION" \
        E2E_FURL="$FORGE_URL" E2E_FUSER="$FORGE_USER" E2E_FPASS="$FORGE_PASSWORD" \
