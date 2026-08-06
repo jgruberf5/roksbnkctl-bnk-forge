@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-FAR-mirror",
-  "version": "4.9.0",
+  "version": "4.9.2",
   "kind": "container_image",
   "description": "Replicate the BNK supply chain (F5's artifact registry) into a private OCI registry, then verify it \u2014 the mirror half of a disconnected install. Host-side registry-to-registry copy; no cluster required.",
   "container_image": {
@@ -55,7 +55,8 @@
           "ROKSBNKCTL_CLUSTER_NAME": "{{inputs.cluster_name}}",
           "HOME": "/home/runner",
           "ROKSBNKCTL_GENERIC_CA_B64": "{{inputs.registry_ca_b64}}",
-          "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}"
+          "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -70,7 +71,8 @@
       {
         "name": "registry-replicate",
         "env": {
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -90,7 +92,8 @@
       {
         "name": "registry-verify",
         "env": {
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -106,7 +109,8 @@
       {
         "name": "registry-delete",
         "env": {
-          "HOME": "/home/runner"
+          "HOME": "/home/runner",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -146,6 +150,14 @@
       }
     ],
     "optional": [
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "description": "IBM Cloud API key. Filled from the project's credential template at creation and carried by the module, so the module keeps working even if the project's template is cleared later."
+      },
       {
         "name": "manifest_version",
         "type": "string",

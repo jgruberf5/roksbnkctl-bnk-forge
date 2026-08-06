@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-existing-bnk-roksbnkctl",
-    "version": "4.9.1",
+    "version": "4.9.2",
     "name": "BNK on an existing IBM ROKS cluster (existing Transit Gateway)",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` \u2014 it is never created, and a teardown removes only the BNK layer, never the cluster."
   },
@@ -386,6 +386,16 @@
         "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
         "default": "false",
         "order": 38
+      },
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "sensitive": true,
+        "source": "credential_template",
+        "source_field": "ibmcloud_api_key",
+        "label": "IBM Cloud API key",
+        "description": "Resolved from the project's credential template when the project is created. Not entered by hand.",
+        "order": 99
       }
     ]
   },
@@ -393,7 +403,7 @@
     {
       "id": "roksbnkctl-cluster-registry",
       "module": "roksbnkctl/cluster-registry",
-      "version": "4.9.0",
+      "version": "4.9.2",
       "name": "roksbnkctl Cluster Registry",
       "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -436,13 +446,14 @@
         "bnkforge_username": "${bnkforge_username}",
         "bnkforge_password": "${bnkforge_password}",
         "bnkforge_project": "${bnkforge_project}",
-        "bnkforge_insecure": "${bnkforge_insecure}"
+        "bnkforge_insecure": "${bnkforge_insecure}",
+        "ibmcloud_api_key": "${ibmcloud_api_key}"
       }
     },
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "4.9.1",
+      "version": "4.9.2",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,
@@ -488,7 +499,8 @@
         "bnkforge_password": "${bnkforge_password}",
         "bnkforge_project": "${bnkforge_project}",
         "bnkforge_insecure": "${bnkforge_insecure}",
-        "cluster_vpc_id": ""
+        "cluster_vpc_id": "",
+        "ibmcloud_api_key": "${ibmcloud_api_key}"
       }
     },
     {

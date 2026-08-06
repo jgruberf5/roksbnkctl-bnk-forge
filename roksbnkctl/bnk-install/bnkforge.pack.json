@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-bnk-install",
     "path": "roksbnkctl/bnk-install",
-    "version": "4.9.1",
+    "version": "4.9.2",
     "category": "bnk",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
     "estimated_time_minutes": 17
@@ -60,6 +60,14 @@
       }
     ],
     "optional": [
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "description": "IBM Cloud API key. Filled from the project's credential template at creation and carried by the module, so the module keeps working even if the project's template is cleared later."
+      },
       {
         "name": "registry_cos_name",
         "type": "string",

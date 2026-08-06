@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-flp",
-  "version": "4.9.0",
+  "version": "4.9.2",
   "kind": "container_image",
   "description": "Deploy the F5 License Proxy as a standalone IBM Cloud VSI appliance (no cluster) with roksbnkctl's flp phase. Procedural container_image artifact run by the container engine.",
   "container_image": {
@@ -62,7 +62,8 @@
           "ROKSBNKCTL_FAR_AUTH_FILE": "{{inputs.far_auth_file}}",
           "ROKSBNKCTL_SUBSCRIPTION_JWT_FILE": "{{inputs.subscription_jwt_file}}",
           "HOME": "/home/runner",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -78,7 +79,8 @@
         "name": "flp-up",
         "env": {
           "HOME": "/home/runner",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -99,7 +101,8 @@
         "when": "{{inputs.flp_status_image}}",
         "env": {
           "HOME": "/home/runner",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -116,7 +119,8 @@
         "name": "flp-down",
         "env": {
           "HOME": "/home/runner",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -158,6 +162,14 @@
       }
     ],
     "optional": [
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "description": "IBM Cloud API key. Filled from the project's credential template at creation and carried by the module, so the module keeps working even if the project's template is cleared later."
+      },
       {
         "name": "flp_vsi_zone",
         "type": "string",

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-bnk-roksbnkctl",
-    "version": "4.9.1",
+    "version": "4.9.2",
     "name": "BNK on a NEW IBM ROKS cluster (created end to end)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct \u2014 no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -380,6 +380,16 @@
         "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
         "default": "false",
         "order": 38
+      },
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "sensitive": true,
+        "source": "credential_template",
+        "source_field": "ibmcloud_api_key",
+        "label": "IBM Cloud API key",
+        "description": "Resolved from the project's credential template when the project is created. Not entered by hand.",
+        "order": 99
       }
     ]
   },
@@ -387,7 +397,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "4.9.1",
+      "version": "4.9.2",
       "name": "roksbnkctl Cluster Registry",
       "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -404,13 +414,14 @@
         "openshift_version": "${openshift_version}",
         "workers_per_zone": "${workers_per_zone}",
         "public_gateway": "true",
-        "existing_transit_gateway": ""
+        "existing_transit_gateway": "",
+        "ibmcloud_api_key": "${ibmcloud_api_key}"
       }
     },
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "4.9.1",
+      "version": "4.9.2",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,
@@ -456,7 +467,8 @@
         "bnkforge_password": "${bnkforge_password}",
         "bnkforge_project": "${bnkforge_project}",
         "bnkforge_insecure": "${bnkforge_insecure}",
-        "cluster_vpc_id": ""
+        "cluster_vpc_id": "",
+        "ibmcloud_api_key": "${ibmcloud_api_key}"
       }
     }
   ],

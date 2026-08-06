@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-bnk-install",
-  "version": "4.9.1",
+  "version": "4.9.2",
   "kind": "container_image",
   "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
   "container_image": {
@@ -82,7 +82,8 @@
           "ROKSBNKCTL_GENERIC_CA_B64": "{{inputs.registry_ca_b64}}",
           "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}",
           "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
-          "ROKSBNKCTL_CLUSTER_VPC_ID": "{{inputs.cluster_vpc_id}}"
+          "ROKSBNKCTL_CLUSTER_VPC_ID": "{{inputs.cluster_vpc_id}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -143,7 +144,8 @@
           "HOME": "/home/runner",
           "ROKSBNKCTL_GENERIC_CA_B64": "{{inputs.registry_ca_b64}}",
           "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -159,7 +161,8 @@
         "name": "bnk-up",
         "env": {
           "HOME": "/home/runner",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -179,7 +182,8 @@
         "name": "bnk-status",
         "env": {
           "HOME": "/home/runner",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -196,7 +200,8 @@
         "name": "bnk-down",
         "env": {
           "HOME": "/home/runner",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -244,6 +249,14 @@
       }
     ],
     "optional": [
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "description": "IBM Cloud API key. Filled from the project's credential template at creation and carried by the module, so the module keeps working even if the project's template is cleared later."
+      },
       {
         "name": "registry_cos_name",
         "type": "string",

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-registry",
-  "version": "4.9.0",
+  "version": "4.9.2",
   "kind": "container_image",
   "description": "Adopt an EXISTING IBM Cloud ROKS cluster into the workspace and register it with BNK Forge, so the cluster is visible and monitorable BEFORE anything is installed onto it. Runs first in the graph; the cluster itself is never created or destroyed.",
   "container_image": {
@@ -81,7 +81,8 @@
           "HOME": "/home/runner",
           "ROKSBNKCTL_GENERIC_CA_B64": "{{inputs.registry_ca_b64}}",
           "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -97,7 +98,8 @@
         "name": "cluster-register",
         "env": {
           "HOME": "/home/runner",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -117,7 +119,8 @@
         "env": {
           "HOME": "/home/runner",
           "KUBECONFIG": "/work/.kube/config",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -137,7 +140,8 @@
           "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
           "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
           "KUBECONFIG": "/work/.kube/config",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -161,7 +165,8 @@
           "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
           "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
           "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -179,7 +184,8 @@
         "name": "tgw-disconnect",
         "env": {
           "HOME": "/home/runner",
-          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}"
+          "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -227,6 +233,14 @@
       }
     ],
     "optional": [
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "description": "IBM Cloud API key. Filled from the project's credential template at creation and carried by the module, so the module keeps working even if the project's template is cleared later."
+      },
       {
         "name": "registry_cos_name",
         "type": "string",

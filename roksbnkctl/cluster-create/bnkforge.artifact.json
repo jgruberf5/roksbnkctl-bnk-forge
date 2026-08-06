@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-create",
-  "version": "4.9.1",
+  "version": "4.9.2",
   "kind": "container_image",
   "description": "Create a ROKS cluster, its VPC and its Transit Gateway with roksbnkctl, then register it with BNK Forge.",
   "container_image": {
@@ -45,7 +45,8 @@
           "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
           "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
           "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
-          "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}"
+          "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -67,7 +68,8 @@
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
           "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
           "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
-          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}"
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -94,7 +96,8 @@
           "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
           "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
           "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
-          "KUBECONFIG": "/work/.kube/config"
+          "KUBECONFIG": "/work/.kube/config",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -121,7 +124,8 @@
           "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
           "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
           "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
-          "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}"
+          "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -147,7 +151,8 @@
           "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
           "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
           "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
-          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}"
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -171,7 +176,8 @@
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
           "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
           "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
-          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}"
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
         },
         "args": [
           "roksbnkctl",
@@ -213,6 +219,14 @@
       }
     ],
     "optional": [
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "description": "IBM Cloud API key. Filled from the project's credential template at creation and carried by the module, so the module keeps working even if the project's template is cleared later."
+      },
       {
         "name": "existing_transit_gateway",
         "type": "string",
