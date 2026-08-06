@@ -9,6 +9,8 @@ deploy, sometimes an expensive one:
   * a pinned module version that doesn't match the pack on disk
   * a module whose OWN pack marks an input required that the blueprint never
     routes to it
+  * a pack category outside the set Forge accepts (it rejects the module at
+    sync time, which then invalidates every blueprint referencing it)
 
 The last one cost a full debugging session: cwc-guard's pack was copied from
 bnk-install and demanded prefix/cluster_name/existing_transit_gateway, which the
@@ -24,6 +26,11 @@ import glob
 import os
 import re
 import sys
+
+
+# Enforced by Forge at sync time; a bad value rejects the module and cascades
+# into "N invalid" for every blueprint that references it.
+CATEGORIES = {"infra", "k8s", "bnk", "app", "other"}
 
 
 def main() -> int:
@@ -47,6 +54,9 @@ def main() -> int:
                 probs.append(f"{m['id']} -> no pack at {pack}")
                 continue
             p = json.load(open(pack))
+            cat = p["module"].get("category")
+            if cat not in CATEGORIES:
+                probs.append(f"{m['id']} pack category {cat!r} not in {sorted(CATEGORIES)}")
             if p["module"]["version"] != m.get("version"):
                 probs.append(f"{m['id']} pinned {m.get('version')} but pack on disk is {p['module']['version']}")
             missing = {x["name"] for x in p["inputs"].get("required", [])} - set((m.get("inputs") or {}).keys())
