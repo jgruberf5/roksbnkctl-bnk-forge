@@ -133,6 +133,14 @@
         "label": "Registry CA (base64)",
         "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) \u2014 this is the CA you generated for the registry.",
         "order": 40
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "source": "user",
+        "label": "Existing Transit Gateway (name or id)",
+        "description": "The gateway the private mirror and F5 License Proxy already sit on. The new cluster's VPC attaches to it so the cluster can reach them privately \u2014 a disconnected cluster on its own new gateway would be isolated from its own mirror.",
+        "order": 5
       }
     ],
     "optional": [
@@ -472,7 +480,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "4.9.0",
+      "version": "4.9.1",
       "name": "roksbnkctl Cluster Registry",
       "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -488,7 +496,8 @@
         "bnkforge_insecure": "${bnkforge_insecure}",
         "openshift_version": "${openshift_version}",
         "workers_per_zone": "${workers_per_zone}",
-        "public_gateway": "false"
+        "public_gateway": "false",
+        "existing_transit_gateway": "${existing_transit_gateway}"
       }
     },
     {

@@ -387,7 +387,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "4.9.0",
+      "version": "4.9.1",
       "name": "roksbnkctl Cluster Registry",
       "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -403,7 +403,8 @@
         "bnkforge_insecure": "${bnkforge_insecure}",
         "openshift_version": "${openshift_version}",
         "workers_per_zone": "${workers_per_zone}",
-        "public_gateway": "true"
+        "public_gateway": "true",
+        "existing_transit_gateway": ""
       }
     },
     {

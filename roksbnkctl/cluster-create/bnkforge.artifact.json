@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-create",
-  "version": "4.9.0",
+  "version": "4.9.1",
   "kind": "container_image",
   "description": "Create a ROKS cluster, its VPC and its Transit Gateway with roksbnkctl, then register it with BNK Forge.",
   "container_image": {
@@ -44,7 +44,8 @@
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
           "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
           "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
-          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}"
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
+          "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}"
         },
         "args": [
           "roksbnkctl",
@@ -119,7 +120,8 @@
           "ROKSBNKCTL_CLUSTER_CREATE": "true",
           "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
           "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
-          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}"
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
+          "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}"
         },
         "args": [
           "roksbnkctl",
@@ -211,6 +213,15 @@
       }
     ],
     "optional": [
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Existing Transit Gateway (name or id)",
+        "description": "Adopt this Transit Gateway instead of creating one. Blank creates a new gateway named <prefix>-tgw. A DISCONNECTED cluster must share a gateway with the private mirror it pulls from, so it adopts the gateway the mirror already sits on; a connected cluster needs no such peer and gets its own.",
+        "order": 8
+      },
       {
         "name": "openshift_version",
         "type": "string",

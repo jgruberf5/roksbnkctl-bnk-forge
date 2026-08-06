@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-cluster-create",
     "path": "roksbnkctl/cluster-create",
-    "version": "4.9.0",
+    "version": "4.9.1",
     "category": "infra",
     "description": "Provision a NEW IBM ROKS cluster (named after the prefix) with its own VPC and Transit Gateway, then register it with BNK Forge. The counterpart to cluster-registry, which adopts a cluster you already own.",
     "estimated_time_minutes": 40
@@ -54,6 +54,15 @@
       }
     ],
     "optional": [
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Existing Transit Gateway (name or id)",
+        "description": "Adopt this Transit Gateway instead of creating one. Blank creates a new gateway named <prefix>-tgw. A DISCONNECTED cluster must share a gateway with the private mirror it pulls from, so it adopts the gateway the mirror already sits on; a connected cluster needs no such peer and gets its own.",
+        "order": 8
+      },
       {
         "name": "openshift_version",
         "type": "string",
