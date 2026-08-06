@@ -50,34 +50,34 @@ e2e_assert_ge() {
 # All of these read the cluster directly. KUBECONFIG must already point at it.
 
 e2e_license_state() {
-  kubectl -n "${FLP_NAMESPACE:-f5-utils}" get licenses.k8s.f5net.com -o jsonpath='{.items[0].status.state}' 2>/dev/null
+  rk -n "${FLP_NAMESPACE:-f5-utils}" get licenses.k8s.f5net.com -o jsonpath='{.items[0].status.state}' 2>/dev/null
 }
 e2e_license_mode() {
-  kubectl -n "${FLP_NAMESPACE:-f5-utils}" get licenses.k8s.f5net.com -o jsonpath='{.items[0].status.mode}' 2>/dev/null
+  rk -n "${FLP_NAMESPACE:-f5-utils}" get licenses.k8s.f5net.com -o jsonpath='{.items[0].status.mode}' 2>/dev/null
 }
 e2e_f5_pods_running() {
-  kubectl get pods -A --no-headers 2>/dev/null | awk '$1 ~ /^f5-/ && $4 == "Running"' | wc -l
+  rk get pods -A --no-headers 2>/dev/null | awk '$1 ~ /^f5-/ && $4 == "Running"' | wc -l
 }
 e2e_f5_pods_not_running() {
-  kubectl get pods -A --no-headers 2>/dev/null | awk '$1 ~ /^f5-/ && $4 != "Running" && $4 != "Completed"' | wc -l
+  rk get pods -A --no-headers 2>/dev/null | awk '$1 ~ /^f5-/ && $4 != "Running" && $4 != "Completed"' | wc -l
 }
 # Containers in the BNK namespaces NOT served by the private mirror. The
 # disconnected variants must report 0; the connected ones must report all of
 # them, which is what proves the two paths are actually different.
 e2e_containers_off_mirror() {
   local mirror="${1:-}"
-  kubectl get pods -n f5-bnk -n f5-utils -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null \
+  rk get pods -n f5-bnk -n f5-utils -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null \
     | grep -c -v "^${mirror}/" 
 }
 e2e_containers_total() {
   for ns in f5-bnk f5-utils; do
-    kubectl -n $ns get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null
+    rk -n $ns get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null
   done | grep -c .
 }
 e2e_containers_from_mirror() {
   local mirror="$1"
   for ns in f5-bnk f5-utils; do
-    kubectl -n $ns get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null
+    rk -n $ns get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null
   done | grep -c "^${mirror}/"
 }
 # Containers served by a given registry host. Used positively: a connected
@@ -87,7 +87,7 @@ e2e_containers_from_mirror() {
 e2e_containers_from_registry() {
   local host="$1"
   for ns in f5-bnk f5-utils; do
-    kubectl -n $ns get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null
+    rk -n $ns get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' 2>/dev/null
   done | grep -c "^${host}/"
 }
 
@@ -96,8 +96,8 @@ e2e_containers_from_registry() {
 # the input we passed in.
 e2e_worker_egress() {
   local node
-  node=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}' 2>/dev/null) || return
-  kubectl debug node/"$node" --image=busybox -q -- timeout 8 wget -q -O- https://registry.redhat.io/v2/ >/dev/null 2>&1 \
+  node=$(rk get nodes -o jsonpath='{.items[0].metadata.name}' 2>/dev/null) || return
+  rk debug node/"$node" --image=busybox -q -- timeout 8 wget -q -O- https://registry.redhat.io/v2/ >/dev/null 2>&1 \
     && echo yes || echo no
 }
 
@@ -243,21 +243,42 @@ e2e_teardown() {
   fi
 }
 
-# Point kubectl at the cluster under test, whatever created it.
+# Bind a roksbnkctl workspace to the cluster under test. Everything cluster-facing
+# then goes through roksbnkctl, which is the tool this repo exists to exercise —
+# and which loads the workspace API key, region and KUBECONFIG itself. Driving
+# `ibmcloud` and `kubectl` directly went around the tool under test and produced
+# two real defects today: an expired CLI session that silently left kubectl on the
+# previous cluster, and a region that had to be pinned by hand.
+E2E_WS="${E2E_WS:-e2e}"
+
 e2e_kubeconfig() {
   local cluster="$1"
-  # The CLI session expires, and an expired session fails the fetch while leaving
-  # kubectl pointed at whatever cluster it was on before — so the assertions
-  # would run green against the WRONG cluster. Re-authenticate every time.
-  ibmcloud login --apikey "$IBMCLOUD_API_KEY" -r "$REGION" -g "$RESOURCE_GROUP" --quiet >/dev/null 2>&1
-  # `ibmcloud ks` resolves the cluster in the CLI's CURRENT region, which is
-  # whatever the last command left it as. Pin it, or verification fails with
-  # "cluster not found" at the end of an hour-long deploy.
-  ibmcloud target -r "$REGION" >/dev/null 2>&1
-  ibmcloud ks cluster config -c "$cluster" --admin >/dev/null 2>&1 \
-    || { warn "could not fetch kubeconfig for $cluster in $REGION"; return 1; }
-  local ctx
-  ctx=$(kubectl config current-context 2>/dev/null)
-  [[ "$ctx" == "$cluster/"* ]] \
-    || { warn "kubectl context is '$ctx', expected $cluster — refusing to assert against the wrong cluster"; return 1; }
+  # init --non-interactive builds the workspace from ROKSBNKCTL_* env ALONE, so
+  # the demo .env names have to be mapped across explicitly. cluster.create=false:
+  # this workspace only ever adopts the cluster under test to read it.
+  ROKSBNKCTL_REGION="$REGION" \
+  ROKSBNKCTL_RESOURCE_GROUP="$RESOURCE_GROUP" \
+  ROKSBNKCTL_PREFIX="$cluster" \
+  ROKSBNKCTL_CLUSTER_NAME="$cluster" \
+  ROKSBNKCTL_CLUSTER_CREATE=false \
+  IBMCLOUD_API_KEY="$IBMCLOUD_API_KEY" \
+    roksbnkctl -w "$E2E_WS" init --non-interactive >/dev/null 2>&1 \
+      || { warn "roksbnkctl init failed for workspace $E2E_WS"; return 1; }
+  roksbnkctl -w "$E2E_WS" kubeconfig --download --cluster "$cluster" >/dev/null 2>&1 \
+    || { warn "roksbnkctl could not fetch a kubeconfig for $cluster"; return 1; }
+  # `roksbnkctl kubectl` resolves credentials via the SHARED forge kubeconfig
+  # (~/.roksbnkctl/forge/kubeconfig.yaml), not a per-workspace file — readClusterKubeconfig
+  # tries that path before $KUBECONFIG. Without this refresh the passthrough keeps
+  # talking to whichever cluster was there last; it was still pointed at a us-south
+  # cluster while we were asserting against us-east.
+  roksbnkctl -w "$E2E_WS" kubeconfig --refresh >/dev/null 2>&1 \
+    || { warn "roksbnkctl could not refresh the forge kubeconfig"; return 1; }
+  # Prove we are pointed at the cluster under test before asserting anything.
+  local got
+  got=$(rk get nodes -o jsonpath='{.items[0].metadata.labels.ibm-cloud\.kubernetes\.io/cluster-name}' 2>/dev/null)
+  [[ -z "$got" || "$got" == "$cluster" ]] \
+    || { warn "workspace is on '$got', expected '$cluster' — refusing to assert against the wrong cluster"; return 1; }
 }
+
+# rk: kubectl through roksbnkctl, with the workspace's KUBECONFIG loaded.
+rk() { roksbnkctl -w "$E2E_WS" kubectl "$@"; }
