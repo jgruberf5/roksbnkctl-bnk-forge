@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cwc-guard",
-  "version": "1.0.2",
+  "version": "5.0.0",
   "kind": "container_image",
   "description": "Clears F5's f5-spk-cwc Multi-Attach deadlock so BNK licensing can activate. The cluster-wide-controller Deployment mounts a ReadWriteOnce PVC but ships with a RollingUpdate strategy, so when the F5 Lifecycle Operator rolls it the new pod is scheduled before the old one is terminated, cannot attach the volume, and sticks in ContainerCreating forever. The rollout never completes, the License CR never reaches Active, and `bnk up` times out on its license gate after 15 minutes. Runs alongside the BNK install rather than before it, because the Deployment only appears once the operator creates it.",
   "container_image": {
