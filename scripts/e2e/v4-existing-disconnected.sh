@@ -57,6 +57,7 @@ print(json.dumps({
  "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE" "$MANIFEST_VERSION" \
  "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" "$PROJECT" "${FORGE_INSECURE:+true}")
 
+export E2E_CLUSTER_UNDER_TEST="$CLUSTER"
 e2e_deploy "$BP_DIR" "$REL" "$PROJECT" "$VARS"
 
 e2e_head "Verify"

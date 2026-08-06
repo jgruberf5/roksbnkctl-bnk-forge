@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-bnk-roksbnkctl",
-    "version": "5.0.1",
+    "version": "5.0.0",
     "name": "BNK on a NEW IBM ROKS cluster (created end to end)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct \u2014 no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -369,9 +369,10 @@
         "name": "bnkforge_project",
         "type": "string",
         "label": "BNK Forge project",
-        "description": "Project the cluster is registered into. Blank = the workspace's configured project.",
-        "default": "",
-        "order": 37
+        "description": "BNK Forge project to register the cluster into. Filled automatically with THIS project's name, so the cluster appears on the Kubernetes page of the project you deployed and its scans can be watched as BNK installs.",
+        "order": 37,
+        "source": "project",
+        "source_field": "name"
       },
       {
         "name": "bnkforge_insecure",

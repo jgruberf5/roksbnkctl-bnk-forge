@@ -65,6 +65,7 @@ print(json.dumps({
  "bnkforge_password":e["E2E_FPASS"], "bnkforge_project":e["E2E_FPROJ"],
  "bnkforge_insecure":e["E2E_FINSEC"]}))')
 
+export E2E_CLUSTER_UNDER_TEST="$CLUSTER"
 e2e_deploy "$BP_DIR" "$REL" "$PROJECT" "$VARS"
 
 e2e_head "Verify"

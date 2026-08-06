@@ -155,6 +155,38 @@ forge_import_release() {
   e2e_say "release $rid imported (was '${state:-discovered}')"
 }
 
+# Forge scans a cluster when it is registered and never again on its own, so a
+# BNK install that takes 15 minutes shows an empty cluster for 15 minutes. Drive
+# a rescan on an interval instead, and the Kubernetes console fills in as the
+# install proceeds — which is the whole point of registering before installing.
+#
+# The redirect is load-bearing: this is called as PID=$(e2e_watch_cluster ...),
+# and command substitution waits for every writer to the pipe to let go. A
+# backgrounded child inherits it, so without >/dev/null the caller hangs forever
+# on a loop that never exits.
+e2e_watch_cluster() {
+  local name="$1" interval="${2:-60}"
+  (
+    local id=""
+    while :; do
+      [[ -z "$id" ]] && id=$(forge_cluster_id_by_name "$name")
+      [[ -n "$id" ]] && forge_api PUT "/api/k8s/clusters/$id" '{}' >/dev/null 2>&1
+      sleep "$interval"
+    done
+  ) >/dev/null 2>&1 &
+  echo $!
+}
+
+e2e_stop_watch() {
+  [[ -n "${1:-}" ]] && kill "$1" 2>/dev/null
+  # One last scan so the console reflects the finished state, not the last poll.
+  local id
+  id=$(forge_cluster_id_by_name "${2:-}")
+  [[ -n "$id" ]] && forge_api PUT "/api/k8s/clusters/$id" '{}' >/dev/null 2>&1 \
+    && e2e_say "final cluster rescan queued"
+  return 0
+}
+
 # ── deploy / teardown ────────────────────────────────────────────────────────
 # One project per variant. Mirrors the demo script's deploy(): enable every
 # module (optional ones arrive disabled), put the blueprint's depends_on edges
@@ -174,7 +206,15 @@ e2e_deploy() {
   for m in $E2E_MODS; do forge_enable_module "$m"; done
   forge_restore_dependencies "$E2E_HERE/../../blueprints/$bp_dir/forge-blueprint.json" $E2E_MODS
   forge_apply "$(echo "$E2E_MODS" | awk '{print $1}')"
+  # Registration is the first module, so the cluster appears early and the rest
+  # of the install is watchable on Forge's Kubernetes page while it happens.
+  local watch_pid=""
+  if [[ -n "${E2E_CLUSTER_UNDER_TEST:-}" ]]; then
+    watch_pid=$(e2e_watch_cluster "$E2E_CLUSTER_UNDER_TEST" 60)
+    e2e_say "rescanning $E2E_CLUSTER_UNDER_TEST every 60s — watch it fill in on the Kubernetes page"
+  fi
   for m in $E2E_MODS; do forge_wait_module "$m" "module $m" 7200; done
+  e2e_stop_watch "$watch_pid" "${E2E_CLUSTER_UNDER_TEST:-}"
 }
 
 # Destroy, then delete — and only delete once every module actually reports
