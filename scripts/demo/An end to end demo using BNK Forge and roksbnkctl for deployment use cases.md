@@ -35,7 +35,8 @@ images come from a private registry you have mirrored, and licensing goes
 through an F5 License Proxy running inside your network.
 
 Use cases 2 and 4 need two supporting pieces built first — a private registry
-and a License Proxy. Blueprints are provided for both.
+and a License Proxy. Blueprints are provided for both, and **Step 4** walks
+through them. Build them once and several disconnected clusters can share them.
 
 ---
 
@@ -113,7 +114,66 @@ it needs before you commit to anything.
 
 ---
 
-## Step 4 — Fill in the form
+## Step 4 — Build the registry and License Proxy (use cases 2 and 4 only)
+
+Skip this step entirely if you are only doing use case 1 or 3.
+
+A disconnected cluster cannot reach F5, so it needs two things inside your
+network first: a **private registry** holding a mirrored copy of the BNK supply
+chain, and an **F5 License Proxy** to license against. Both are blueprints, and
+you build them once — several disconnected clusters can share them.
+
+### 4a — Private Harbor registry (and the mirror)
+
+Deploy **Private Harbor registry on an IBM Cloud VSI**. This one blueprint does
+two jobs: it stands up Harbor on a VSI, and then mirrors the whole BNK supply
+chain into it. Allow **15–20 minutes**.
+
+![Harbor blueprint](screenshots/13-harbor-form.png)
+
+| Field | What to enter |
+|---|---|
+| **Resource prefix** | e.g. `acme-eu` — names the VSI, VPC and subnet |
+| **SSH key name** | an existing IBM Cloud VPC SSH key, for access to the VSI |
+| **Harbor admin password** | the password to set for Harbor's `admin` user |
+| **Existing Transit Gateway** | the gateway your clusters will attach to |
+| **COS bucket** | the bucket holding your FAR auth key and subscription JWT |
+
+Leave the rest blank. Harbor issues its own TLS certificate, and the mirror
+picks up the registry address and CA automatically because both modules are in
+the same deployment — nothing is copied by hand.
+
+![Harbor project running](screenshots/14-harbor-project.png)
+
+When it finishes, note the registry's **private IP** from the project's outputs.
+That is what your clusters will pull from.
+
+### 4b — F5 License Proxy
+
+Deploy **Deploying F5 License Proxy as an IBM Cloud VSI**. Allow **3–5 minutes**.
+
+![FLP blueprint](screenshots/15-flp-form.png)
+
+| Field | What to enter |
+|---|---|
+| **Resource prefix** | the same prefix you used for Harbor |
+| **VPC for the proxy** | the services VPC the Harbor blueprint created |
+| **COS bucket** | the same bucket as above |
+
+Leave the rest blank.
+
+![FLP project running](screenshots/16-flp-project.png)
+
+Note the proxy's **private IP** and its **root CA**. You need both when you fill
+in a disconnected cluster form.
+
+> **Already have a registry?** Use the **Mirror F5 artifacts from FAR into a
+> private registry** blueprint on its own instead of 4a. It needs the registry's
+> host and your COS bucket, and it fills any OCI registry you already run.
+
+---
+
+## Step 5 — Fill in the form
 
 Every blueprint asks only for what it genuinely cannot work out for itself.
 **Region** and **Resource group** are filled in from the credential template you
@@ -134,7 +194,7 @@ Leave these blank unless your setup differs:
 | FAR auth file | `f5-far-auth-key.tgz` |
 | Subscription JWT file | `subscription.jwt` |
 | BNK manifest version | the version roksbnkctl ships with |
-| OpenShift version | `4.18` |
+| OpenShift version | `4.20` |
 | Workers per zone | `2` (six workers across three zones) |
 
 ### Extra fields, use case 1 — new cluster, connected
@@ -175,7 +235,7 @@ case 2.
 
 ---
 
-## Step 5 — Watch it deploy
+## Step 6 — Watch it deploy
 
 Each blueprint runs as a small number of modules in order. Registration always
 runs **first**, so the cluster appears on the Kubernetes page and you can watch
@@ -197,7 +257,7 @@ Roughly how long to allow:
 
 ---
 
-## Step 6 — Confirm BNK is running
+## Step 7 — Confirm BNK is running
 
 Open **Kubernetes** in the left-hand menu and select your cluster. A healthy
 install shows around **38 F5 pods running** across the `f5-bnk` and `f5-utils`
