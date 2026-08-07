@@ -58,10 +58,31 @@ const steps = JSON.parse(process.env.SHOT_STEPS || '[]');   // [{name, path, wai
     return false;
   };
 
+  // The blueprint list is a long table whose search box is not reliably
+  // reachable by selector, so scope the click to the row that names the
+  // blueprint — a bare "Deploy" click just takes whichever row comes first.
+  const clickInRow = async (rowText, btnText) => {
+    return await page.evaluate((rowText, btnText) => {
+      const rows = Array.from(document.querySelectorAll('tr, [role="row"], li'));
+      const row = rows.find(r => (r.innerText || '').toLowerCase().includes(rowText.toLowerCase()));
+      if (!row) return false;
+      const btn = Array.from(row.querySelectorAll('button, a, [role="button"]'))
+        .find(b => (b.innerText || '').trim().toLowerCase().includes(btnText.toLowerCase()));
+      if (!btn) return false;
+      btn.click();
+      return true;
+    }, rowText, btnText);
+  };
+
   for (const s of steps) {
     if (s.path) {
       await page.goto(`${BASE}${s.path}`, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
       await new Promise(r => setTimeout(r, s.waitMs || 3500));
+    }
+    if (s.clickInRow) {
+      const ok = await clickInRow(s.clickInRow.row, s.clickInRow.button || 'Deploy');
+      console.log(`    clickInRow "${s.clickInRow.row}" -> ${ok ? 'ok' : 'NOT FOUND'}`);
+      await new Promise(r => setTimeout(r, s.afterClickMs || 3000));
     }
     for (const c of (s.click || [])) {
       const ok = await clickText(c);
