@@ -183,6 +183,11 @@ Every blueprint asks only for what it genuinely cannot work out for itself.
 **Region** and **Resource group** are filled in from the credential template you
 pick, and anything left blank falls back to roksbnkctl's own default.
 
+> **Check Region before you deploy.** It comes from the credential template, and
+> everything you name on the form — the VPC, the Transit Gateway, the SSH key —
+> has to live in that same region. A mismatch surfaces later as a confusing
+> "VPC not found" for a VPC that clearly exists.
+
 ### Fields common to all four use cases
 
 | Field | What to enter | Notes |
@@ -330,6 +335,14 @@ address prefixes. Give each cluster its own **Cluster VPC address block**.
 **A module reports "no IBM Cloud API key".** The project lost its credential
 template. Re-select it on the project and re-run the module. BNK Forge 3.1.6
 fixes the cause.
+
+**"VPC not found", naming a VPC you can plainly see in the console.** The
+deployment ran in a different region from the VPC. **Region** is filled in from
+the credential template, so if that template names one region and the VPC,
+Transit Gateway or registry you are pointing at lives in another, every lookup
+fails this way. Check **Region** on the form matches where those resources
+actually are — an IBM VPC ID carries its region in the prefix (`r014-…` is
+us-east, `r006-…` us-south), which is the quickest way to tell them apart.
 
 **Destroying the Harbor registry fails part-way, with `vpc_in_use`.** The
 License Proxy is still in that VPC. Destroy the proxy, then run **Destroy all**
