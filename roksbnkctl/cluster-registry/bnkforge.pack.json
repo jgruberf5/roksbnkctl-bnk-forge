@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-cluster-registry",
     "path": "roksbnkctl/cluster-registry",
-    "version": "4.9.2",
+    "version": "5.0.0",
     "category": "bnk",
     "description": "Adopt an EXISTING IBM Cloud ROKS cluster into the workspace and register it with BNK Forge, so the cluster is visible and monitorable BEFORE anything is installed onto it. Runs first in the graph; the cluster itself is never created or destroyed.",
     "estimated_time_minutes": 3

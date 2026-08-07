@@ -3,7 +3,7 @@
   "module": {
     "name": "harbor-registry",
     "path": "harbor",
-    "version": "4.9.0",
+    "version": "5.0.0",
     "category": "infra",
     "description": "Private Harbor OCI registry on an IBM Cloud VSI \u2014 the mirror a disconnected BNK install pulls its charts and images from. Creates (or adopts) the services VPC, attaches it to an existing Transit Gateway, and installs Harbor with a self-signed cert covering both its private and floating IPs.",
     "estimated_time_minutes": 8
