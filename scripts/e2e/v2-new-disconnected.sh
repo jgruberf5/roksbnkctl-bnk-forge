@@ -21,6 +21,10 @@ PREFIX_V2="${E2E_V2_PREFIX:-f5e2e2}"
 # A disconnected cluster must share a gateway with the mirror it pulls from, so
 # it adopts one rather than creating its own. .env cannot clobber E2E_V2_*.
 TGW_V2="${E2E_V2_TGW:-$TRANSIT_GATEWAY}"
+# Distinct address block: this cluster shares a gateway with the mirror, and IBM's
+# default "auto" gives every VPC in the region the same prefixes. 10.241.0.0/16
+# reproduces auto exactly, so anything else is safe against an existing cluster.
+CIDR_V2="${E2E_V2_CIDR:-10.242.0.0/16}"
 # roksbnkctl names a NEW cluster after the prefix — there is no separate name.
 CLUSTER="$PREFIX_V2"
 
@@ -36,7 +40,7 @@ e2e_head "Variant 2 — NEW cluster, disconnected"
 : "${FLP_IP:?set FLP_IP — deploy the FLP blueprint first}"
 : "${HARBOR_CA:?set HARBOR_CA (base64 PEM) — from the Harbor deploy}"
 : "${FLP_CA:?set FLP_CA (base64 PEM) — from the FLP deploy}"
-e2e_say "mirror $HARBOR_IP, licence proxy https://$FLP_IP:8443, adopting gateway $TGW_V2"
+e2e_say "mirror $HARBOR_IP, licence proxy https://$FLP_IP:8443, adopting gateway $TGW_V2, VPC block $CIDR_V2"
 
 forge_sync_source roksbnkctl >/dev/null
 REL=$(forge_latest_release "$BP_ID") || die "no release for $BP_ID"
@@ -44,7 +48,7 @@ e2e_say "blueprint release $REL"
 
 VARS=$(E2E_PREFIX="$PREFIX_V2" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
        E2E_OCP="${OPENSHIFT_VERSION:-4.18}" E2E_WPZ="${WORKERS_PER_ZONE:-2}" \
-       E2E_TGW="$TGW_V2" \
+       E2E_TGW="$TGW_V2" E2E_CIDR="$CIDR_V2" \
        E2E_RHOST="$HARBOR_IP" E2E_RREPO="$HARBOR_PROJECT" E2E_RPASS="$HARBOR_ADMIN_PASSWORD" \
        E2E_RCA="$HARBOR_CA" E2E_RPIN="$HARBOR_PIN" E2E_FLPIP="$FLP_IP" E2E_FLPCA="$FLP_CA" \
        E2E_COSI="$COS_INSTANCE" E2E_COSB="$COS_BUCKET" E2E_COSR="$COS_REGION" \
@@ -57,7 +61,7 @@ import json, os
 e = os.environ
 print(json.dumps({
  "prefix":e["E2E_PREFIX"], "region":e["E2E_REGION"], "resource_group":e["E2E_RG"],
- "existing_transit_gateway":e["E2E_TGW"],
+ "existing_transit_gateway":e["E2E_TGW"], "cluster_vpc_cidr":e["E2E_CIDR"],
  "openshift_version":e["E2E_OCP"], "workers_per_zone":e["E2E_WPZ"],
  "registry_generic_host":e["E2E_RHOST"], "registry_repo_prefix":e["E2E_RREPO"],
  "registry_username":"admin", "registry_password":e["E2E_RPASS"],

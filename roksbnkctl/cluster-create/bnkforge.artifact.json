@@ -7,7 +7,7 @@
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:d958b78636d050fbf70225959e7c5a4d1aa7fb557825aeba4f8ecfcd2ee5caf5"
+    "digest": "sha256:7055928ea39f3cb4420d5adeeae678b39094930140ee6cc0ad0cd5ea6e082444"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -46,7 +46,8 @@
           "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
           "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
           "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}",
-          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
+          "ROKSBNKCTL_CLUSTER_VPC_CIDR": "{{inputs.cluster_vpc_cidr}}"
         },
         "args": [
           "roksbnkctl",
@@ -125,7 +126,8 @@
           "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
           "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
           "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}",
-          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
+          "ROKSBNKCTL_CLUSTER_VPC_CIDR": "{{inputs.cluster_vpc_cidr}}"
         },
         "args": [
           "roksbnkctl",
@@ -219,6 +221,15 @@
       }
     ],
     "optional": [
+      {
+        "name": "cluster_vpc_cidr",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Cluster VPC address block",
+        "description": "Address block for the new cluster's VPC, split into three per-zone prefixes, so /18 is the smallest usable value. Blank leaves IBM Cloud's 'auto', which assigns EVERY VPC in a region the same three prefixes (10.241.0.0/18 and friends) \u2014 two such VPCs on one Transit Gateway overlap and the gateway silently blackholes one of them. Set a distinct block per cluster whenever clusters share a gateway. 10.241.0.0/16 reproduces the current auto values exactly.",
+        "order": 9
+      },
       {
         "name": "ibmcloud_api_key",
         "type": "string",

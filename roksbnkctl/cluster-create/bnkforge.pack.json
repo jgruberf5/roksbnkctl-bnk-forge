@@ -55,6 +55,15 @@
     ],
     "optional": [
       {
+        "name": "cluster_vpc_cidr",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Cluster VPC address block",
+        "description": "Address block for the new cluster's VPC, split into three per-zone prefixes, so /18 is the smallest usable value. Blank leaves IBM Cloud's 'auto', which assigns EVERY VPC in a region the same three prefixes (10.241.0.0/18 and friends) \u2014 two such VPCs on one Transit Gateway overlap and the gateway silently blackholes one of them. Set a distinct block per cluster whenever clusters share a gateway. 10.241.0.0/16 reproduces the current auto values exactly.",
+        "order": 9
+      },
+      {
         "name": "ibmcloud_api_key",
         "type": "string",
         "source": "user",

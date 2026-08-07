@@ -16,6 +16,8 @@ PROJECT="${E2E_V1_PROJECT:-f5e2e-v1-new-connected}"
 PREFIX_V1="${E2E_V1_PREFIX:-f5e2e1}"
 # roksbnkctl names a NEW cluster after the prefix — there is no separate name.
 CLUSTER="$PREFIX_V1"
+# Own gateway, nothing to overlap — but set it explicitly so the run is reproducible.
+CIDR_V1="${E2E_V1_CIDR:-10.244.0.0/16}"
 
 forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD"
 STATE="${STATE:-$HERE/.e2e-state}"; mkdir -p "$STATE"
@@ -34,6 +36,7 @@ VARS=$(E2E_PREFIX="$PREFIX_V1" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
        E2E_OCP="${OPENSHIFT_VERSION:-4.18}" E2E_WPZ="${WORKERS_PER_ZONE:-2}" \
        E2E_COSI="$COS_INSTANCE" E2E_COSB="$COS_BUCKET" E2E_COSR="$COS_REGION" \
        E2E_FAR="$FAR_AUTH_FILE" E2E_JWT="$SUBSCRIPTION_JWT_FILE" E2E_MV="$MANIFEST_VERSION" \
+       E2E_CIDR="$CIDR_V1" \
        E2E_FURL="$FORGE_URL" E2E_FUSER="$FORGE_USER" E2E_FPASS="$FORGE_PASSWORD" \
        E2E_FPROJ="$PROJECT" E2E_FINSEC="${FORGE_INSECURE:+true}" \
 python3 -c '
@@ -42,6 +45,7 @@ e = os.environ
 print(json.dumps({
  "prefix":e["E2E_PREFIX"], "region":e["E2E_REGION"], "resource_group":e["E2E_RG"],
  "openshift_version":e["E2E_OCP"], "workers_per_zone":e["E2E_WPZ"],
+ "cluster_vpc_cidr":e["E2E_CIDR"],
  "cos_instance":e["E2E_COSI"], "cos_bucket":e["E2E_COSB"], "cos_region":e["E2E_COSR"],
  "far_auth_file":e["E2E_FAR"], "subscription_jwt_file":e["E2E_JWT"],
  "manifest_version":e["E2E_MV"],

@@ -141,6 +141,14 @@
         "label": "Existing Transit Gateway (name or id)",
         "description": "The gateway the private mirror and F5 License Proxy already sit on. The new cluster's VPC attaches to it so the cluster can reach them privately \u2014 a disconnected cluster on its own new gateway would be isolated from its own mirror.",
         "order": 5
+      },
+      {
+        "name": "cluster_vpc_cidr",
+        "type": "string",
+        "source": "user",
+        "label": "Cluster VPC address block",
+        "description": "Address block for the new cluster's VPC (/18 or larger). REQUIRED here: this cluster shares a Transit Gateway with the private mirror, and IBM's default 'auto' gives every VPC in the region the same prefixes \u2014 a second cluster on that gateway would overlap and the gateway would blackhole one of them. Pick a block no other attached VPC uses, e.g. 10.242.0.0/16.",
+        "order": 9
       }
     ],
     "optional": [
@@ -508,7 +516,8 @@
         "workers_per_zone": "${workers_per_zone}",
         "public_gateway": "false",
         "existing_transit_gateway": "${existing_transit_gateway}",
-        "ibmcloud_api_key": "${ibmcloud_api_key}"
+        "ibmcloud_api_key": "${ibmcloud_api_key}",
+        "cluster_vpc_cidr": "${cluster_vpc_cidr}"
       }
     },
     {

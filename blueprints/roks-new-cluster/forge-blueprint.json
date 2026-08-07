@@ -390,6 +390,15 @@
         "label": "IBM Cloud API key",
         "description": "Resolved from the project's credential template when the project is created. Not entered by hand.",
         "order": 99
+      },
+      {
+        "name": "cluster_vpc_cidr",
+        "type": "string",
+        "source": "user",
+        "label": "Cluster VPC address block",
+        "description": "Address block for the new cluster's VPC (/18 or larger). Optional: this cluster gets its own Transit Gateway, so there is nothing to overlap. Blank leaves IBM Cloud's default.",
+        "order": 9,
+        "default": ""
       }
     ]
   },
@@ -415,7 +424,8 @@
         "workers_per_zone": "${workers_per_zone}",
         "public_gateway": "true",
         "existing_transit_gateway": "",
-        "ibmcloud_api_key": "${ibmcloud_api_key}"
+        "ibmcloud_api_key": "${ibmcloud_api_key}",
+        "cluster_vpc_cidr": "${cluster_vpc_cidr}"
       }
     },
     {
