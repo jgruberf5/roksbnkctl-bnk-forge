@@ -83,6 +83,7 @@ TOTAL=$(e2e_containers_total)
 e2e_assert    "license is Active"              "$(e2e_license_state)"       "Active"
 e2e_assert    "licensed via the F5 proxy"      "$(e2e_license_mode)"        "f5licenseproxy"
 e2e_assert_ge "f5 pods Running"                "$(e2e_f5_pods_running)"     30
+e2e_wait_pods_settled 300 || true
 e2e_assert    "no f5 pods stuck"               "$(e2e_f5_pods_not_running)" "0"
 # The assertion the whole variant exists for: every BNK container came from the
 # mirror. One image off-mirror means the cluster reached the Internet.

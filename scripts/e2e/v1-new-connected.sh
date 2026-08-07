@@ -60,6 +60,7 @@ e2e_head "Verify"
 e2e_kubeconfig "$CLUSTER" || die "cluster $CLUSTER unreachable — nothing to verify"
 e2e_assert    "license is Active"            "$(e2e_license_state)"       "Active"
 e2e_assert_ge "f5 pods Running"              "$(e2e_f5_pods_running)"     30
+e2e_wait_pods_settled 300 || true
 e2e_assert    "no f5 pods stuck"             "$(e2e_f5_pods_not_running)" "0"
 # The distinguishing assertion: a CONNECTED install must NOT be licensed
 # through a proxy, and its images come from F5, not a mirror.

@@ -69,6 +69,7 @@ TOTAL=$(e2e_containers_total)
 e2e_assert    "license is Active"               "$(e2e_license_state)"       "Active"
 e2e_assert    "licensed via the F5 proxy"       "$(e2e_license_mode)"        "f5licenseproxy"
 e2e_assert_ge "f5 pods Running"                 "$(e2e_f5_pods_running)"     30
+e2e_wait_pods_settled 300 || true
 e2e_assert    "no f5 pods stuck"                "$(e2e_f5_pods_not_running)" "0"
 e2e_assert    "every container from the mirror" "$(e2e_containers_from_mirror "$HARBOR_IP")" "$TOTAL"
 CLUSTER_ID_AFTER=$(roksbnkctl -w "${E2E_WS:-e2e}" ibmcloud ks cluster get --cluster "$CLUSTER" --output json 2>/dev/null \

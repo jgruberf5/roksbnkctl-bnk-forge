@@ -67,6 +67,7 @@ e2e_head "Verify"
 e2e_kubeconfig "$CLUSTER" || die "cluster $CLUSTER unreachable — nothing to verify"
 e2e_assert    "license is Active"            "$(e2e_license_state)"       "Active"
 e2e_assert_ge "f5 pods Running"              "$(e2e_f5_pods_running)"     30
+e2e_wait_pods_settled 300 || true
 e2e_assert    "no f5 pods stuck"             "$(e2e_f5_pods_not_running)" "0"
 e2e_assert    "licensing is direct, not FLP" "$(e2e_license_mode)"        "connected"
 e2e_assert    "no private mirror in use"     "$(e2e_containers_from_mirror "${HARBOR_IP:-10.243.0.4}")" "0"

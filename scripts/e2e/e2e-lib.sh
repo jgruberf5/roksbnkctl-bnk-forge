@@ -64,6 +64,23 @@ e2e_f5_pods_running() {
 e2e_f5_pods_not_running() {
   rk get pods -A --no-headers 2>/dev/null | awk '$1 ~ /^f5-/ && $4 != "Running" && $4 != "Completed"' | wc -l
 }
+# `bnk up` returns when the install has been APPLIED, not when every pod has
+# finished starting — the verify block runs seconds later, so a pod still pulling
+# or still in ContainerCreating reads as "stuck" and fails a run that is actually
+# healthy. Use case 3 failed exactly this way: 2 pods at 23:09:07, all 38 Running
+# by 23:10. Poll until the count settles at 0, then let the assertion read it;
+# on a genuinely stuck pod this simply burns the timeout and still reports the
+# real number, so a true failure is never masked — only deferred.
+e2e_wait_pods_settled() {
+  local timeout="${1:-300}" waited=0 n
+  while (( waited < timeout )); do
+    n=$(e2e_f5_pods_not_running)
+    [[ "$n" == "0" ]] && { (( waited > 0 )) && e2e_say "pods settled after ${waited}s"; return 0; }
+    sleep 10; waited=$(( waited + 10 ))
+  done
+  e2e_say "pods did NOT settle in ${timeout}s — ${n} still not Running"
+  return 1
+}
 # Containers in the BNK namespaces NOT served by the private mirror. The
 # disconnected variants must report 0; the connected ones must report all of
 # them, which is what proves the two paths are actually different.
