@@ -45,13 +45,19 @@ const steps = JSON.parse(process.env.SHOT_STEPS || '[]');   // [{name, path, wai
 
   // Click an element whose visible text matches, without needing a brittle
   // CSS path — the UI is React and class names are generated.
-  const clickText = async (text, tags = ['button', '[role="button"]', 'a']) => {
+  const clickText = async (text, tags = ['button', '[role="button"]', 'a',
+                                         '[role="option"]', 'li', 'div', 'span']) => {
     for (const tag of tags) {
       const found = await page.evaluate((tag, text) => {
-        const els = Array.from(document.querySelectorAll(tag));
-        const el = els.find(e => (e.innerText || '').trim().toLowerCase().includes(text.toLowerCase()));
-        if (el) { el.click(); return true; }
-        return false;
+        const els = Array.from(document.querySelectorAll(tag))
+          .filter(e => (e.innerText || '').trim().toLowerCase().includes(text.toLowerCase()));
+        if (!els.length) return false;
+        // Dropdown options are plain divs/spans, and so is every ancestor that
+        // contains them — matching on text alone would click the page wrapper.
+        // The smallest matching element is the option itself.
+        els.sort((a, b) => (a.innerText || '').length - (b.innerText || '').length);
+        els[0].click();
+        return true;
       }, tag, text);
       if (found) return true;
     }
