@@ -167,6 +167,10 @@ Leave the rest blank.
 Note the proxy's **private IP** and its **root CA**. You need both when you fill
 in a disconnected cluster form.
 
+> **The proxy sits inside the registry's VPC.** That matters when you take these
+> down again — destroy the License Proxy **before** the Harbor registry. See
+> [Removing a demo](#removing-a-demo).
+
 > **Already have a registry?** Use the **Mirror F5 artifacts from FAR into a
 > private registry** blueprint on its own instead of 4a. It needs the registry's
 > host and your COS bucket, and it fills any OCI registry you already run.
@@ -288,6 +292,33 @@ but **leaves your cluster alone** — those blueprints only ever adopted it. On
 the *new cluster* use cases it destroys the cluster, its VPC and its Transit
 Gateway, because it created them.
 
+### Order matters
+
+Take things down in the reverse of the order you built them:
+
+| | Destroy | Why |
+|---|---|---|
+| 1 | Your **cluster** projects | They attach to the Transit Gateway the registry uses |
+| 2 | The **F5 License Proxy** | Its VSI sits inside the registry's services VPC |
+| 3 | The **Harbor registry** | It owns that VPC and deletes it last |
+
+**Destroy the License Proxy before the Harbor registry.** The proxy's VSI lives
+in the services VPC that the Harbor blueprint created and owns. They are two
+separate projects, so BNK Forge has no way to know they are related and will not
+stop you doing it the other way round — but IBM Cloud will. Harbor's destroy
+deletes its own VSI, then fails on the subnet and VPC with `vpc_in_use`, because
+the proxy is still sitting in them. You are left with a half-removed deployment
+to clean up by hand.
+
+The same applies if you only want the projects gone: **destroy first, then
+delete**. Deleting a project removes it from BNK Forge but leaves its IBM Cloud
+resources running, and once the project is gone there is nothing left to destroy
+them with.
+
+If you do hit `vpc_in_use`, nothing is lost. Destroy the License Proxy, then run
+**Destroy all** on the Harbor project again — it picks up where it stopped and
+removes the subnet and VPC.
+
 ---
 
 ## If something goes wrong
@@ -299,6 +330,10 @@ address prefixes. Give each cluster its own **Cluster VPC address block**.
 **A module reports "no IBM Cloud API key".** The project lost its credential
 template. Re-select it on the project and re-run the module. BNK Forge 3.1.6
 fixes the cause.
+
+**Destroying the Harbor registry fails part-way, with `vpc_in_use`.** The
+License Proxy is still in that VPC. Destroy the proxy, then run **Destroy all**
+on the Harbor project again — see [Order matters](#order-matters).
 
 **BNK installs but the licence never activates.** Check the `MODE` above matches
 the use case, and that a disconnected cluster can reach the License Proxy
