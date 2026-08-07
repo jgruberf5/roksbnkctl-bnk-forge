@@ -4,7 +4,7 @@
     "id": "ibm-harbor-registry",
     "version": "5.0.0",
     "name": "Private Harbor registry on an IBM Cloud VSI",
-    "description": "A private Harbor OCI registry on an IBM Cloud VSI, attached to a Transit Gateway so air-gapped cluster nodes reach it privately. Its TLS certificate is issued by terraform, so the CA is a module output rather than something to fetch off the box. Optionally replicates the BNK supply chain from FAR on the way up \u2014 the mirror takes the registry address and CA straight from the harbor module, so one deployment leaves a registry a disconnected install can use immediately. Optionally deploys the F5 License Proxy into the same services VPC \u2014 keeping both in one deployment is what lets Forge tear them down in the right order; as separate projects, destroying the registry first fails because the proxy still occupies its VPC."
+    "description": "A private Harbor OCI registry on an IBM Cloud VSI, attached to a Transit Gateway so air-gapped cluster nodes reach it privately. Its TLS certificate is issued by terraform, so the CA is a module output rather than something to fetch off the box. Optionally replicates the BNK supply chain from FAR on the way up \u2014 the mirror takes the registry address and CA straight from the harbor module, so one deployment leaves a registry a disconnected install can use immediately."
   },
   "category": "infrastructure",
   "cloud_provider": "ibm",
@@ -367,28 +367,6 @@
         "subscription_jwt_file": "${subscription_jwt_file}",
         "manifest_version": "${manifest_version}",
         "delete_artifacts_on_destroy": "",
-        "ibmcloud_api_key": "${ibmcloud_api_key}"
-      }
-    },
-    {
-      "id": "roksbnkctl-flp",
-      "module": "roksbnkctl/flp",
-      "version": "5.0.0",
-      "optional": true,
-      "depends_on": [
-        "harbor-registry"
-      ],
-      "inputs": {
-        "prefix": "${prefix}",
-        "region": "${region}",
-        "resource_group": "${resource_group}",
-        "flp_vsi_vpc": "",
-        "flp_vsi_ssh_key": "${ssh_key_name}",
-        "cos_instance": "${cos_instance}",
-        "cos_bucket": "${cos_bucket}",
-        "cos_region": "${cos_region}",
-        "far_auth_file": "${far_auth_file}",
-        "subscription_jwt_file": "${subscription_jwt_file}",
         "ibmcloud_api_key": "${ibmcloud_api_key}"
       }
     }
