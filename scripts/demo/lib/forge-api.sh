@@ -188,13 +188,17 @@ forge_import_release() { forge_api POST "/api/blueprint-catalog/releases/$1/impo
 # forge_create_project <release-id> <name> <region> <cred-template-id> <vars-json>
 # echoes the created module ids, in blueprint order, space separated
 forge_create_project() {
-  local rid="$1" name="$2" region="$3" cred="$4" vars="$5" body resp
+  # $6 is the project description. It is shown under the project title in the UI
+  # and ends up in customer-facing screenshots, so it must describe THIS project
+  # — a connected variant labelled "disconnected demo" reads as a mistake.
+  local rid="$1" name="$2" region="$3" cred="$4" vars="$5" desc="${6:-roksbnkctl deployment}" body resp
   body=$(python3 -c '
 import json,sys
 name,region,cred,vars_ = sys.argv[1], sys.argv[2], int(sys.argv[3]), json.loads(sys.argv[4])
-print(json.dumps({"name":name,"description":"roksbnkctl disconnected demo","cloud_provider":"ibm",
+desc = sys.argv[5]
+print(json.dumps({"name":name,"description":desc,"cloud_provider":"ibm",
   "environment":"development","region":region,"credential_template_id":cred,
-  "backend_type":"local","variables":vars_}))' "$name" "$region" "$cred" "$vars")
+  "backend_type":"local","variables":vars_}))' "$name" "$region" "$cred" "$vars" "$desc")
   if ! resp=$(forge_api POST "/api/stacks/releases/$rid/projects" "$body"); then
     # Forge reports a required variable sent as "" as "missing", which reads like
     # the script forgot to send it at all. Name the ones that went out empty so
