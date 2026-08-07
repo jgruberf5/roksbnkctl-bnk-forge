@@ -161,6 +161,22 @@
         "source": "user",
         "default": "bnk-mirror,bnk-status",
         "description": "Comma-separated Harbor projects to create once the registry is up. Harbor does not auto-create a project on push and `registry replicate` does not either, so a missing project surfaces as 401 Unauthorized on the manifest HEAD \u2014 which reads like a credential fault. Defaults cover the mirror target and the flp-status image project."
+      },
+      {
+        "name": "vpc_name",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Services VPC name",
+        "description": "Explicit name for the services VPC. Blank uses <prefix>-services-vpc."
+      },
+      {
+        "name": "subnet_name",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Services subnet name",
+        "description": "Explicit name for the services subnet. Blank uses <prefix>-services-subnet."
       }
     ]
   },

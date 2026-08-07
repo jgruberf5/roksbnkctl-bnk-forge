@@ -68,7 +68,9 @@
         "label": "Supply-chain COS bucket",
         "description": "Orchestration COS bucket holding the FAR auth tarball and the subscription JWT. The runner has no local copies, so it resolves them from here; buckets provisioned by `roksbnkctl init` carry a per-account suffix (bnk-artifacts-<account>).",
         "order": 11
-      },
+      }
+    ],
+    "optional": [
       {
         "name": "manifest_version",
         "type": "string",
@@ -76,9 +78,7 @@
         "description": "BNK manifest release to install. Blank = the roksbnkctl default.",
         "default": "",
         "order": 15
-      }
-    ],
-    "optional": [
+      },
       {
         "name": "prefix",
         "type": "string",

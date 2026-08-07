@@ -97,6 +97,13 @@
         "description": "The gateway the services VPC is attached to, so the air-gapped cluster reaches Harbor privately.",
         "example": "bnkci-testing",
         "order": 5
+      },
+      {
+        "name": "cos_bucket",
+        "type": "string",
+        "label": "Supply-chain COS bucket",
+        "description": "Orchestration COS bucket holding the FAR auth tarball and the subscription JWT. The runner has no local copies, so it resolves them from here; buckets provisioned by `roksbnkctl init` carry a per-account suffix (bnk-artifacts-<account>). Used only when the FAR mirror module is enabled.",
+        "order": 23
       }
     ],
     "optional": [
@@ -240,13 +247,6 @@
         "order": 22
       },
       {
-        "name": "cos_bucket",
-        "type": "string",
-        "label": "Supply-chain COS bucket",
-        "description": "Orchestration COS bucket holding the FAR auth tarball and the subscription JWT. The runner has no local copies, so it resolves them from here; buckets provisioned by `roksbnkctl init` carry a per-account suffix (bnk-artifacts-<account>). Used only when the FAR mirror module is enabled.",
-        "order": 23
-      },
-      {
         "name": "cos_region",
         "type": "string",
         "label": "Supply-chain COS region",
@@ -287,6 +287,24 @@
         "label": "IBM Cloud API key",
         "description": "Resolved from the project's credential template when the project is created. Not entered by hand.",
         "order": 99
+      },
+      {
+        "name": "vpc_name",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Services VPC name",
+        "description": "Name for the services VPC. Blank uses <prefix>-services-vpc.",
+        "order": 60
+      },
+      {
+        "name": "subnet_name",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Services subnet name",
+        "description": "Name for the services subnet. Blank uses <prefix>-services-subnet.",
+        "order": 60
       }
     ]
   },
@@ -319,7 +337,9 @@
         "existing_subnet_id": "${existing_subnet_id}",
         "public_gateway": "${public_gateway}",
         "services_spare_cidr": "${services_spare_cidr}",
-        "registry_projects": "${registry_projects}"
+        "registry_projects": "${registry_projects}",
+        "vpc_name": "${vpc_name}",
+        "subnet_name": "${subnet_name}"
       }
     },
     {

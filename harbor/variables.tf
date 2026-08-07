@@ -14,6 +14,22 @@ variable "prefix" {
   type        = string
 }
 
+# Cosmetic overrides. The generated names carry a "-services-" infix, which is
+# fine for a fresh build but wrong when you are recreating an environment whose
+# names are already documented elsewhere. Blank keeps the generated name, so
+# existing deployments are unaffected.
+variable "vpc_name" {
+  description = "Explicit name for the services VPC. Blank uses <prefix>-services-vpc."
+  type        = string
+  default     = ""
+}
+
+variable "subnet_name" {
+  description = "Explicit name for the services subnet. Blank uses <prefix>-services-subnet."
+  type        = string
+  default     = ""
+}
+
 variable "zone" {
   description = "Zone for the subnet and the VSI. Empty = <region>-1."
   type        = string
