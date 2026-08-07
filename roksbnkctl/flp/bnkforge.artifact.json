@@ -7,7 +7,7 @@
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:7055928ea39f3cb4420d5adeeae678b39094930140ee6cc0ad0cd5ea6e082444"
+    "digest": "sha256:c43b9a3f57bb1eeaf33b63d206ac3c7af0d7a9454677913960f6a672cce56756"
   },
   "lifecycle": {
     "supports_apply": true,
