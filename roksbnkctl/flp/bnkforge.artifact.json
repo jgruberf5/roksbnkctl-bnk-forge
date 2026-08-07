@@ -157,8 +157,10 @@
       {
         "name": "flp_vsi_vpc",
         "type": "string",
-        "source": "user",
-        "description": "Existing VPC ID to deploy the FLP VSI into. This is what makes the appliance cluster-less."
+        "source": "module",
+        "description": "VPC to place the proxy VSI in. Wired from the harbor module's vpc_id when both are in the same deployment; supply it yourself when the proxy goes into a VPC you already run.",
+        "from_module": "harbor",
+        "from_output": "vpc_id"
       }
     ],
     "optional": [
