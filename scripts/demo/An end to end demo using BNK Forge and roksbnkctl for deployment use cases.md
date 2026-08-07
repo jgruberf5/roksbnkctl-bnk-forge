@@ -157,10 +157,11 @@ Deploy **Deploying F5 License Proxy as an IBM Cloud VSI**. Allow **3–5 minutes
 | Field | What to enter |
 |---|---|
 | **Resource prefix** | the same prefix you used for Harbor |
-| **VPC for the proxy** | the services VPC the Harbor blueprint created |
+| **VPC for the proxy** | the services VPC **ID** from the Harbor project's `vpc_id` output — e.g. `r014-6202ec45-…`, not the VPC's name |
 | **COS bucket** | the same bucket as above |
 
-Leave the rest blank.
+Leave the rest blank. Check **Region** matches the VPC — a VPC ID beginning
+`r014-` is us-east.
 
 ![FLP project running](screenshots/16-flp-project.png)
 
