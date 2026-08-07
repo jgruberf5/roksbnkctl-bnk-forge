@@ -316,6 +316,20 @@ deletes its own VSI, then fails on the subnet and VPC with `vpc_in_use`, because
 the proxy is still sitting in them. You are left with a half-removed deployment
 to clean up by hand.
 
+### Removing BNK but keeping the cluster
+
+On the *new cluster* use cases, do **not** reach for the destroy action on the
+`bnk-install` module alone. Destroying a module also tears down what it depends
+on, so `bnk-install` takes `cluster-create` — and your cluster — with it. BNK
+comes off in about two minutes and the cluster teardown starts straight after,
+which is easy to miss.
+
+If you want the cluster to outlive BNK, deploy it with one of the *existing
+cluster* blueprints (use case 3 or 4) instead. Those never create or destroy the
+cluster, so removing BNK leaves it exactly where it was.
+
+### Deleting versus destroying
+
 The same applies if you only want the projects gone: **destroy first, then
 delete**. Deleting a project removes it from BNK Forge but leaves its IBM Cloud
 resources running, and once the project is gone there is nothing left to destroy
