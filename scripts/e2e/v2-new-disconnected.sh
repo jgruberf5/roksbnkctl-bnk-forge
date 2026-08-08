@@ -24,7 +24,14 @@ TGW_V2="${E2E_V2_TGW:-$TRANSIT_GATEWAY}"
 # Distinct address block: this cluster shares a gateway with the mirror, and IBM's
 # default "auto" gives every VPC in the region the same prefixes. 10.241.0.0/16
 # reproduces auto exactly, so anything else is safe against an existing cluster.
-CIDR_V2="${E2E_V2_CIDR:-10.242.0.0/16}"
+# MUST NOT collide with any other VPC on the same Transit Gateway. 10.242.0.0/16
+# is taken: app-eu-gb-1 (the VPC the BNK Forge host runs in) already advertises
+# 10.242.0.0/18, 10.242.64.0/18 and 10.242.128.0/18 on bnkci-testing, and IBM
+# carves a /16 into exactly those three /18s — an exact prefix collision. The
+# gateway then drops traffic for one of the two VPCs, which shows up as image
+# pulls that time out intermittently on every node while the same image pulls
+# fine seconds later. See CONSTRAINTS.md.
+CIDR_V2="${E2E_V2_CIDR:-10.245.0.0/16}"
 # roksbnkctl names a NEW cluster after the prefix — there is no separate name.
 CLUSTER="$PREFIX_V2"
 

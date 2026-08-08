@@ -230,8 +230,18 @@ Leave these blank unless your setup differs:
 > gives *every* VPC in a region the same address prefixes, so a second cluster
 > on that gateway overlaps the first — and the gateway resolves the ambiguity by
 > silently dropping traffic for one of them. It looks like intermittent image
-> pull timeouts, with every firewall in the path wide open. Give each cluster
-> its own block and it cannot happen.
+> pull timeouts, with every firewall in the path wide open.
+>
+> **Pick a block nothing else on that gateway is using.** Not just your other
+> clusters — *every* VPC attached to it, including ones another team set up.
+> IBM splits a `/16` into three `/18`s, one per zone, and two VPCs claiming the
+> same `/18` collide even when they are in different regions. List what is
+> already there before you choose:
+>
+> ```
+> ibmcloud tg connections <gateway-id>        # every VPC on the gateway
+> ibmcloud is vpc-address-prefixes <vpc-id>   # what each one advertises
+> ```
 
 ### Extra fields, use cases 3 and 4 — existing cluster
 
@@ -345,7 +355,10 @@ removes the subnet and VPC.
 
 **Image pulls time out intermittently on a disconnected cluster, but every
 firewall allows the traffic.** Two VPCs on the Transit Gateway have overlapping
-address prefixes. Give each cluster its own **Cluster VPC address block**.
+address prefixes. It affects *all* nodes at random, not one zone — the same
+image pulls in two seconds and then times out — so it looks like a flaky network
+or an overloaded registry. Check the gateway's other VPCs with the two commands
+in step 5 and give the cluster a **Cluster VPC address block** none of them use.
 
 **A module reports "no IBM Cloud API key".** The project lost its credential
 template. Re-select it on the project and re-run the module. BNK Forge 3.1.6

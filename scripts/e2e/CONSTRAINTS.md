@@ -21,13 +21,43 @@ It does not present as a routing error. It presents as intermittent image pulls:
 
 Some pulls succeed, some time out, and every security group and network ACL in
 the path allows the traffic — which sends you looking at firewalls for an hour.
-Variant 2 hit this because `fdisco` (variant 4's cluster) was still attached to
-`bnkci-testing` when variant 2's new cluster joined it.
+Variant 2 hit this twice: first because `fdisco` (variant 4's cluster) was still
+attached to `bnkci-testing`, and later — after per-cluster CIDRs were added to
+fix exactly that — because the CIDR chosen to fix it collided with a VPC nobody
+had thought to check.
 
-**Rule: give every cluster that shares a gateway a distinct `cluster_vpc_cidr`.**
-`10.241.0.0/16` reproduces the current `auto` prefixes byte-for-byte, so the
-first cluster can adopt it without changing any addresses; give the second
-something else, e.g. `10.242.0.0/16`.
+**Rule: every cluster's `cluster_vpc_cidr` must be distinct from EVERY OTHER VPC
+on the gateway — including VPCs nobody on this project created.** Comparing the
+clusters only against each other is not enough, and that mistake cost a full
+63-minute install: variant 2 was given `10.242.0.0/16`, which collides exactly
+with `app-eu-gb-1`, the VPC the BNK Forge host itself runs in.
+
+IBM carves a `/16` into three `/18`s, one per zone, so `10.242.0.0/16` becomes
+`10.242.0.0/18` + `10.242.64.0/18` + `10.242.128.0/18` — byte-for-byte what
+`app-eu-gb-1` already advertises. Zones do not disambiguate: eu-gb-1 and
+us-east-1 claiming the same prefix is still a collision.
+
+Ranges already taken on `bnkci-testing`:
+
+| Range | Owner |
+|---|---|
+| `10.242.0.0/16` (all three /18s) | `app-eu-gb-1` — the BNK Forge host's VPC |
+| `10.243.0.0/24`, `10.243.1.0/24` | `bnk-svc-vpc` — Harbor and the FLP |
+| `10.241.0.0/16` | what IBM's `auto` hands out — assume any un-pinned VPC has it |
+
+`10.241.0.0/16` reproduces the `auto` prefixes byte-for-byte, so the first
+cluster can adopt it without changing any addresses. Give the second something
+clear of the table above, e.g. `10.245.0.0/16`.
+
+**Check before you deploy**, rather than diagnosing it afterwards:
+
+    ibmcloud tg connections <gateway-id>          # every VPC on the gateway
+    ibmcloud is vpc-address-prefixes <vpc-id>     # what each one advertises
+
+The symptom is not a clean failure. Pulls succeed and time out at random on
+*every* node — a probe from one host measured 21 OK / 9 timed out against the
+same address in one run — so it reads as a flaky network or an overloaded
+registry rather than a routing conflict.
 
 If two overlapping clusters already exist, detaching one is enough — destroying
 it is not required. Tearing down the Forge project runs `cluster-registry`'s
