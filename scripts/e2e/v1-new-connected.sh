@@ -68,5 +68,4 @@ e2e_assert    "licensing is direct, not FLP" "$(e2e_license_mode)"        "conne
 e2e_assert_ge "containers pulled from F5"    "$(e2e_containers_total)"    30
 e2e_assert    "no private mirror in use"     "$(e2e_containers_from_mirror "${HARBOR_IP:-10.243.0.4}")" "0"
 e2e_assert    "every container from repo.f5.com" "$(e2e_containers_from_registry repo.f5.com)" "$(e2e_containers_total)"
-e2e_assert    "every container from repo.f5.com" "$(e2e_containers_from_registry repo.f5.com)" "$(e2e_containers_total)"
 e2e_summary

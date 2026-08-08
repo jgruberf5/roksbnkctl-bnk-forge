@@ -31,6 +31,12 @@ fi
 e2e_head "Variant 4 — EXISTING cluster, disconnected"
 : "${HARBOR_IP:?set HARBOR_IP — deploy the Harbor + FAR-mirror blueprint first}"
 : "${FLP_IP:?set FLP_IP — deploy the FLP blueprint first}"
+# Guarded for the same reason as v2: these are used unquoted-into-JSON below, and
+# `set -u` would otherwise abort with a bare "HARBOR_CA: unbound variable" instead
+# of naming the deployment the operator has not run yet.
+: "${HARBOR_CA:?set HARBOR_CA (base64 PEM) — from the Harbor deploy}"
+: "${HARBOR_PIN:?set HARBOR_PIN (sha256 of the served chain) — from the Harbor deploy}"
+: "${FLP_CA:?set FLP_CA (base64 PEM) — from the FLP deploy}"
 e2e_say "adopts $CLUSTER; mirror $HARBOR_IP, licence proxy https://$FLP_IP:8443"
 
 forge_sync_source roksbnkctl >/dev/null

@@ -83,7 +83,7 @@ unchecked:
 
 Click **Save**. BNK Forge clones the repository and reads its manifests. When
 the sync finishes you have **7 modules** and **7 blueprints**, all at version
-**5.0.0**.
+**5.2.0**.
 
 ![Catalog after syncing](screenshots/09-catalog-synced.png)
 
@@ -266,22 +266,35 @@ BNK arrive on it while the install is still running.
 | 1 and 2 | `cluster-create` → `bnk-install` |
 | 3 and 4 | `cluster-registry` → `bnk-install`, with `cwc-guard` alongside |
 
+The project's **Dependency Pipeline** shows the graph and how far each module has
+got. Here the cluster is built and BNK is going on:
+
+![A deployment in flight](screenshots/19-uc2-project.png)
+
 Roughly how long to allow:
 
 | Step | Time |
 |---|---|
-| Creating a ROKS cluster | 30–40 minutes |
-| Installing BNK | 10–15 minutes |
+| Creating a ROKS cluster | 30–45 minutes |
+| Installing BNK | 10–20 minutes |
 | Harbor registry + mirroring the supply chain | 15–20 minutes |
 | F5 License Proxy | 3–5 minutes |
+
+Both modules green is the whole deployment:
+
+![A finished deployment](screenshots/17-uc1-project.png)
 
 ---
 
 ## Step 7 — Confirm BNK is running
 
-Open **Kubernetes** in the left-hand menu and select your cluster. A healthy
-install shows around **38 F5 pods running** across the `f5-bnk` and `f5-utils`
-namespaces.
+Open **Kubernetes** in the left-hand menu and select your cluster from the
+dropdowns. **Cluster Ready** with **BNK installed** is what you are after.
+
+![The cluster after a successful install](screenshots/18-uc1-kubernetes.png)
+
+A healthy install shows around **38 F5 pods running** across the `f5-bnk` and
+`f5-utils` namespaces, and all six workers ready.
 
 To confirm licensing took effect:
 

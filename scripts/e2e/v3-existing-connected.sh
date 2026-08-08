@@ -72,7 +72,6 @@ e2e_assert    "no f5 pods stuck"             "$(e2e_f5_pods_not_running)" "0"
 e2e_assert    "licensing is direct, not FLP" "$(e2e_license_mode)"        "connected"
 e2e_assert    "no private mirror in use"     "$(e2e_containers_from_mirror "${HARBOR_IP:-10.243.0.4}")" "0"
 e2e_assert    "every container from repo.f5.com" "$(e2e_containers_from_registry repo.f5.com)" "$(e2e_containers_total)"
-e2e_assert    "every container from repo.f5.com" "$(e2e_containers_from_registry repo.f5.com)" "$(e2e_containers_total)"
 # The adopt guarantee: same cluster id we started with. A new one would mean the
 # blueprint created a cluster it promised never to create.
 CLUSTER_ID_AFTER=$(roksbnkctl -w "${E2E_WS:-e2e}" ibmcloud ks cluster get --cluster "$CLUSTER" --output json 2>/dev/null \

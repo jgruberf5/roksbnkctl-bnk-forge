@@ -23,5 +23,8 @@ demo/answers.json
 # demo runtime — never commit credentials or run state
 scripts/demo/.env
 scripts/demo/.demo-state/
+# Each variant gets its own state dir when they run concurrently
+# (STATE=… E2E_WS=…), so the suffixed forms have to be ignored too.
 scripts/e2e/.e2e-state/
+scripts/e2e/.e2e-state-*/
 scripts/e2e/logs/

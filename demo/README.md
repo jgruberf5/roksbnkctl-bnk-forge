@@ -27,16 +27,32 @@ the Kubernetes scan — are recorded live and compressed **4×**.
 > (Layer 0 `cluster` ~45 min → Layer 1 `bnk` + `testing` → Layer 2 `gateway`). With
 > `install_testing`/`install_gateway` off, those modules initialise and no-op.
 
-> **The flow differs from [`../docs/USING-WITH-BNK-FORGE.md`](../docs/USING-WITH-BNK-FORGE.md)**,
-> which predates BNK Forge 3.1.6. Verified against a live instance:
+> ## ⚠️ This recorder targets a retired blueprint
 >
-> | That doc says | The UI actually does |
-> |---|---|
-> | Left nav → **Modules** | No such nav item. Modules live under **Catalog**, behind the **Advanced** switch. `/modules` redirects to `/catalog`. |
-> | Register the repo as a module source **and** a blueprint source | Registering the **module source alone** auto-creates a companion blueprint source (`<name> blueprints`). Adding one by hand just makes a duplicate. |
-> | Blueprint appears in the catalog after sync | It appears in state **`discovered`** with **Deploy disabled**. You must click **Import** first — that is the "enable the blueprint" step. |
-> | Attach the credential on the **Project → Credentials** tab, then deploy | The **Deploy** dialog creates the project inline (project name + credential template + region). There is no separate Projects step. |
-> | Left nav **Blueprints** page | Points at `/stacks`. `/blueprints` is a 404. |
+> The scenes below drive **IBM ROKS + BNK (roksbnkctl)** — one blueprint with four
+> phase modules (`cluster` → `bnk` → `testing` → `gateway`) and the
+> `cluster_create` / `install_bnk` / `install_testing` / `install_gateway` toggles.
+> That blueprint no longer exists. The catalog now ships **seven** blueprints over
+> **seven** modules, and the ROKS ones are `cluster-create`/`cluster-registry` →
+> `bnk-install`, with no phase toggles at all.
+>
+> `config/selectors.json` still maps the old field ids
+> (`#imported-input-install_testing` and friends), so a run against the current
+> catalog will not find them; `scenes/narration.json` narrates the retired
+> four-phase structure throughout. Re-record only after retargeting both.
+>
+> The screenshot-driven customer walkthrough is maintained instead, and is current:
+> [**An end to end demo using BNK Forge and roksbnkctl**](../scripts/demo/An%20end%20to%20end%20demo%20using%20BNK%20Forge%20and%20roksbnkctl%20for%20deployment%20use%20cases.md).
+
+**UI facts worth keeping**, verified against a live BNK Forge 3.1.6 and still true:
+
+| | |
+|---|---|
+| Left nav → **Modules** | No such nav item. Modules live under **Catalog**, behind the **Advanced** switch. `/modules` redirects to `/catalog`. |
+| Sources | Registering **one** source auto-creates its companion (`<name> blueprints`). Adding the second by hand just makes a duplicate. |
+| After a sync | A blueprint may land in state **`discovered`** with **Deploy** disabled — **Import** is the "enable the blueprint" step. |
+| Credentials | The **Deploy** dialog creates the project inline (project name + credential template + region). There is no separate Projects step. |
+| Left nav **Blueprints** page | Points at `/stacks`. `/blueprints` is a 404. |
 
 ## Requirements
 
