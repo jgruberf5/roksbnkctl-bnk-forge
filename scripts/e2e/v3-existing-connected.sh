@@ -38,8 +38,7 @@ e2e_say "blueprint release $REL"
 
 # Record what exists BEFORE, so we can prove the adopt path created nothing.
 # Cluster identity via roksbnkctl, not the ibmcloud CLI.
-CLUSTER_ID_BEFORE=$(roksbnkctl -w "${E2E_WS:-e2e}" ibmcloud ks cluster get --cluster "$CLUSTER" --output json 2>/dev/null \
-                    | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null)
+CLUSTER_ID_BEFORE=$(e2e_cluster_id "$CLUSTER")
 
 VARS=$(E2E_PREFIX="$PREFIX_V3" E2E_CLUSTER="$CLUSTER" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
        E2E_TGW="$TGW_V3" \
@@ -74,7 +73,6 @@ e2e_assert    "no private mirror in use"     "$(e2e_containers_from_mirror "${HA
 e2e_assert    "every container from repo.f5.com" "$(e2e_containers_from_registry repo.f5.com)" "$(e2e_containers_total)"
 # The adopt guarantee: same cluster id we started with. A new one would mean the
 # blueprint created a cluster it promised never to create.
-CLUSTER_ID_AFTER=$(roksbnkctl -w "${E2E_WS:-e2e}" ibmcloud ks cluster get --cluster "$CLUSTER" --output json 2>/dev/null \
-                   | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null)
+CLUSTER_ID_AFTER=$(e2e_cluster_id "$CLUSTER")
 e2e_assert    "adopted the pre-existing cluster" "$CLUSTER_ID_AFTER" "$CLUSTER_ID_BEFORE"
 e2e_summary

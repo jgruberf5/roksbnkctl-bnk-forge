@@ -302,11 +302,26 @@ e2e_teardown() {
 # previous cluster, and a region that had to be pinned by hand.
 E2E_WS="${E2E_WS:-e2e}"
 
-e2e_kubeconfig() {
+# e2e_ws_init <cluster>
+#
+# Build the read-only workspace the assertions run through. Split out of
+# e2e_kubeconfig because the ADOPT assertion needs it too: v3 and v4 snapshot the
+# cluster id BEFORE deploying, and that query goes through `roksbnkctl -w $E2E_WS`
+# — which on a workspace nobody has initialised yet returns nothing at all.
+#
+# The baseline then came back empty and the comparison read:
+#
+#     ✗ adopted the pre-existing cluster    got 'd9rlligw04tdut2kppfg', want ''
+#
+# which looks like the blueprint created a cluster it promised not to, and is
+# really the harness never having asked. It passed only when the workspace
+# happened to survive from an earlier run, so a first run always failed it.
+#
+# init --non-interactive builds the workspace from ROKSBNKCTL_* env ALONE, so the
+# demo .env names have to be mapped across explicitly. cluster.create=false: this
+# workspace only ever adopts the cluster under test to read it.
+e2e_ws_init() {
   local cluster="$1"
-  # init --non-interactive builds the workspace from ROKSBNKCTL_* env ALONE, so
-  # the demo .env names have to be mapped across explicitly. cluster.create=false:
-  # this workspace only ever adopts the cluster under test to read it.
   ROKSBNKCTL_REGION="$REGION" \
   ROKSBNKCTL_RESOURCE_GROUP="$RESOURCE_GROUP" \
   ROKSBNKCTL_PREFIX="$cluster" \
@@ -315,6 +330,20 @@ e2e_kubeconfig() {
   IBMCLOUD_API_KEY="$IBMCLOUD_API_KEY" \
     roksbnkctl -w "$E2E_WS" init --non-interactive >/dev/null 2>&1 \
       || { warn "roksbnkctl init failed for workspace $E2E_WS"; return 1; }
+}
+
+# e2e_cluster_id <cluster> — id of an EXISTING cluster, or empty if there is none.
+# Initialises the workspace first so a fresh run gets a real answer rather than "".
+e2e_cluster_id() {
+  local cluster="$1"
+  e2e_ws_init "$cluster" || return 1
+  roksbnkctl -w "$E2E_WS" ibmcloud ks cluster get --cluster "$cluster" --output json 2>/dev/null \
+    | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null
+}
+
+e2e_kubeconfig() {
+  local cluster="$1"
+  e2e_ws_init "$cluster" || return 1
   roksbnkctl -w "$E2E_WS" kubeconfig --download --cluster "$cluster" >/dev/null 2>&1 \
     || { warn "roksbnkctl could not fetch a kubeconfig for $cluster"; return 1; }
   # `roksbnkctl kubectl` resolves credentials via the SHARED forge kubeconfig

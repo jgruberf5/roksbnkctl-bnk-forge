@@ -43,8 +43,7 @@ forge_sync_source roksbnkctl >/dev/null
 REL=$(forge_latest_release "$BP_ID") || die "no release for $BP_ID"
 e2e_say "blueprint release $REL"
 
-CLUSTER_ID_BEFORE=$(roksbnkctl -w "${E2E_WS:-e2e}" ibmcloud ks cluster get --cluster "$CLUSTER" --output json 2>/dev/null \
-                    | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null)
+CLUSTER_ID_BEFORE=$(e2e_cluster_id "$CLUSTER")
 
 VARS=$(python3 -c '
 import json,sys
@@ -78,7 +77,6 @@ e2e_assert_ge "f5 pods Running"                 "$(e2e_f5_pods_running)"     30
 e2e_wait_pods_settled 300 || true
 e2e_assert    "no f5 pods stuck"                "$(e2e_f5_pods_not_running)" "0"
 e2e_assert    "every container from the mirror" "$(e2e_containers_from_mirror "$HARBOR_IP")" "$TOTAL"
-CLUSTER_ID_AFTER=$(roksbnkctl -w "${E2E_WS:-e2e}" ibmcloud ks cluster get --cluster "$CLUSTER" --output json 2>/dev/null \
-                   | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' 2>/dev/null)
+CLUSTER_ID_AFTER=$(e2e_cluster_id "$CLUSTER")
 e2e_assert    "adopted the pre-existing cluster" "$CLUSTER_ID_AFTER" "$CLUSTER_ID_BEFORE"
 e2e_summary
