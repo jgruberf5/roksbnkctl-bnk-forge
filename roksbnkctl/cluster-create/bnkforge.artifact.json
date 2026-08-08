@@ -169,6 +169,32 @@
         "timeout_seconds": 600
       },
       {
+        "name": "tgw-disconnect",
+        "env": {
+          "HOME": "/home/runner",
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "true",
+          "ROKSBNKCTL_OPENSHIFT_VERSION": "{{inputs.openshift_version}}",
+          "ROKSBNKCTL_WORKERS_PER_ZONE": "{{inputs.workers_per_zone}}",
+          "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
+          "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
+          "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "tgw",
+          "disconnect",
+          "--auto"
+        ],
+        "timeout_seconds": 900
+      },
+      {
         "name": "cluster-down",
         "env": {
           "HOME": "/home/runner",
