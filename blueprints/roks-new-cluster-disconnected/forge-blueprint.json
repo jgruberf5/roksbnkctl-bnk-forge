@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-disconnected-bnk-roksbnkctl",
-    "version": "5.0.0",
+    "version": "5.1.0",
     "name": "BNK on a NEW disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway and NO worker Internet egress, then install BIG-IP Next for Kubernetes onto it from a private registry you have already mirrored, licensed through an F5 License Proxy. Build the mirror and the proxy first with the Harbor and FLP blueprints. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -498,7 +498,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.0.0",
+      "version": "5.1.0",
       "name": "roksbnkctl Cluster Registry",
       "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -523,7 +523,7 @@
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.0.0",
+      "version": "5.1.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, pulling from the mirror and licensing via the FLP.",
       "optional": false,

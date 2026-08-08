@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-create",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "kind": "container_image",
   "description": "Create a ROKS cluster, its VPC and its Transit Gateway with roksbnkctl, then register it with BNK Forge.",
   "container_image": {
