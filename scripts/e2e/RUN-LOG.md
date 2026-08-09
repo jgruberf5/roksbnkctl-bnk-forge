@@ -220,3 +220,42 @@ Outstanding upstream issues, none of which blocked this run:
 | `sp-prod-field/bnk-forge` | #525 — destroying a module cascades into its dependencies |
 | | #526 — no API endpoint returns module step output |
 | | #527 — a disabled module is still dispatched; cancel and project-delete do not stop it |
+
+---
+
+## Teardown of the verified estate
+
+Removed with `./teardown-all.sh uc3src uc4src`, which now discovers projects by
+name instead of by id — ids change on every rebuild, and a stale id silently skips
+a project that is still holding a cluster.
+
+All six Forge projects destroyed and deleted in the prescribed order, with Harbor
+last and **no `vpc_in_use`**. `f5uc1`, `f5uc3` and `f5uc4` and their VPCs went with
+them.
+
+### Exception 8 — `ibmcloud ks clusters` reports 0 while clusters exist
+
+This bit twice and is worth stating plainly: **the cluster *list* endpoint cannot
+be trusted.** After the teardown it reported `count: 0` while `f5uc2` was still
+running with 6 workers. Querying by name — `ibmcloud ks cluster get --cluster
+<name>` — returns the truth every time.
+
+The teardown script's closing summary used the list form and therefore printed
+"clusters listed: 0" over a live cluster. Verify by name.
+
+### Exception 9 — UC2's cluster survived its project's destroy
+
+`f5e2e-uc2` reported every module destroyed and was deleted, but `f5uc2` was still
+present afterwards (`state=warning`, 6 workers) and its VPC could not be removed:
+
+    Cannot delete the subnet while it is in use by IBM Cloud Kubernetes Service (IKS).
+    Please remove all IKS worker nodes from the subnet and retry.
+
+The other three clusters torn down through the same path went cleanly, so this was
+not systematic. Removed by hand with `ibmcloud ks cluster rm --force-delete-storage`,
+then the subnets and the VPC.
+
+**The lesson for the teardown script**: `deployed_count == 0` on the project means
+Forge believes its modules are destroyed, which is not the same as the cloud
+resources being gone. Confirm against the provider — by name — before deleting the
+project, because once the project is gone there is nothing left to retry with.

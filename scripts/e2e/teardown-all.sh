@@ -6,7 +6,7 @@
 # Harbor blueprint created and owns, so destroying Harbor first fails on the subnet
 # and VPC with `vpc_in_use` and leaves a half-removed deployment behind.
 #
-#   ./teardown-all.sh
+#   E2E_EXPECT_GONE="f5uc1 f5uc2 f5uc3 f5uc4" ./teardown-all.sh uc3src uc4src
 #
 # Idempotent: a project that is already gone is skipped, not an error.
 set -uo pipefail
@@ -39,33 +39,69 @@ print("%s/%s"%(d.get("deployed_count"),d.get("module_count")))' 2>/dev/null)
   e2e_say "$label: project deleted"
 }
 
+# Discover projects rather than hardcoding ids — they change every rebuild, and a
+# stale id silently skips a project that is still holding a cluster.
+projects_json() { forge_api GET /api/projects 2>/dev/null; }
+ids_matching() {  # ids_matching <python-predicate-on-name>
+  projects_json | python3 -c "
+import sys, json
+for p in json.load(sys.stdin).get('projects') or []:
+    n = p.get('name') or ''
+    if $1: print(p['id'], n)
+"
+}
+
 e2e_head "PHASE 1 — cluster projects"
-destroy_project 103 "UC3 (f5e2e-v3-final)"
-destroy_project 101 "UC4 (f5e2e-v4-bare)"
-destroy_project 95  "UC2 (f5e2e-v2-new-disco)"
-# 98 owns f5e2e4, which 101 only adopted — so it must go AFTER 101.
-destroy_project 98  "bare disconnected cluster (f5e2e4)"
-destroy_project 99  "bare connected cluster (already destroyed)"
+# Everything that is not the registry or the proxy. Clusters must go first: they
+# attach to the Transit Gateway the registry sits on.
+while read -r pid pname; do
+  [[ -n "$pid" ]] && destroy_project "$pid" "$pname"
+done < <(ids_matching "'harbor' not in n and 'flp' not in n")
 
 e2e_head "PHASE 2 — F5 License Proxy (before Harbor: its VSI is in Harbor's VPC)"
-destroy_project 94 "FLP (f5demo-roksbnkctl-flp)"
+while read -r pid pname; do
+  [[ -n "$pid" ]] && destroy_project "$pid" "$pname"
+done < <(ids_matching "'flp' in n")
 
 e2e_head "PHASE 3 — Harbor registry"
-destroy_project 92 "Harbor (f5demo-harbor-registry)"
+while read -r pid pname; do
+  [[ -n "$pid" ]] && destroy_project "$pid" "$pname"
+done < <(ids_matching "'harbor' in n")
 
-e2e_head "PHASE 4 — the CLI-built cluster (f5e2e6, workspace uc3src)"
-if roksbnkctl -w uc3src cluster status >/dev/null 2>&1; then
-  roksbnkctl -w uc3src tgw disconnect --auto 2>&1 | tail -2
-  roksbnkctl -w uc3src cluster down --auto 2>&1 | tail -5
-else
-  e2e_say "uc3src workspace has no cluster state"
-fi
+e2e_head "PHASE 4 — clusters built with the CLI, outside Forge"
+# The adopting project's destroy removed BNK and detached the gateway, but the
+# cluster itself belongs to the workspace that created it and Forge cannot reach it.
+for WS in "$@"; do
+  if [[ -d "$HOME/.roksbnkctl/$WS" ]]; then
+    e2e_say "workspace $WS: tgw disconnect + cluster down"
+    roksbnkctl -w "$WS" tgw disconnect --auto 2>&1 | tail -2
+    roksbnkctl -w "$WS" cluster down --auto 2>&1 | tail -4
+  else
+    e2e_say "workspace $WS not present — skipping"
+  fi
+done
 
 e2e_head "Remaining state"
-timeout 120 ibmcloud ks clusters --output json 2>/dev/null | python3 -c '
-import sys,json
-r=json.load(sys.stdin); print("  clusters listed:",len(r))
-for c in r: print("   ",c.get("name"),c.get("state"))' || true
+# Check clusters BY NAME, never with `ibmcloud ks clusters`.
+#
+# That list endpoint reports `count: 0` while clusters are demonstrably running —
+# it did so over a live f5uc2 (6 workers, state=warning) immediately after this
+# script had reported the estate clean. `cluster get --cluster <name>` has been
+# right every time. A teardown that trusts the list will tell you it removed
+# everything while leaving a cluster billing.
+#
+# Pass the cluster names to check via E2E_EXPECT_GONE.
+for C in ${E2E_EXPECT_GONE:-}; do
+  if timeout 90 ibmcloud ks cluster get --cluster "$C" >/dev/null 2>&1; then
+    st=$(timeout 90 ibmcloud ks cluster get --cluster "$C" --output json 2>/dev/null \
+         | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("state"),d.get("workerCount"),"workers")')
+    warn "cluster $C STILL PRESENT: $st"
+    warn "  its project reported every module destroyed — Forge's view is not the provider's."
+    warn "  remove it with: ibmcloud ks cluster rm --cluster $C --force-delete-storage -f"
+  else
+    e2e_say "cluster $C: gone"
+  fi
+done
 timeout 120 ibmcloud tg gateways --output json 2>/dev/null | python3 -c '
 import sys,json;d=json.load(sys.stdin);r=d if isinstance(d,list) else d.get("transit_gateways",[])
 print("  gateways:",len(r),"/10")
