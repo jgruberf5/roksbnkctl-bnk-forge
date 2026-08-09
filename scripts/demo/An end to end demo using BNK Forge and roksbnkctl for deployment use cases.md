@@ -267,22 +267,31 @@ BNK arrive on it while the install is still running.
 | 3 and 4 | `cluster-registry` → `bnk-install`, with `cwc-guard` alongside |
 
 The project's **Dependency Pipeline** shows the graph and how far each module has
-got. Here the cluster is built and BNK is going on:
+got. A *new cluster* deployment is two modules in a line — the cluster, then BNK:
 
-![A deployment in flight](screenshots/19-uc2-project.png)
+![Use case 1, finished](screenshots/17-uc1-project.png)
+
+An *existing cluster* deployment is three, because `cwc-guard` runs alongside the
+install rather than after it:
+
+![Use case 4, finished](screenshots/21-uc4-project.png)
 
 Roughly how long to allow:
 
 | Step | Time |
 |---|---|
-| Creating a ROKS cluster | 30–45 minutes |
-| Installing BNK | 10–20 minutes |
+| Creating a **connected** ROKS cluster | 30–45 minutes |
+| Creating a **disconnected** ROKS cluster | 60–95 minutes |
+| Installing BNK | 5–20 minutes |
 | Harbor registry + mirroring the supply chain | 15–20 minutes |
 | F5 License Proxy | 3–5 minutes |
 
-Both modules green is the whole deployment:
+> A disconnected cluster takes considerably longer to provision than a connected
+> one. Measured on identical inputs bar `public_gateway`, built side by side: 43
+> minutes connected, 92 minutes disconnected.
 
-![A finished deployment](screenshots/17-uc1-project.png)
+Adopting a cluster you already have is far quicker, because there is no cluster to
+build — use cases 3 and 4 completed in **7** and **10** minutes respectively.
 
 ---
 
@@ -308,6 +317,33 @@ kubectl -n f5-utils get licenses.k8s.f5net.com
 | 2 and 4 — disconnected | `f5licenseproxy` |
 
 `STATE` should read `Active` in all four.
+
+You can also check where the images actually came from, which is the point of the
+disconnected use cases:
+
+```
+kubectl -n f5-bnk get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' | sort -u
+```
+
+On use cases 2 and 4 every one should begin with your mirror's private IP. On 1
+and 3 they all begin with `repo.f5.com`.
+
+> ### A disconnected cluster reports `warning`, and that is expected
+>
+> IBM Cloud shows a disconnected cluster as **`warning`**, not `normal`:
+>
+> ```
+> Some Cluster Operators are down-level and need to be updated
+> ```
+>
+> That is OpenShift's own operators being unable to reach `registry.redhat.io` to
+> update themselves — the inevitable consequence of removing worker egress, and
+> nothing to do with BNK. You will see matching `ImagePullBackOff` events on the
+> `openshift-marketplace` pods.
+>
+> BNK is unaffected: on both disconnected use cases the licence was `Active` via
+> `f5licenseproxy`, 38 F5 pods were running, and **every** container came from the
+> mirror. Judge the install by those, not by the cluster's headline state.
 
 ---
 
@@ -392,3 +428,39 @@ on the Harbor project again — see [Order matters](#order-matters).
 **BNK installs but the licence never activates.** Check the `MODE` above matches
 the use case, and that a disconnected cluster can reach the License Proxy
 privately.
+
+---
+
+## All four, verified end to end
+
+Every use case in this guide was built from an empty account and checked against
+the cluster afterwards — not just "the deployment went green", but *what kind* of
+deployment it turned out to be. A disconnected install that quietly pulled from
+F5's public registry would pass its deploy and fail its purpose, so each run
+asserts on where the images actually came from and how the licence was issued.
+
+| Use case | Cluster build | BNK install | Assertions |
+|---|---|---|---|
+| 1 — new, connected | 47m | 5m | **7/7** |
+| 2 — new, disconnected | 49m | 7m | **5/5** |
+| 3 — existing, connected | — (adopted) | 7m | **7/7** |
+| 4 — existing, disconnected | — (adopted) | 10m | **6/6** |
+
+Use case 2, the air-gapped build:
+
+![Use case 2, finished](screenshots/19-uc2-project.png)
+
+Use case 3, adopting a cluster that already existed:
+
+![Use case 3, finished](screenshots/20-uc3-project.png)
+
+What the assertions actually proved, on every run:
+
+- the licence CR reached `Active`, with `MODE` matching the use case
+  (`connected` for 1 and 3, `f5licenseproxy` for 2 and 4);
+- **38 F5 pods running** and none stuck;
+- **103 of 103 containers** came from the expected place — `repo.f5.com` on the
+  connected use cases, the private mirror on the disconnected ones, with zero
+  crossover in either direction;
+- on use cases 3 and 4, the adopted cluster kept the same cluster id it had
+  before, proving the blueprint created nothing it promised not to.
