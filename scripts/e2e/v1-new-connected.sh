@@ -7,7 +7,7 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ACTION="${1:-up}"
-set -a; . "$HERE/../demo/.env"; set +a
+set -a; . "$HERE/../demos/.env"; set +a
 source "$HERE/e2e-lib.sh"
 
 BP_ID="ibm-roks-new-bnk-roksbnkctl"

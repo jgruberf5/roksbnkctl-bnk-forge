@@ -2,7 +2,7 @@
 
 A step-by-step manual test of every blueprint in this repo, field by field. This is
 the operator's version; the customer-facing walkthrough with screenshots is
-[**An end to end demo using BNK Forge and roksbnkctl**](../scripts/demo/An%20end%20to%20end%20demo%20using%20BNK%20Forge%20and%20roksbnkctl%20for%20deployment%20use%20cases.md).
+[**An end to end demo using BNK Forge and roksbnkctl**](../scripts/demos/An%20end%20to%20end%20demo%20using%20BNK%20Forge%20and%20roksbnkctl%20for%20deployment%20use%20cases.md).
 
 Assumes **BNK Forge 3.1.6 or later** with the artifact-component / container-engine
 features (Container Registries, Docker/Kubernetes container runner). A

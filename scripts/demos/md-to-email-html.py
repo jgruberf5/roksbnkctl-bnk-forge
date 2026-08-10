@@ -9,9 +9,9 @@ Email clients are not browsers. Three constraints drive everything here:
   inlined on the element that needs it, which is verbose but is the only thing
   that reliably survives a paste.
 * **No relative image paths.** A relative src resolves against the mail client,
-  not the repo, so every image is rewritten to an absolute raw.githubusercontent
-  URL. Embedding them as data: URIs was the alternative and is worse — 3.2 MB of
-  PNGs, and Gmail and Outlook both block data: images.
+  not the repo, so every image is rewritten to an absolute GitHub Pages URL.
+  Embedding them as data: URIs was the alternative and is worse — 3.2 MB of PNGs,
+  and Gmail and Outlook both block data: images.
 * **Tables carry border/cellpadding attributes as well as CSS**, because Outlook's
   renderer honours the attributes and ignores parts of the CSS.
 
@@ -22,8 +22,10 @@ import html
 import re
 import sys
 
-RAW = ("https://raw.githubusercontent.com/jgruberf5/"
-       "roksbnkctl-bnk-forge/main/scripts/demo/")
+# Images resolve against GitHub Pages, not raw.githubusercontent. Pages serves a
+# stable published URL for the guide, the same absolute src works in an email and
+# on the published page, and it does not carry raw's rate limiting.
+RAW = "https://jgruberf5.github.io/roksbnkctl-bnk-forge/"
 
 FONT = ("-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,"
         "'Helvetica Neue',Arial,sans-serif")

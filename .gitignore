@@ -5,10 +5,8 @@
 **/outputs.json
 **/.bnk_ansible_vars_*
 
-# Demo recorder: deps, renders, captured frames, and the runner's saved answers.
-demo/node_modules/
-demo/out/
-demo/answers.json
+# Screenshot driver (scripts/demos/capture.cjs) pulls puppeteer + its Chromium.
+scripts/demos/node_modules/
 
 # OpenTofu/Terraform working state for the modules in this repo. `terraform init`
 # downloads ~150 MB of providers into .terraform/ — GitHub rejects the push above
@@ -21,8 +19,8 @@ demo/answers.json
 !**/*.tfvars.example
 
 # demo runtime — never commit credentials or run state
-scripts/demo/.env
-scripts/demo/.demo-state/
+scripts/demos/.env
+scripts/demos/.demo-state/
 # Each variant gets its own state dir when they run concurrently
 # (STATE=… E2E_WS=…), so the suffixed forms have to be ignored too.
 scripts/e2e/.e2e-state/

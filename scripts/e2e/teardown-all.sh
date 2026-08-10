@@ -11,7 +11,7 @@
 # Idempotent: a project that is already gone is skipped, not an error.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-set -a; . "$HERE/../demo/.env"; set +a
+set -a; . "$HERE/../demos/.env"; set +a
 source "$HERE/e2e-lib.sh"
 
 forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD"

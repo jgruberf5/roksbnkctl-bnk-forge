@@ -481,7 +481,7 @@ creation fails with `BLUEPRINT_MODULES_MISSING`):
 
 Two walkthroughs:
 
-- [**An end to end demo using BNK Forge and roksbnkctl**](scripts/demo/An%20end%20to%20end%20demo%20using%20BNK%20Forge%20and%20roksbnkctl%20for%20deployment%20use%20cases.md)
+- [**An end to end demo using BNK Forge and roksbnkctl**](scripts/demos/An%20end%20to%20end%20demo%20using%20BNK%20Forge%20and%20roksbnkctl%20for%20deployment%20use%20cases.md)
   — the customer-facing one, with screenshots, covering all four use cases plus the
   supporting registry and License Proxy.
 - [`docs/USING-WITH-BNK-FORGE.md`](docs/USING-WITH-BNK-FORGE.md) — the operator's
@@ -504,7 +504,7 @@ blueprints/roks-disconnected/forge-blueprint.json                   # "BNK on a 
 blueprints/harbor-registry/forge-blueprint.json                     # "Private Harbor registry on an IBM Cloud VSI" (+ optional FAR mirror)
 blueprints/far-mirror/forge-blueprint.json                          # "Mirror F5 artifacts from FAR into a private registry"
 blueprints/flp-vsi/forge-blueprint.json                             # "Deploying F5 License Proxy as an IBM Cloud VSI" (roksbnkctl/flp only)
-scripts/demo/                                                       # the customer walkthrough + its screenshots and driver
+scripts/demos/                                                       # the customer walkthrough + its screenshots and driver
 scripts/e2e/                                                        # the four-variant end-to-end harness; CONSTRAINTS.md is required reading
 docs/USING-WITH-BNK-FORGE.md                                        # UI walkthrough for a manual test
 docs/specs/                                                         # the design specs (historical; bnk-forge has since implemented them)

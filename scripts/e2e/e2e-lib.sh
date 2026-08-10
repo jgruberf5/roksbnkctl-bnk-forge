@@ -9,7 +9,7 @@
 set -uo pipefail
 
 E2E_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEMO_DIR="$E2E_HERE/../demo"
+DEMO_DIR="$E2E_HERE/../demos"
 source "$DEMO_DIR/lib/forge-api.sh"
 
 E2E_T0=$(date +%s)
