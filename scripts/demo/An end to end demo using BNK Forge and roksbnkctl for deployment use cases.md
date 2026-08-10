@@ -18,13 +18,14 @@ the blueprints, the forms — arrives with it.
 
 Everything else is created for you.
 
-> **Sending this to someone?** `bnk-forge-demo-guide.html` beside this file is
-> the same guide as self-contained HTML with inline styles and absolute image
-> URLs, so it survives being pasted into an email. Regenerate it after editing
-> this file with:
+> **Sending this to someone?** The `.html` file of the same name beside this one
+> is the same guide as self-contained HTML — inline styles and absolute image
+> URLs — so it survives being pasted into an email. Open it in a browser, select
+> all, copy, paste. Regenerate it after editing this file with:
 >
 > ```
-> ./md-to-email-html.py "An end to end demo using BNK Forge and roksbnkctl for deployment use cases.md" bnk-forge-demo-guide.html
+> G="An end to end demo using BNK Forge and roksbnkctl for deployment use cases"
+> ./md-to-email-html.py "$G.md" "$G.html"
 > ```
 
 ---
