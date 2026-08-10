@@ -18,16 +18,6 @@ the blueprints, the forms — arrives with it.
 
 Everything else is created for you.
 
-> **Sending this to someone?** The `.html` file of the same name beside this one
-> is the same guide as self-contained HTML — inline styles and absolute image
-> URLs — so it survives being pasted into an email. Open it in a browser, select
-> all, copy, paste. Regenerate it after editing this file with:
->
-> ```
-> G="An end to end demo using BNK Forge and roksbnkctl for deployment use cases"
-> ./md-to-email-html.py "$G.md" "$G.html"
-> ```
-
 ---
 
 ## The four use cases
@@ -105,7 +95,7 @@ Go to **Blueprints** in the left-hand menu and type `ROKS` in the search box.
 
 ![The blueprints from this repository](screenshots/11-blueprints-ours.png)
 
-Six blueprints are yours to use:
+Seven blueprints are yours to use:
 
 | Blueprint | Use it for |
 |---|---|
@@ -156,7 +146,8 @@ the same deployment — nothing is copied by hand.
 ![Harbor project running](screenshots/14-harbor-project.png)
 
 When it finishes, note the registry's **private IP** from the project's outputs.
-That is what your clusters will pull from.
+That is what your clusters will pull from. A complete mirror holds **89
+repositories**.
 
 ### 4b — F5 License Proxy
 
@@ -178,8 +169,8 @@ Leave the rest blank. Check **Region** matches the VPC — a VPC ID beginning
 Note the proxy's **private IP** and its **root CA**. You need both when you fill
 in a disconnected cluster form.
 
-> **The proxy sits inside the registry's VPC.** That matters when you take these
-> down again — destroy the License Proxy **before** the Harbor registry. See
+> **The proxy sits inside the registry's VPC**, which sets the teardown order —
+> destroy the License Proxy **before** the Harbor registry. See
 > [Removing a demo](#removing-a-demo).
 
 > **Already have a registry?** Use the **Mirror F5 artifacts from FAR into a
@@ -194,10 +185,9 @@ Every blueprint asks only for what it genuinely cannot work out for itself.
 **Region** and **Resource group** are filled in from the credential template you
 pick, and anything left blank falls back to roksbnkctl's own default.
 
-> **Check Region before you deploy.** It comes from the credential template, and
-> everything you name on the form — the VPC, the Transit Gateway, the SSH key —
-> has to live in that same region. A mismatch surfaces later as a confusing
-> "VPC not found" for a VPC that clearly exists.
+> **Check Region before you deploy.** Everything you name on the form — the VPC,
+> the Transit Gateway, the SSH key, the registry — must live in the region the
+> credential template sets.
 
 ### Fields common to all four use cases
 
@@ -228,25 +218,21 @@ Leave these blank unless your setup differs:
 | Field | What to enter |
 |---|---|
 | **Existing Transit Gateway** | the gateway your registry and License Proxy are already on |
-| **Cluster VPC address block** | **required**, e.g. `10.242.0.0/16` — see the warning below |
+| **Cluster VPC address block** | **required** — see below |
 | **Registry host** | the mirror's private IP, e.g. `10.243.0.4` |
 | **Registry password** | the mirror's admin password |
 | **Registry CA (base64)** | the mirror's CA certificate |
 | **License Proxy URL** | e.g. `https://10.243.1.4:8443` |
 | **License Proxy root CA (base64)** | from the FLP deployment |
 
-> **Why the address block is required here.** A disconnected cluster has to
-> share a Transit Gateway with the registry it pulls from. IBM Cloud's default
-> gives *every* VPC in a region the same address prefixes, so a second cluster
-> on that gateway overlaps the first — and the gateway resolves the ambiguity by
-> silently dropping traffic for one of them. It looks like intermittent image
-> pull timeouts, with every firewall in the path wide open.
+> **Choosing the address block.** A disconnected cluster shares a Transit Gateway
+> with the registry it pulls from, and IBM Cloud's default gives every VPC in a
+> region the same address prefixes — so two VPCs on one gateway would overlap.
 >
-> **Pick a block nothing else on that gateway is using.** Not just your other
-> clusters — *every* VPC attached to it, including ones another team set up.
-> IBM splits a `/16` into three `/18`s, one per zone, and two VPCs claiming the
-> same `/18` collide even when they are in different regions. List what is
-> already there before you choose:
+> **Pick a block nothing else on that gateway uses** — not just your other
+> clusters, but *every* attached VPC, including ones another team set up. IBM
+> splits a `/16` into three `/18`s, one per zone, and two VPCs claiming the same
+> `/18` collide even in different regions. List what is already there first:
 >
 > ```
 > ibmcloud tg connections <gateway-id>        # every VPC on the gateway
@@ -262,6 +248,10 @@ Leave these blank unless your setup differs:
 
 Use case 4 also needs the registry and License Proxy fields listed under use
 case 2.
+
+> The cluster you adopt must **not already have BNK installed**, and must not be
+> registered to another BNK Forge project. A cluster can belong to one project at
+> a time; release it from the other project first.
 
 ---
 
@@ -296,12 +286,8 @@ Roughly how long to allow:
 | Harbor registry + mirroring the supply chain | 15–20 minutes |
 | F5 License Proxy | 3–5 minutes |
 
-> A disconnected cluster takes considerably longer to provision than a connected
-> one. Measured on identical inputs bar `public_gateway`, built side by side: 43
-> minutes connected, 92 minutes disconnected.
-
-Adopting a cluster you already have is far quicker, because there is no cluster to
-build — use cases 3 and 4 completed in **7** and **10** minutes respectively.
+Adopting a cluster you already have is far quicker, because there is no cluster
+to build — use cases 3 and 4 finish in about 10 minutes.
 
 ---
 
@@ -328,8 +314,8 @@ kubectl -n f5-utils get licenses.k8s.f5net.com
 
 `STATE` should read `Active` in all four.
 
-You can also check where the images actually came from, which is the point of the
-disconnected use cases:
+Check where the images came from, which is the point of the disconnected use
+cases:
 
 ```
 kubectl -n f5-bnk get pods -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' | sort -u
@@ -347,13 +333,12 @@ and 3 they all begin with `repo.f5.com`.
 > ```
 >
 > That is OpenShift's own operators being unable to reach `registry.redhat.io` to
-> update themselves — the inevitable consequence of removing worker egress, and
-> nothing to do with BNK. You will see matching `ImagePullBackOff` events on the
+> update themselves — the consequence of removing worker egress, and nothing to
+> do with BNK. You will see matching `ImagePullBackOff` events on the
 > `openshift-marketplace` pods.
 >
-> BNK is unaffected: on both disconnected use cases the licence was `Active` via
-> `f5licenseproxy`, 38 F5 pods were running, and **every** container came from the
-> mirror. Judge the install by those, not by the cluster's headline state.
+> Judge the install by the licence state, the pod count and the image sources
+> above, not by the cluster's headline state.
 
 ---
 
@@ -377,21 +362,16 @@ Take things down in the reverse of the order you built them:
 | 2 | The **F5 License Proxy** | Its VSI sits inside the registry's services VPC |
 | 3 | The **Harbor registry** | It owns that VPC and deletes it last |
 
-**Destroy the License Proxy before the Harbor registry.** The proxy's VSI lives
-in the services VPC that the Harbor blueprint created and owns. They are two
-separate projects, so BNK Forge has no way to know they are related and will not
-stop you doing it the other way round — but IBM Cloud will. Harbor's destroy
-deletes its own VSI, then fails on the subnet and VPC with `vpc_in_use`, because
-the proxy is still sitting in them. You are left with a half-removed deployment
-to clean up by hand.
+**Destroy the License Proxy before the Harbor registry.** They are separate
+projects, so BNK Forge cannot know they are related and will not stop you doing
+it the other way round — but IBM Cloud will, with `vpc_in_use` on the subnet and
+VPC the proxy still occupies.
 
 ### Removing BNK but keeping the cluster
 
-On the *new cluster* use cases, do **not** reach for the destroy action on the
-`bnk-install` module alone. Destroying a module also tears down what it depends
-on, so `bnk-install` takes `cluster-create` — and your cluster — with it. BNK
-comes off in about two minutes and the cluster teardown starts straight after,
-which is easy to miss.
+On the *new cluster* use cases, do **not** destroy the `bnk-install` module on its
+own. Destroying a module also tears down what it depends on, so `bnk-install`
+takes `cluster-create` — and your cluster — with it.
 
 If you want the cluster to outlive BNK, deploy it with one of the *existing
 cluster* blueprints (use case 3 or 4) instead. Those never create or destroy the
@@ -399,14 +379,9 @@ cluster, so removing BNK leaves it exactly where it was.
 
 ### Deleting versus destroying
 
-The same applies if you only want the projects gone: **destroy first, then
-delete**. Deleting a project removes it from BNK Forge but leaves its IBM Cloud
-resources running, and once the project is gone there is nothing left to destroy
-them with.
-
-If you do hit `vpc_in_use`, nothing is lost. Destroy the License Proxy, then run
-**Destroy all** on the Harbor project again — it picks up where it stopped and
-removes the subnet and VPC.
+**Destroy first, then delete.** Deleting a project removes it from BNK Forge but
+leaves its IBM Cloud resources running, and once the project is gone there is
+nothing left to destroy them with.
 
 ---
 
@@ -414,63 +389,28 @@ removes the subnet and VPC.
 
 **Image pulls time out intermittently on a disconnected cluster, but every
 firewall allows the traffic.** Two VPCs on the Transit Gateway have overlapping
-address prefixes. It affects *all* nodes at random, not one zone — the same
-image pulls in two seconds and then times out — so it looks like a flaky network
-or an overloaded registry. Check the gateway's other VPCs with the two commands
-in step 5 and give the cluster a **Cluster VPC address block** none of them use.
-
-**A module reports "no IBM Cloud API key".** The project lost its credential
-template. Re-select it on the project and re-run the module. BNK Forge 3.1.6
-fixes the cause.
+address prefixes. It affects *all* nodes at random rather than one zone. Check
+the gateway's other VPCs with the two commands in step 5 and give the cluster a
+**Cluster VPC address block** none of them use.
 
 **"VPC not found", naming a VPC you can plainly see in the console.** The
-deployment ran in a different region from the VPC. **Region** is filled in from
-the credential template, so if that template names one region and the VPC,
-Transit Gateway or registry you are pointing at lives in another, every lookup
-fails this way. Check **Region** on the form matches where those resources
-actually are — an IBM VPC ID carries its region in the prefix (`r014-…` is
-us-east, `r006-…` us-south), which is the quickest way to tell them apart.
+deployment ran in a different region from the VPC. **Region** comes from the
+credential template, so if that names one region and the VPC, Transit Gateway or
+registry lives in another, every lookup fails this way. An IBM VPC ID carries its
+region in the prefix (`r014-…` is us-east, `r006-…` us-south).
+
+**The install stops saying the mirror or the License Proxy is unreachable.** The
+cluster's VPC cannot route to the services VPC. Confirm both are attached to the
+same Transit Gateway, and that their address blocks do not overlap.
+
+**`bnk up` refuses because the cluster already has an install.** Use cases 3 and 4
+adopt a cluster that does not yet have BNK. Either point them at a different
+cluster, or remove the existing install from the project that owns it.
 
 **Destroying the Harbor registry fails part-way, with `vpc_in_use`.** The
 License Proxy is still in that VPC. Destroy the proxy, then run **Destroy all**
-on the Harbor project again — see [Order matters](#order-matters).
+on the Harbor project again — it picks up where it stopped.
 
 **BNK installs but the licence never activates.** Check the `MODE` above matches
 the use case, and that a disconnected cluster can reach the License Proxy
 privately.
-
----
-
-## All four, verified end to end
-
-Every use case in this guide was built from an empty account and checked against
-the cluster afterwards — not just "the deployment went green", but *what kind* of
-deployment it turned out to be. A disconnected install that quietly pulled from
-F5's public registry would pass its deploy and fail its purpose, so each run
-asserts on where the images actually came from and how the licence was issued.
-
-| Use case | Cluster build | BNK install | Assertions |
-|---|---|---|---|
-| 1 — new, connected | 47m | 5m | **7/7** |
-| 2 — new, disconnected | 49m | 7m | **5/5** |
-| 3 — existing, connected | — (adopted) | 7m | **7/7** |
-| 4 — existing, disconnected | — (adopted) | 10m | **6/6** |
-
-Use case 2, the air-gapped build:
-
-![Use case 2, finished](screenshots/19-uc2-project.png)
-
-Use case 3, adopting a cluster that already existed:
-
-![Use case 3, finished](screenshots/20-uc3-project.png)
-
-What the assertions actually proved, on every run:
-
-- the licence CR reached `Active`, with `MODE` matching the use case
-  (`connected` for 1 and 3, `f5licenseproxy` for 2 and 4);
-- **38 F5 pods running** and none stuck;
-- **103 of 103 containers** came from the expected place — `repo.f5.com` on the
-  connected use cases, the private mirror on the disconnected ones, with zero
-  crossover in either direction;
-- on use cases 3 and 4, the adopted cluster kept the same cluster id it had
-  before, proving the blueprint created nothing it promised not to.
