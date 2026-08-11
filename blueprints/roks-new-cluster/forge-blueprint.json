@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-bnk-roksbnkctl",
-    "version": "5.2.0",
+    "version": "5.3.0",
     "name": "BNK on a NEW IBM ROKS cluster (created end to end)",
-    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct \u2014 no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
+    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct — no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -40,11 +40,11 @@
   "input_summary": [
     {
       "label": "What it changes",
-      "value": "Only the BNK layer \u2014 cert-manager, FLO, the CNEInstance and the License CR. The cluster, its VPC and its worker pool are left exactly as found."
+      "value": "Only the BNK layer — cert-manager, FLO, the CNEInstance and the License CR. The cluster, its VPC and its worker pool are left exactly as found."
     },
     {
       "label": "Teardown",
-      "value": "Destroy runs `bnk down --auto` then `tgw disconnect --auto`. It never runs `cluster down`, so an adopted cluster survives. A Transit Gateway attachment that pre-existed is left alone \u2014 roksbnkctl records it without managing it."
+      "value": "Destroy runs `bnk down --auto` then `tgw disconnect --auto`. It never runs `cluster down`, so an adopted cluster survives. A Transit Gateway attachment that pre-existed is left alone — roksbnkctl records it without managing it."
     }
   ],
   "inputs": {
@@ -53,7 +53,7 @@
         "name": "prefix",
         "type": "string",
         "label": "Resource prefix (and cluster name)",
-        "description": "Prefix for every IBM resource created here. The ROKS cluster is named exactly this \u2014 roksbnkctl names a new cluster after the prefix.",
+        "description": "Prefix for every IBM resource created here. The ROKS cluster is named exactly this — roksbnkctl names a new cluster after the prefix.",
         "example": "acme-eu",
         "order": 1
       },
@@ -377,7 +377,7 @@
         "name": "bnkforge_insecure",
         "type": "string",
         "label": "Skip Forge TLS verification",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out.",
         "default": "false",
         "order": 38
       },
@@ -396,8 +396,17 @@
         "type": "string",
         "source": "user",
         "label": "Cluster VPC address block",
-        "description": "Address block for the new cluster's VPC (/18 or larger). Optional: this cluster gets its own Transit Gateway, so there is nothing to overlap. Blank leaves IBM Cloud's default.",
+        "description": "Address block for the new cluster's VPC (/18 or larger). Optional when this cluster creates its own Transit Gateway — nothing to overlap. REQUIRED when you adopt an existing gateway: IBM Cloud's default gives every VPC in a region the same prefixes, so a second VPC on that gateway would collide and the gateway would blackhole one of them. Pick a block no other attached VPC uses.",
         "order": 9,
+        "default": ""
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "source": "user",
+        "label": "Existing Transit Gateway (name or id)",
+        "description": "Adopt a Transit Gateway you already have instead of creating one. Blank creates a gateway for this cluster. Adopt one when the cluster must reach resources already on it, or to stay inside the account's gateway quota. When you adopt, set the cluster VPC address block too — every VPC on a gateway needs a distinct block.",
+        "order": 5,
         "default": ""
       }
     ]
@@ -408,7 +417,7 @@
       "module": "roksbnkctl/cluster-create",
       "version": "5.2.0",
       "name": "roksbnkctl Cluster Create",
-      "description": "Create the VPC, ROKS cluster and Transit Gateway, then register the cluster with BNK Forge \u2014 registration runs first, so it is visible and monitorable while BNK installs.",
+      "description": "Create the VPC, ROKS cluster and Transit Gateway, then register the cluster with BNK Forge — registration runs first, so it is visible and monitorable while BNK installs.",
       "optional": false,
       "depends_on": [],
       "inputs": {
@@ -423,7 +432,7 @@
         "openshift_version": "${openshift_version}",
         "workers_per_zone": "${workers_per_zone}",
         "public_gateway": "true",
-        "existing_transit_gateway": "",
+        "existing_transit_gateway": "${existing_transit_gateway}",
         "ibmcloud_api_key": "${ibmcloud_api_key}",
         "cluster_vpc_cidr": "${cluster_vpc_cidr}"
       }

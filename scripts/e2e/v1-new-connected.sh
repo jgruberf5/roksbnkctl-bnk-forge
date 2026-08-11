@@ -18,6 +18,11 @@ PREFIX_V1="${E2E_V1_PREFIX:-f5e2e1}"
 CLUSTER="$PREFIX_V1"
 # Own gateway, nothing to overlap — but set it explicitly so the run is reproducible.
 CIDR_V1="${E2E_V1_CIDR:-10.244.0.0/16}"
+# Optional: adopt a gateway instead of creating one. Blank keeps the variant's
+# own behaviour (create). Adopting matters when the account is near its gateway
+# quota, or when several clusters must sit on one gateway — and then every VPC on
+# it needs a distinct CIDR, which is why E2E_V1_CIDR is set explicitly above.
+TGW_V1="${E2E_V1_TGW:-}"
 
 forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD"
 STATE="${STATE:-$HERE/.e2e-state}"; mkdir -p "$STATE"
@@ -27,7 +32,7 @@ if [[ "$ACTION" == "down" ]]; then
 fi
 
 e2e_head "Variant 1 — NEW cluster, connected"
-e2e_say "creates VPC + ROKS + Transit Gateway, installs BNK with public egress"
+e2e_say "creates VPC + ROKS, installs BNK with public egress; gateway: ${TGW_V1:-new}"
 forge_sync_source roksbnkctl >/dev/null
 REL=$(forge_latest_release "$BP_ID") || die "no release for $BP_ID"
 e2e_say "blueprint release $REL"
@@ -36,7 +41,7 @@ VARS=$(E2E_PREFIX="$PREFIX_V1" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
        E2E_OCP="${OPENSHIFT_VERSION:-4.20}" E2E_WPZ="${WORKERS_PER_ZONE:-2}" \
        E2E_COSI="$COS_INSTANCE" E2E_COSB="$COS_BUCKET" E2E_COSR="$COS_REGION" \
        E2E_FAR="$FAR_AUTH_FILE" E2E_JWT="$SUBSCRIPTION_JWT_FILE" E2E_MV="$MANIFEST_VERSION" \
-       E2E_CIDR="$CIDR_V1" \
+       E2E_CIDR="$CIDR_V1" E2E_TGW="$TGW_V1" \
        E2E_FURL="$FORGE_URL" E2E_FUSER="$FORGE_USER" E2E_FPASS="$FORGE_PASSWORD" \
        E2E_FPROJ="$PROJECT" E2E_FINSEC="${FORGE_INSECURE:+true}" \
 python3 -c '
@@ -45,7 +50,7 @@ e = os.environ
 print(json.dumps({
  "prefix":e["E2E_PREFIX"], "region":e["E2E_REGION"], "resource_group":e["E2E_RG"],
  "openshift_version":e["E2E_OCP"], "workers_per_zone":e["E2E_WPZ"],
- "cluster_vpc_cidr":e["E2E_CIDR"],
+ "cluster_vpc_cidr":e["E2E_CIDR"], "existing_transit_gateway":e["E2E_TGW"],
  "cos_instance":e["E2E_COSI"], "cos_bucket":e["E2E_COSB"], "cos_region":e["E2E_COSR"],
  "far_auth_file":e["E2E_FAR"], "subscription_jwt_file":e["E2E_JWT"],
  "manifest_version":e["E2E_MV"],
