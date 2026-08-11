@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-harbor-registry",
-    "version": "5.2.0",
+    "version": "5.3.0",
     "name": "Private Harbor registry on an IBM Cloud VSI",
-    "description": "A private Harbor OCI registry on an IBM Cloud VSI, attached to a Transit Gateway so air-gapped cluster nodes reach it privately. Its TLS certificate is issued by terraform, so the CA is a module output rather than something to fetch off the box. Optionally replicates the BNK supply chain from FAR on the way up \u2014 the mirror takes the registry address and CA straight from the harbor module, so one deployment leaves a registry a disconnected install can use immediately."
+    "description": "A private Harbor OCI registry on an IBM Cloud VSI, attached to a Transit Gateway so air-gapped cluster nodes reach it privately. Its TLS certificate is issued by terraform, so the CA is a module output rather than something to fetch off the box. Optionally replicates the BNK supply chain from FAR on the way up — the mirror takes the registry address and CA straight from the harbor module, so one deployment leaves a registry a disconnected install can use immediately."
   },
   "category": "infrastructure",
   "cloud_provider": "ibm",
@@ -86,17 +86,9 @@
         "name": "harbor_admin_password",
         "type": "string",
         "label": "Harbor admin password",
-        "description": "Password for Harbor's admin user \u2014 the same credential the mirror blueprint pushes with and the BNK install pulls with.",
+        "description": "Password for Harbor's admin user — the same credential the mirror blueprint pushes with and the BNK install pulls with.",
         "sensitive": true,
         "order": 4
-      },
-      {
-        "name": "transit_gateway",
-        "type": "string",
-        "label": "Existing Transit Gateway (name or ID)",
-        "description": "The gateway the services VPC is attached to, so the air-gapped cluster reaches Harbor privately.",
-        "example": "bnkci-testing",
-        "order": 5
       },
       {
         "name": "cos_bucket",
@@ -129,7 +121,7 @@
         "name": "subnet_cidr",
         "type": "string",
         "label": "Services subnet CIDR",
-        "description": "CIDR for the services subnet. MUST NOT overlap the cluster VPC: roksbnkctl fixes its cluster subnets at 10.241.0.0/24, 10.241.64.0/24 and 10.241.128.0/24, so anything in 10.241.0.0/16 risks colliding once both VPCs are on the same Transit Gateway \u2014 the cluster would route the mirror's address to its own subnet.",
+        "description": "CIDR for the services subnet. MUST NOT overlap the cluster VPC: roksbnkctl fixes its cluster subnets at 10.241.0.0/24, 10.241.64.0/24 and 10.241.128.0/24, so anything in 10.241.0.0/16 risks colliding once both VPCs are on the same Transit Gateway — the cluster would route the mirror's address to its own subnet.",
         "default": "10.243.0.0/24",
         "order": 8
       },
@@ -217,7 +209,7 @@
         "name": "services_spare_cidr",
         "type": "string",
         "label": "Spare services prefix",
-        "description": "A second address prefix in the services VPC, reserved for appliances that allocate their own subnet from the VPC pool \u2014 roksbnkctl's FLP VSI does. A prefix that exactly equals the subnet leaves nothing to allocate. Must not overlap the subnet or the cluster VPC. Blank disables it.",
+        "description": "A second address prefix in the services VPC, reserved for appliances that allocate their own subnet from the VPC pool — roksbnkctl's FLP VSI does. A prefix that exactly equals the subnet leaves nothing to allocate. Must not overlap the subnet or the cluster VPC. Blank disables it.",
         "default": "10.243.1.0/24",
         "order": 19
       },
@@ -225,7 +217,7 @@
         "name": "registry_projects",
         "type": "string",
         "label": "Registry projects",
-        "description": "Comma-separated Harbor projects to create once the registry is up. Harbor does not auto-create a project on push and `registry replicate` does not either, so a missing project surfaces as 401 Unauthorized on the manifest HEAD \u2014 which reads like a credential fault. Defaults cover the mirror target and the flp-status image project.",
+        "description": "Comma-separated Harbor projects to create once the registry is up. Harbor does not auto-create a project on push and `registry replicate` does not either, so a missing project surfaces as 401 Unauthorized on the manifest HEAD — which reads like a credential fault. Defaults cover the mirror target and the flp-status image project.",
         "default": "bnk-mirror,bnk-status",
         "order": 20
       },
@@ -305,6 +297,16 @@
         "label": "Services subnet name",
         "description": "Name for the services subnet. Blank uses <prefix>-services-subnet.",
         "order": 60
+      },
+      {
+        "name": "transit_gateway",
+        "type": "string",
+        "label": "Existing Transit Gateway (name or ID)",
+        "description": "Transit Gateway to attach the services VPC to, so air-gapped cluster nodes reach the registry privately. Leave blank when the registry sits in a VPC that is already routed to your clusters — every gateway resource in this module is conditional on this value, so blank simply attaches nothing.",
+        "example": "bnkci-testing",
+        "order": 5,
+        "default": "",
+        "source": "user"
       }
     ]
   },
@@ -347,7 +349,7 @@
       "module": "roksbnkctl/far-mirror",
       "version": "5.2.0",
       "name": "Replicate from FAR",
-      "description": "Optional, and created DISABLED \u2014 enable it to fill the registry as it is built. The registry address and its CA come from the harbor module's outputs, so there is nothing to copy by hand. Needs BNK Forge with the container dependency-output wiring (PR #519); without it the inputs resolve to nothing and the step fails reporting a missing registry host. Leave it off to build an empty registry and mirror later with the FAR mirror blueprint.",
+      "description": "Optional, and created DISABLED — enable it to fill the registry as it is built. The registry address and its CA come from the harbor module's outputs, so there is nothing to copy by hand. Needs BNK Forge with the container dependency-output wiring (PR #519); without it the inputs resolve to nothing and the step fails reporting a missing registry host. Leave it off to build an empty registry and mirror later with the FAR mirror blueprint.",
       "optional": true,
       "depends_on": [
         "harbor-registry"

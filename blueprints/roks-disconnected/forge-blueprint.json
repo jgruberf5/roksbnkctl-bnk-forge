@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-disconnected-bnk-roksbnkctl",
-    "version": "5.2.0",
+    "version": "5.3.0",
     "name": "BNK on a disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Install BIG-IP Next for Kubernetes onto an EXISTING IBM ROKS cluster that has no egress: images come from a private registry you have already mirrored, licensing from an F5 License Proxy. Registers the cluster with BNK Forge first, so it can be watched while BNK installs. Populate the mirror beforehand with the FAR mirror blueprint, or let the Harbor blueprint do it when it builds the registry."
   },
@@ -107,14 +107,6 @@
         "source": "credential_template",
         "source_field": "ibmcloud_resource_group",
         "order": 4
-      },
-      {
-        "name": "existing_transit_gateway",
-        "type": "string",
-        "label": "Existing Transit Gateway (name or ID)",
-        "description": "The EXISTING Transit Gateway the cluster's VPC is reached over. `cluster register` attaches the VPC to it; a VPC already attached is adopted, not re-created.",
-        "example": "bnkci-testing",
-        "order": 5
       },
       {
         "name": "registry_generic_host",
@@ -503,6 +495,16 @@
         "description": "How long bnk up waits for every node to report its verdict. Blank = the tool default of 480s.",
         "order": 96,
         "default": ""
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "label": "Existing Transit Gateway (name or ID)",
+        "description": "Transit Gateway the cluster's VPC is reached over. Supply it when the cluster needs the gateway to reach the private registry and the License Proxy — the usual case. Leave blank when it can already reach them without one, for example when they share the cluster's VPC or it is peered another way. `bnk up` proves every node can reach both before installing, so a wrong answer fails fast and says so.",
+        "example": "bnkci-testing",
+        "order": 5,
+        "default": "",
+        "source": "user"
       }
     ]
   },

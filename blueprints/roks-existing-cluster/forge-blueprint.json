@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-existing-bnk-roksbnkctl",
-    "version": "5.2.0",
+    "version": "5.3.0",
     "name": "BNK on an existing IBM ROKS cluster (existing Transit Gateway)",
-    "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` \u2014 it is never created, and a teardown removes only the BNK layer, never the cluster."
+    "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` — it is never created, and a teardown removes only the BNK layer, never the cluster."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -34,7 +34,7 @@
     },
     {
       "type": "kubernetes_cluster",
-      "description": "An existing IBM Cloud ROKS (vpc-gen2) cluster with BNK NOT installed. `cluster register` also requires a registry COS instance for it \u2014 see the Registry COS instance name field."
+      "description": "An existing IBM Cloud ROKS (vpc-gen2) cluster with BNK NOT installed. `cluster register` also requires a registry COS instance for it — see the Registry COS instance name field."
     },
     {
       "type": "transit_gateway",
@@ -48,11 +48,11 @@
   "input_summary": [
     {
       "label": "What it changes",
-      "value": "Only the BNK layer \u2014 cert-manager, FLO, the CNEInstance and the License CR. The cluster, its VPC and its worker pool are left exactly as found."
+      "value": "Only the BNK layer — cert-manager, FLO, the CNEInstance and the License CR. The cluster, its VPC and its worker pool are left exactly as found."
     },
     {
       "label": "Teardown",
-      "value": "Destroy runs `bnk down --auto` then `tgw disconnect --auto`. It never runs `cluster down`, so an adopted cluster survives. A Transit Gateway attachment that pre-existed is left alone \u2014 roksbnkctl records it without managing it."
+      "value": "Destroy runs `bnk down --auto` then `tgw disconnect --auto`. It never runs `cluster down`, so an adopted cluster survives. A Transit Gateway attachment that pre-existed is left alone — roksbnkctl records it without managing it."
     }
   ],
   "inputs": {
@@ -92,14 +92,6 @@
         "source": "credential_template",
         "source_field": "ibmcloud_resource_group",
         "order": 4
-      },
-      {
-        "name": "existing_transit_gateway",
-        "type": "string",
-        "label": "Existing Transit Gateway (name or ID)",
-        "description": "The EXISTING Transit Gateway the cluster's VPC is reached over. `cluster register` attaches the VPC to it; a VPC already attached is adopted, not re-created.",
-        "example": "bnkci-testing",
-        "order": 5
       },
       {
         "name": "cos_bucket",
@@ -383,7 +375,7 @@
         "name": "bnkforge_insecure",
         "type": "string",
         "label": "Skip Forge TLS verification",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out.",
         "default": "false",
         "order": 38
       },
@@ -396,6 +388,16 @@
         "label": "IBM Cloud API key",
         "description": "Resolved from the project's credential template when the project is created. Not entered by hand.",
         "order": 99
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "label": "Existing Transit Gateway (name or ID)",
+        "description": "Transit Gateway the cluster's VPC is reached over. OPTIONAL for a connected cluster: it pulls from F5's registry over the Internet and needs no gateway at all. Supply one only if this cluster must reach resources on it. `cluster register` attaches the VPC; a VPC already attached is adopted, not re-created.",
+        "example": "bnkci-testing",
+        "order": 5,
+        "default": "",
+        "source": "user"
       }
     ]
   },
@@ -405,7 +407,7 @@
       "module": "roksbnkctl/cluster-registry",
       "version": "5.2.0",
       "name": "roksbnkctl Cluster Registry",
-      "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
+      "description": "Adopt the existing cluster and register it with BNK Forge — first, so it is visible and monitorable while BNK installs.",
       "optional": false,
       "depends_on": [],
       "inputs": {
@@ -508,7 +510,7 @@
       "module": "roksbnkctl/cwc-guard",
       "version": "5.2.0",
       "name": "cwc Multi-Attach guard",
-      "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled \u2014 on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
+      "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled — on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
       "optional": false,
       "depends_on": [
         "roksbnkctl-cluster-registry"

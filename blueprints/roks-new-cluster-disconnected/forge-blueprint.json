@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-disconnected-bnk-roksbnkctl",
-    "version": "5.2.0",
+    "version": "5.3.0",
     "name": "BNK on a NEW disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway and NO worker Internet egress, then install BIG-IP Next for Kubernetes onto it from a private registry you have already mirrored, licensed through an F5 License Proxy. Build the mirror and the proxy first with the Harbor and FLP blueprints. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -139,7 +139,7 @@
         "type": "string",
         "source": "user",
         "label": "Existing Transit Gateway (name or id)",
-        "description": "The gateway the private mirror and F5 License Proxy already sit on. The new cluster's VPC attaches to it so the cluster can reach them privately — a disconnected cluster on its own new gateway would be isolated from its own mirror.",
+        "description": "The gateway the private mirror and F5 License Proxy already sit on. REQUIRED here, unlike the other blueprints: this one creates the cluster's VPC from nothing, so without a gateway that VPC has no route to the registry it must pull every image from. The existing-cluster disconnected blueprint leaves it optional because that cluster's VPC may already be routed.",
         "order": 5
       },
       {
