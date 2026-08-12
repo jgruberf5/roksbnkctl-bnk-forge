@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-disconnected-bnk-roksbnkctl",
-    "version": "5.3.0",
+    "version": "5.4.0",
     "name": "BNK on a NEW disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway and NO worker Internet egress, then install BIG-IP Next for Kubernetes onto it from a private registry you have already mirrored, licensed through an F5 License Proxy. Build the mirror and the proxy first with the Harbor and FLP blueprints. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -509,6 +509,15 @@
         "description": "Raised alongside the retry budget. roksbnkctl clamps this above the retry value, so it can never be smaller than the time it has been told to keep retrying.",
         "order": 96,
         "default": "900"
+      },
+      {
+        "name": "cluster_vpc_id",
+        "type": "string",
+        "source": "user",
+        "label": "Existing cluster VPC (id)",
+        "description": "Place the new cluster in a VPC you already have, instead of creating one (roksbnkctl v1.43.0+). Blank creates the VPC, which is the default. Use this where address space is allocated centrally. NOTE: roksbnkctl still CREATES the three zone subnets inside the adopted VPC — adopting pre-created subnets needs cluster.existing_subnet_ids, which v1.43.0 exposes only in config.yaml and not as an environment override, so a Forge module cannot set it. See jgruberf5/roksbnkctl-bnk-forge#8.",
+        "order": 92,
+        "default": ""
       }
     ]
   },
@@ -516,7 +525,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.2.0",
+      "version": "5.4.0",
       "name": "roksbnkctl Cluster Create",
       "description": "Create the VPC and ROKS cluster with no worker egress, attach it to the existing Transit Gateway, then register the cluster with BNK Forge — registration runs first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -535,13 +544,14 @@
         "public_gateway": "false",
         "existing_transit_gateway": "${existing_transit_gateway}",
         "ibmcloud_api_key": "${ibmcloud_api_key}",
-        "cluster_vpc_cidr": "${cluster_vpc_cidr}"
+        "cluster_vpc_cidr": "${cluster_vpc_cidr}",
+        "cluster_vpc_id": "${cluster_vpc_id}"
       }
     },
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.2.0",
+      "version": "5.4.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, pulling from the mirror and licensing via the FLP.",
       "optional": false,

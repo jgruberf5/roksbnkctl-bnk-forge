@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-create",
-  "version": "5.2.0",
+  "version": "5.4.0",
   "kind": "container_image",
   "description": "Create a ROKS cluster, its VPC and its Transit Gateway with roksbnkctl, then register it with BNK Forge.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:4652de250b505d2dae6b2c70752dd94d5e7482494457f5d364f165134cefb115"
+    "digest": "sha256:20c414800d2f85b9c7eb171755fd08d74b76896b34a54cbcbb99c26db55f7515"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -47,7 +47,8 @@
           "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
           "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}",
           "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
-          "ROKSBNKCTL_CLUSTER_VPC_CIDR": "{{inputs.cluster_vpc_cidr}}"
+          "ROKSBNKCTL_CLUSTER_VPC_CIDR": "{{inputs.cluster_vpc_cidr}}",
+          "ROKSBNKCTL_CLUSTER_VPC_ID": "{{inputs.cluster_vpc_id}}"
         },
         "args": [
           "roksbnkctl",
@@ -253,7 +254,7 @@
         "source": "user",
         "default": "",
         "label": "Cluster VPC address block",
-        "description": "Address block for the new cluster's VPC, split into three per-zone prefixes, so /18 is the smallest usable value. Blank leaves IBM Cloud's 'auto', which assigns EVERY VPC in a region the same three prefixes (10.241.0.0/18 and friends) \u2014 two such VPCs on one Transit Gateway overlap and the gateway silently blackholes one of them. Set a distinct block per cluster whenever clusters share a gateway. 10.241.0.0/16 reproduces the current auto values exactly.",
+        "description": "Address block for the new cluster's VPC, split into three per-zone prefixes, so /18 is the smallest usable value. Blank leaves IBM Cloud's 'auto', which assigns EVERY VPC in a region the same three prefixes (10.241.0.0/18 and friends) — two such VPCs on one Transit Gateway overlap and the gateway silently blackholes one of them. Set a distinct block per cluster whenever clusters share a gateway. 10.241.0.0/16 reproduces the current auto values exactly.",
         "order": 9
       },
       {
@@ -297,7 +298,7 @@
         "source": "user",
         "default": "true",
         "label": "Worker Internet egress",
-        "description": "false builds a DISCONNECTED cluster whose workers have no egress \u2014 images must come from a private mirror and licensing from an F5 License Proxy.",
+        "description": "false builds a DISCONNECTED cluster whose workers have no egress — images must come from a private mirror and licensing from an F5 License Proxy.",
         "order": 7
       },
       {
@@ -341,6 +342,15 @@
         "default": "false",
         "order": 12,
         "description": "Skip TLS verification when the Forge certificate is self-signed."
+      },
+      {
+        "name": "cluster_vpc_id",
+        "type": "string",
+        "source": "user",
+        "label": "Existing cluster VPC (id)",
+        "description": "Place the new cluster in a VPC you already have, instead of creating one (roksbnkctl v1.43.0+). Blank creates the VPC, which is the default. Use this where address space is allocated centrally. NOTE: roksbnkctl still CREATES the three zone subnets inside the adopted VPC — adopting pre-created subnets needs cluster.existing_subnet_ids, which v1.43.0 exposes only in config.yaml and not as an environment override, so a Forge module cannot set it. See jgruberf5/roksbnkctl-bnk-forge#8.",
+        "order": 92,
+        "default": ""
       }
     ]
   },
