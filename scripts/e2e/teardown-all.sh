@@ -16,6 +16,10 @@ source "$HERE/e2e-lib.sh"
 
 forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD"
 
+# Set by any project left standing or any cluster that outlived its project, so
+# an unattended run exits non-zero instead of reporting a clean estate.
+LEFTOVERS=0
+
 # destroy_project <id> <label>  — destroy-all, wait for every module, then delete.
 destroy_project() {
   local pid="$1" label="$2" mods st i
@@ -27,14 +31,29 @@ destroy_project() {
     || warn "$label: destroy-all returned non-zero, continuing to poll"
   # Poll the project rather than named modules: ids differ per project, and a
   # module that never deployed has nothing to destroy.
+  #
+  # deployed_count alone is NOT a success signal: a module in destroy_failed
+  # leaves deployed_count and moves to failed_count, so a wholly failed destroy
+  # looks identical to a clean one. Reading only deployed_count is how project
+  # 112 (v143-new-connected) got deleted in 22s with its ROKS cluster, VPC, 3
+  # subnets and 3 public gateways still live. Require failed_count == 0 too, and
+  # refuse to delete the project otherwise — a project still holding cloud
+  # resources is recoverable, a deleted one orphans them with no way to retry.
   for i in $(seq 1 180); do
     st=$(forge_api GET "/api/projects/$pid" 2>/dev/null \
          | python3 -c 'import sys,json
 d=json.load(sys.stdin)
-print("%s/%s"%(d.get("deployed_count"),d.get("module_count")))' 2>/dev/null)
-    [[ "${st%%/*}" == "0" ]] && { e2e_say "$label: all modules destroyed"; break; }
+print("%s/%s"%(d.get("deployed_count") or 0,d.get("failed_count") or 0))' 2>/dev/null)
+    [[ "$st" == "0/0" ]] && { e2e_say "$label: all modules destroyed"; break; }
     sleep 20
   done
+  if [[ "$st" != "0/0" ]]; then
+    warn "$label: destroy did not finish clean (deployed/failed = ${st:-unknown})"
+    warn "$label: NOT deleting the project — it still owns cloud resources."
+    warn "$label: inspect it, destroy the failed modules, then re-run this script."
+    LEFTOVERS=1
+    return 1
+  fi
   forge_api DELETE "/api/projects/$pid" >/dev/null 2>&1
   e2e_say "$label: project deleted"
 }
@@ -96,8 +115,10 @@ for C in ${E2E_EXPECT_GONE:-}; do
     st=$(timeout 90 ibmcloud ks cluster get --cluster "$C" --output json 2>/dev/null \
          | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("state"),d.get("workerCount"),"workers")')
     warn "cluster $C STILL PRESENT: $st"
-    warn "  its project reported every module destroyed — Forge's view is not the provider's."
+    warn "  a module's destroy failed and the cluster outlived its project."
     warn "  remove it with: ibmcloud ks cluster rm --cluster $C --force-delete-storage -f"
+    warn "  then check for a leaked VPC: ibmcloud is vpcs | grep $C"
+    LEFTOVERS=1
   else
     e2e_say "cluster $C: gone"
   fi
@@ -106,4 +127,8 @@ timeout 120 ibmcloud tg gateways --output json 2>/dev/null | python3 -c '
 import sys,json;d=json.load(sys.stdin);r=d if isinstance(d,list) else d.get("transit_gateways",[])
 print("  gateways:",len(r),"/10")
 [print("   ",g["name"]) for g in r if "f5e2e" in g["name"]]' || true
+if (( LEFTOVERS )); then
+  warn "teardown INCOMPLETE — see the warnings above"
+  exit 1
+fi
 e2e_say "teardown script complete"
