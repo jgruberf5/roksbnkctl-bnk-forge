@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-cluster-registry",
     "path": "roksbnkctl/cluster-registry",
-    "version": "5.5.0",
+    "version": "5.6.0",
     "category": "bnk",
     "description": "Adopt an EXISTING IBM Cloud ROKS cluster into the workspace and register it with BNK Forge, so the cluster is visible and monitorable BEFORE anything is installed onto it. Runs first in the graph; the cluster itself is never created or destroyed.",
     "estimated_time_minutes": 3
@@ -326,6 +326,12 @@
         "source": "user",
         "default": "false",
         "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out."
+      },
+      {
+        "name": "flp_namespace",
+        "type": "string",
+        "source": "user",
+        "description": "Kubernetes namespace the F5 License Proxy client resources go into. Blank keeps the default the subscription JWT implies."
       }
     ]
   },

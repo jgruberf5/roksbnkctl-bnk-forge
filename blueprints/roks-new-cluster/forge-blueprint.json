@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-bnk-roksbnkctl",
-    "version": "5.5.0",
+    "version": "5.6.0",
     "name": "BNK on a NEW IBM ROKS cluster (created end to end)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct — no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -414,8 +414,17 @@
         "type": "string",
         "source": "user",
         "label": "Existing cluster VPC (id)",
-        "description": "Place the new cluster in a VPC you already have, instead of creating one (roksbnkctl v1.43.0+). Blank creates the VPC, which is the default. Use this where address space is allocated centrally. NOTE: roksbnkctl still CREATES the three zone subnets inside the adopted VPC — adopting pre-created subnets needs cluster.existing_subnet_ids, which v1.43.0 exposes only in config.yaml and not as an environment override, so a Forge module cannot set it. See jgruberf5/roksbnkctl-bnk-forge#8.",
+        "description": "Place the new cluster in a VPC you already have, instead of creating one (roksbnkctl v1.43.0+). Blank creates the VPC, which is the default. Use this where address space is allocated centrally. Leave 'Existing cluster subnets' blank to have roksbnkctl create the three zone subnets inside the adopted VPC.",
         "order": 92,
+        "default": ""
+      },
+      {
+        "name": "existing_subnet_ids",
+        "type": "string",
+        "source": "user",
+        "label": "Existing cluster subnets (ids, comma-separated)",
+        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' — roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
+        "order": 93,
         "default": ""
       }
     ]
@@ -424,7 +433,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.5.0",
+      "version": "5.6.0",
       "name": "roksbnkctl Cluster Create",
       "description": "Create the VPC, ROKS cluster and Transit Gateway, then register the cluster with BNK Forge — registration runs first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -444,13 +453,14 @@
         "existing_transit_gateway": "${existing_transit_gateway}",
         "ibmcloud_api_key": "${ibmcloud_api_key}",
         "cluster_vpc_cidr": "${cluster_vpc_cidr}",
-        "cluster_vpc_id": "${cluster_vpc_id}"
+        "cluster_vpc_id": "${cluster_vpc_id}",
+        "existing_subnet_ids": "${existing_subnet_ids}"
       }
     },
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.5.0",
+      "version": "5.6.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,
