@@ -82,8 +82,12 @@ unchecked:
 ![Add Blueprint Source, filled in](screenshots/07-add-source-filled.png)
 
 Click **Save**. BNK Forge clones the repository and reads its manifests. When
-the sync finishes you have **7 modules** and **7 blueprints**, all at version
-**5.2.0**.
+the sync finishes you have **6 modules** and **7 blueprints** at version
+**5.6.0** — `cwc-guard` is the one exception, unchanged since 5.5.0.
+
+Every module pins the same runner image, **roksbnkctl v1.44.0**. If the catalog
+shows several versions of a blueprint, that is its version history: switch the
+list to **Latest only**.
 
 ![Catalog after syncing](screenshots/09-catalog-synced.png)
 

@@ -69,7 +69,7 @@ See [Adopting an existing cluster](#adopting-an-existing-cluster),
 
 ## The runner image
 
-All six container modules pin **roksbnkctl v1.42.0** (`sha256:4652de25…`). The
+All six container modules pin **roksbnkctl v1.44.0** (`sha256:02c6ef39…`). The
 image carries the whole toolchain (terraform, helm, kubectl, oc, the ibmcloud
 CLI), so a step needs nothing on the host.
 
@@ -77,6 +77,8 @@ The releases that matter for this repo, and why:
 
 | Release | What it gave us |
 |---|---|
+| **v1.44.0** | The BYO-network **environment overrides** (#64). v1.43.0 added the config fields but exposed no `ROKSBNKCTL_*` overrides for them, which left them unreachable from a Forge module — every module here configures the tool through `init --override-from-env`. `ROKSBNKCTL_EXISTING_SUBNET_IDS` is what lets a new cluster adopt pre-created subnets. |
+| **v1.43.0** | `cluster up` can place a new cluster in a VPC you already own (`ROKSBNKCTL_CLUSTER_VPC_ID`), for estates where address space is allocated centrally. |
 | **v1.42.0** | Four fixes found bringing these four use cases up end to end. The reachability gate now **retries** each target instead of believing one TCP failure, and **rolls its DaemonSet every run** so a stale verdict cannot be re-read; `bnkforge register` updates **in place**, preserving the cluster id, and **refuses** a cluster held by another project instead of silently moving it; `kubectl`/`oc`/`shell`/`exec` passthroughs honour `-w`; and `bnk up` **refuses fast** when the cluster already has an install this workspace does not own, instead of planning 64 resources and failing 13 minutes later. |
 | **v1.41.0** | `bnk up` proves the mirror and the License Proxy are reachable from **every** node before installing, riding the DaemonSet that already installs the registry CA. An unreachable mirror now fails immediately instead of surfacing as `ImagePullBackOff` and a helm deadline ten minutes later, naming neither the registry nor the node. |
 | **v1.40.2** / **v1.39.0** | `cluster.vpc_cidr` (`ROKSBNKCTL_CLUSTER_VPC_CIDR`), so each cluster VPC owns its address block, and `cluster up` / `tgw connect` refuse an overlap up front. See [`scripts/e2e/CONSTRAINTS.md`](scripts/e2e/CONSTRAINTS.md). |
