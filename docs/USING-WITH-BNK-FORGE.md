@@ -10,9 +10,11 @@ docker-compose install already ships the `docker-socket-proxy` the Docker runner
 uses, and `ghcr.io` is in the default registry-host allowlist — so the public
 runner image needs **no** registry credential.
 
-All modules pin **roksbnkctl v1.42.0** (`sha256:4652de25…`). That is the build the
-four use cases are verified against; see [The runner image](../README.md#the-runner-image)
-for what each release contributed.
+All modules pin **roksbnkctl v1.44.0** (`sha256:02c6ef39…`). The four use cases
+were verified end to end against v1.42.0 and the create path re-verified on
+v1.43.0; see [The runner image](../README.md#the-runner-image) for what each
+release contributed, and [`scripts/e2e/RUN-LOG.md`](../scripts/e2e/RUN-LOG.md)
+for what was actually run.
 
 Log in as an operator/admin.
 

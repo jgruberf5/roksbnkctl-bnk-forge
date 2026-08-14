@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-disconnected-bnk-roksbnkctl",
-    "version": "5.5.0",
+    "version": "5.6.0",
     "name": "BNK on a NEW disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway and NO worker Internet egress, then install BIG-IP Next for Kubernetes onto it from a private registry you have already mirrored, licensed through an F5 License Proxy. Build the mirror and the proxy first with the Harbor and FLP blueprints. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -133,14 +133,6 @@
         "label": "Registry CA (base64)",
         "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry.",
         "order": 40
-      },
-      {
-        "name": "existing_transit_gateway",
-        "type": "string",
-        "source": "user",
-        "label": "Existing Transit Gateway (name or id)",
-        "description": "The gateway the private mirror and F5 License Proxy already sit on. REQUIRED here, unlike the other blueprints: this one creates the cluster's VPC from nothing, so without a gateway that VPC has no route to the registry it must pull every image from. The existing-cluster disconnected blueprint leaves it optional because that cluster's VPC may already be routed.",
-        "order": 5
       },
       {
         "name": "cluster_vpc_cidr",
@@ -515,8 +507,26 @@
         "type": "string",
         "source": "user",
         "label": "Existing cluster VPC (id)",
-        "description": "Place the new cluster in a VPC you already have, instead of creating one (roksbnkctl v1.43.0+). Blank creates the VPC, which is the default. Use this where address space is allocated centrally. NOTE: roksbnkctl still CREATES the three zone subnets inside the adopted VPC — adopting pre-created subnets needs cluster.existing_subnet_ids, which v1.43.0 exposes only in config.yaml and not as an environment override, so a Forge module cannot set it. See jgruberf5/roksbnkctl-bnk-forge#8.",
+        "description": "Place the new cluster in a VPC you already have, instead of creating one (roksbnkctl v1.43.0+). Blank creates the VPC, which is the default. Use this where address space is allocated centrally. Adopting a VPC that already reaches the registry and the License Proxy is also what lets you leave the Transit Gateway blank here. Leave 'Existing cluster subnets' blank to have roksbnkctl create the three zone subnets inside the adopted VPC.",
         "order": 92,
+        "default": ""
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "source": "user",
+        "label": "Existing Transit Gateway (name or id)",
+        "description": "The gateway the private mirror and F5 License Proxy already sit on. Supply it when this blueprint creates the cluster's VPC — a VPC built from nothing has no route to the registry it must pull every image from, so the gateway is what gives it one. Leave it blank only when the cluster's VPC can already reach both, which in practice means adopting a VPC via 'Existing cluster VPC (id)' that shares or is peered to their network. `bnk up` proves every node can reach the registry and the proxy before installing, so a wrong answer fails fast and says so.",
+        "order": 5,
+        "default": ""
+      },
+      {
+        "name": "existing_subnet_ids",
+        "type": "string",
+        "source": "user",
+        "label": "Existing cluster subnets (ids, comma-separated)",
+        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' — roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
+        "order": 93,
         "default": ""
       }
     ]
@@ -525,7 +535,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.5.0",
+      "version": "5.6.0",
       "name": "roksbnkctl Cluster Create",
       "description": "Create the VPC and ROKS cluster with no worker egress, attach it to the existing Transit Gateway, then register the cluster with BNK Forge — registration runs first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -545,13 +555,14 @@
         "existing_transit_gateway": "${existing_transit_gateway}",
         "ibmcloud_api_key": "${ibmcloud_api_key}",
         "cluster_vpc_cidr": "${cluster_vpc_cidr}",
-        "cluster_vpc_id": "${cluster_vpc_id}"
+        "cluster_vpc_id": "${cluster_vpc_id}",
+        "existing_subnet_ids": "${existing_subnet_ids}"
       }
     },
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.5.0",
+      "version": "5.6.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, pulling from the mirror and licensing via the FLP.",
       "optional": false,

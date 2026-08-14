@@ -7,6 +7,11 @@ are the useful part.
 
 Started 2026-08-08 ~18:30 UTC. BNK Forge 3.1.6 at `161.156.198.185:8443`.
 
+> **This is a record of that run, not a statement of current state.** The modules
+> now pin **v1.44.0** and the catalog is **5.6.0**. The create path was re-verified
+> on v1.43.0 (7/7, 59m10s); the BYO-VPC/BYO-subnet adopt path added in 5.6.0 has
+> been verified only by rendering tfvars, never against live IBM Cloud.
+
 ---
 
 ## Result

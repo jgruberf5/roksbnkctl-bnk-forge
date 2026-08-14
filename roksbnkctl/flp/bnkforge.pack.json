@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-flp",
     "path": "roksbnkctl/flp",
-    "version": "5.5.0",
+    "version": "5.6.0",
     "category": "bnk",
     "description": "Deploy the F5 License Proxy as a standalone IBM Cloud VSI appliance (no cluster) with roksbnkctl's flp phase. Procedural container_image artifact run by the container engine.",
     "estimated_time_minutes": 3
@@ -136,20 +136,6 @@
         "description": "BNK manifest version the FLP chart set is resolved from. Blank = the roksbnkctl default."
       },
       {
-        "name": "far_auth_local_file",
-        "type": "string",
-        "source": "user",
-        "default": "/work/far-auth.tgz",
-        "description": "Path to the FAR auth tarball in the run workspace, materialized from the f5_far_auth_key project secret. Blank both local-file fields to pull from COS instead."
-      },
-      {
-        "name": "subscription_jwt_local_file",
-        "type": "string",
-        "source": "user",
-        "default": "/work/subscription.jwt",
-        "description": "Path to the subscription JWT in the run workspace, materialized from the f5_subscription_jwt project secret. Blank both local-file fields to pull from COS instead."
-      },
-      {
         "name": "cos_instance",
         "type": "string",
         "source": "user",
@@ -178,6 +164,12 @@
         "type": "string",
         "source": "user",
         "description": "Subscription JWT object name in the bucket. Blank = subscription.jwt."
+      },
+      {
+        "name": "flp_namespace",
+        "type": "string",
+        "source": "user",
+        "description": "Kubernetes namespace the F5 License Proxy client resources go into. Blank keeps the default the subscription JWT implies."
       }
     ]
   },

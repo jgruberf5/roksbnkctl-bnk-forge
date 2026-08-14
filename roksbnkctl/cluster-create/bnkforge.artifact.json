@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-create",
-  "version": "5.5.0",
+  "version": "5.6.0",
   "kind": "container_image",
   "description": "Create a ROKS cluster, its VPC and its Transit Gateway with roksbnkctl, then register it with BNK Forge.",
   "container_image": {
@@ -48,7 +48,8 @@
           "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}",
           "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
           "ROKSBNKCTL_CLUSTER_VPC_CIDR": "{{inputs.cluster_vpc_cidr}}",
-          "ROKSBNKCTL_CLUSTER_VPC_ID": "{{inputs.cluster_vpc_id}}"
+          "ROKSBNKCTL_CLUSTER_VPC_ID": "{{inputs.cluster_vpc_id}}",
+          "ROKSBNKCTL_EXISTING_SUBNET_IDS": "{{inputs.existing_subnet_ids}}"
         },
         "args": [
           "roksbnkctl",
@@ -128,7 +129,9 @@
           "ROKSBNKCTL_CLUSTER_PUBLIC_GATEWAY": "{{inputs.public_gateway}}",
           "ROKSBNKCTL_TRANSIT_GATEWAY_NAME": "{{inputs.existing_transit_gateway}}",
           "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
-          "ROKSBNKCTL_CLUSTER_VPC_CIDR": "{{inputs.cluster_vpc_cidr}}"
+          "ROKSBNKCTL_CLUSTER_VPC_CIDR": "{{inputs.cluster_vpc_cidr}}",
+          "ROKSBNKCTL_CLUSTER_VPC_ID": "{{inputs.cluster_vpc_id}}",
+          "ROKSBNKCTL_EXISTING_SUBNET_IDS": "{{inputs.existing_subnet_ids}}"
         },
         "args": [
           "roksbnkctl",
@@ -348,8 +351,17 @@
         "type": "string",
         "source": "user",
         "label": "Existing cluster VPC (id)",
-        "description": "Place the new cluster in a VPC you already have, instead of creating one (roksbnkctl v1.43.0+). Blank creates the VPC, which is the default. Use this where address space is allocated centrally. NOTE: roksbnkctl still CREATES the three zone subnets inside the adopted VPC — adopting pre-created subnets needs cluster.existing_subnet_ids, which v1.43.0 exposes only in config.yaml and not as an environment override, so a Forge module cannot set it. See jgruberf5/roksbnkctl-bnk-forge#8.",
+        "description": "Place the new cluster in a VPC you already have, instead of creating one (roksbnkctl v1.43.0+). Blank creates the VPC, which is the default. Use this where address space is allocated centrally. Leave 'Existing cluster subnets' blank to have roksbnkctl create the three zone subnets inside the adopted VPC.",
         "order": 92,
+        "default": ""
+      },
+      {
+        "name": "existing_subnet_ids",
+        "type": "string",
+        "source": "user",
+        "label": "Existing cluster subnets (ids, comma-separated)",
+        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' — roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
+        "order": 93,
         "default": ""
       }
     ]

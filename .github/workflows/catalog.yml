@@ -1,0 +1,59 @@
+name: catalog
+
+# Everything this repo ships is a JSON manifest, and until now the only thing
+# validating them was someone reading them. The failure mode is silent: a
+# blueprint wires an input the version it PINS does not declare, Forge drops the
+# field, and the deployment runs with it simply absent — a BYO-VPC cluster
+# quietly builds its own network and nothing anywhere reports an error.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Catches malformed JSON on its own, and names the file — `python -m
+      # json.tool` reports the offset, which is what you actually need.
+      - name: JSON parses
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            python3 -m json.tool "$f" >/dev/null || { echo "::error file=$f::invalid JSON"; fail=1; }
+          done < <(find blueprints roksbnkctl -name '*.json')
+          exit $fail
+
+      # Version parity, pinned-version parity, input parity, one runner digest.
+      - name: Catalog consistency
+        run: python3 scripts/check-catalog.py
+
+      # A module whose schema changed but whose version did not is the bug from
+      # cc3b1db: Forge keys catalog rows on version, so it keeps serving the old
+      # schema and the change never reaches a deployment. Advisory on PRs
+      # (a description-only edit is a legitimate no-bump) — it prints what to
+      # look at rather than blocking.
+      - name: Manifest changed without a version bump
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          base="origin/${{ github.base_ref }}"
+          for d in roksbnkctl/*/; do
+            m=$(basename "$d")
+            git diff --quiet "$base" -- "$d" && continue
+            before=$(git show "$base:${d}bnkforge.artifact.json" 2>/dev/null \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])' 2>/dev/null || echo none)
+            after=$(python3 -c "import json; print(json.load(open('${d}bnkforge.artifact.json'))['version'])")
+            if [ "$before" = "$after" ]; then
+              echo "::warning::$m changed but stayed at $after — Forge keys catalog rows on version, so a schema change here will not reach a deployment without a bump"
+            else
+              echo "  $m $before -> $after"
+            fi
+          done
