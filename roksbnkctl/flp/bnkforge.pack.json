@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-flp",
     "path": "roksbnkctl/flp",
-    "version": "5.6.0",
+    "version": "5.7.0",
     "category": "bnk",
     "description": "Deploy the F5 License Proxy as a standalone IBM Cloud VSI appliance (no cluster) with roksbnkctl's flp phase. Procedural container_image artifact run by the container engine.",
     "estimated_time_minutes": 3
@@ -45,15 +45,45 @@
         "type": "string",
         "source": "user",
         "description": "Resource name prefix for the appliance (e.g. acme-flp)."
-      },
+      }
+    ],
+    "optional": [
       {
         "name": "flp_vsi_vpc",
         "type": "string",
         "source": "user",
-        "description": "Existing VPC ID to deploy the FLP VSI into. This is what makes the appliance cluster-less."
-      }
-    ],
-    "optional": [
+        "label": "Existing VPC (id) to deploy into",
+        "description": "Existing VPC ID to deploy the FLP VSI into — the adopt path, and what a cluster on a Transit Gateway needs. Leave blank ONLY if 'Build the proxy its own VPC' is true; roksbnkctl refuses both together, and refuses neither.",
+        "order": 19,
+        "default": ""
+      },
+      {
+        "name": "flp_vsi_create_vpc",
+        "type": "string",
+        "source": "user",
+        "label": "Build the proxy its own VPC",
+        "description": "true builds the proxy a VPC, address prefix and public gateway of its own instead of placing it in one that already exists (roksbnkctl v1.45.0+). Mutually exclusive with the existing-VPC id — roksbnkctl refuses both, because the new VPC would silently win and the proxy would come up with no route to the clusters licensing against it. NOTE: a VPC created this way has no Transit Gateway attachment, and roksbnkctl has no way to add one, so only clusters IN that VPC can reach the proxy. To serve clusters over a gateway, adopt a VPC already on it.",
+        "order": 20,
+        "default": ""
+      },
+      {
+        "name": "flp_vsi_vpc_name",
+        "type": "string",
+        "source": "user",
+        "label": "Name for the created VPC",
+        "description": "Names the VPC built when the option above is true. Blank = flp-vsi-vpc. Ignored on the adopt path.",
+        "order": 21,
+        "default": ""
+      },
+      {
+        "name": "flp_vsi_subnet_cidr",
+        "type": "string",
+        "source": "user",
+        "label": "Address prefix for the created VPC",
+        "description": "Address prefix for the VPC built when the option above is true, e.g. 10.250.0.0/24. It must not overlap anything the consuming clusters can already route to — a Transit Gateway silently blackholes one of two overlapping VPCs. Ignored on the adopt path.",
+        "order": 22,
+        "default": ""
+      },
       {
         "name": "ibmcloud_api_key",
         "type": "string",

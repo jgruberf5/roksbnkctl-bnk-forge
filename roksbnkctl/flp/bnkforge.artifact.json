@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-flp",
-  "version": "5.6.0",
+  "version": "5.7.0",
   "kind": "container_image",
   "description": "Deploy the F5 License Proxy as a standalone IBM Cloud VSI appliance (no cluster) with roksbnkctl's flp phase. Procedural container_image artifact run by the container engine.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:02c6ef391c55cf46db7cd6a17d5fb5ddcf283b4e7b1714272bcd1da0a2433d35"
+    "digest": "sha256:16169df3e0718b9bd171fc1ce3e4d9cbd7a1aab48d4a976699de89f3a659f1d8"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -44,6 +44,9 @@
           "ROKSBNKCTL_CLUSTER_NAME": "none",
           "ROKSBNKCTL_FLP_MODE": "vsi",
           "ROKSBNKCTL_FLP_VSI_VPC": "{{inputs.flp_vsi_vpc}}",
+          "ROKSBNKCTL_FLP_VSI_CREATE_VPC": "{{inputs.flp_vsi_create_vpc}}",
+          "ROKSBNKCTL_FLP_VSI_VPC_NAME": "{{inputs.flp_vsi_vpc_name}}",
+          "ROKSBNKCTL_FLP_VSI_SUBNET_CIDR": "{{inputs.flp_vsi_subnet_cidr}}",
           "ROKSBNKCTL_FLP_VSI_ZONE": "{{inputs.flp_vsi_zone}}",
           "ROKSBNKCTL_FLP_VSI_PROFILE": "{{inputs.flp_vsi_profile}}",
           "ROKSBNKCTL_FLP_VSI_SSH_KEY": "{{inputs.flp_vsi_ssh_key}}",
@@ -153,15 +156,45 @@
         "type": "string",
         "source": "user",
         "description": "Resource name prefix for the appliance (e.g. acme-flp)."
-      },
+      }
+    ],
+    "optional": [
       {
         "name": "flp_vsi_vpc",
         "type": "string",
         "source": "user",
-        "description": "Existing VPC ID to deploy the FLP VSI into. This is what makes the appliance cluster-less."
-      }
-    ],
-    "optional": [
+        "label": "Existing VPC (id) to deploy into",
+        "description": "Existing VPC ID to deploy the FLP VSI into — the adopt path, and what a cluster on a Transit Gateway needs. Leave blank ONLY if 'Build the proxy its own VPC' is true; roksbnkctl refuses both together, and refuses neither.",
+        "order": 19,
+        "default": ""
+      },
+      {
+        "name": "flp_vsi_create_vpc",
+        "type": "string",
+        "source": "user",
+        "label": "Build the proxy its own VPC",
+        "description": "true builds the proxy a VPC, address prefix and public gateway of its own instead of placing it in one that already exists (roksbnkctl v1.45.0+). Mutually exclusive with the existing-VPC id — roksbnkctl refuses both, because the new VPC would silently win and the proxy would come up with no route to the clusters licensing against it. NOTE: a VPC created this way has no Transit Gateway attachment, and roksbnkctl has no way to add one, so only clusters IN that VPC can reach the proxy. To serve clusters over a gateway, adopt a VPC already on it.",
+        "order": 20,
+        "default": ""
+      },
+      {
+        "name": "flp_vsi_vpc_name",
+        "type": "string",
+        "source": "user",
+        "label": "Name for the created VPC",
+        "description": "Names the VPC built when the option above is true. Blank = flp-vsi-vpc. Ignored on the adopt path.",
+        "order": 21,
+        "default": ""
+      },
+      {
+        "name": "flp_vsi_subnet_cidr",
+        "type": "string",
+        "source": "user",
+        "label": "Address prefix for the created VPC",
+        "description": "Address prefix for the VPC built when the option above is true, e.g. 10.250.0.0/24. It must not overlap anything the consuming clusters can already route to — a Transit Gateway silently blackholes one of two overlapping VPCs. Ignored on the adopt path.",
+        "order": 22,
+        "default": ""
+      },
       {
         "name": "ibmcloud_api_key",
         "type": "string",

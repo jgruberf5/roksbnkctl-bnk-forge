@@ -69,7 +69,7 @@ See [Adopting an existing cluster](#adopting-an-existing-cluster),
 
 ## The runner image
 
-All six container modules pin **roksbnkctl v1.44.0** (`sha256:02c6ef39…`). The
+All six container modules pin **roksbnkctl v1.45.0** (`sha256:16169df3…`). The
 image carries the whole toolchain (terraform, helm, kubectl, oc, the ibmcloud
 CLI), so a step needs nothing on the host.
 
@@ -77,6 +77,7 @@ The releases that matter for this repo, and why:
 
 | Release | What it gave us |
 |---|---|
+| **v1.45.0** | `create_vpc` can finally deploy a **cluster-less** proxy (#76). v1.44.0 exposed the override but `StandaloneFLPVSI` still demanded an existing VPC id, and the FLP-phase override forced `use_existing_cluster_vpc = true`, so the create path failed at plan. Both are fixed, which is what makes the FLP-VSI blueprint's create option real. |
 | **v1.44.0** | The BYO-network **environment overrides** (#64). v1.43.0 added the config fields but exposed no `ROKSBNKCTL_*` overrides for them, which left them unreachable from a Forge module — every module here configures the tool through `init --override-from-env`. `ROKSBNKCTL_EXISTING_SUBNET_IDS` is what lets a new cluster adopt pre-created subnets. |
 | **v1.43.0** | `cluster up` can place a new cluster in a VPC you already own (`ROKSBNKCTL_CLUSTER_VPC_ID`), for estates where address space is allocated centrally. |
 | **v1.42.0** | Four fixes found bringing these four use cases up end to end. The reachability gate now **retries** each target instead of believing one TCP failure, and **rolls its DaemonSet every run** so a stale verdict cannot be re-read; `bnkforge register` updates **in place**, preserving the cluster id, and **refuses** a cluster held by another project instead of silently moving it; `kubectl`/`oc`/`shell`/`exec` passthroughs honour `-w`; and `bnk up` **refuses fast** when the cluster already has an install this workspace does not own, instead of planning 64 resources and failing 13 minutes later. |

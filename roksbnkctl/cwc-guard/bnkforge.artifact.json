@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cwc-guard",
-  "version": "5.5.0",
+  "version": "5.7.0",
   "kind": "container_image",
   "description": "Clears F5's f5-spk-cwc ReadWriteOnce Multi-Attach deadlock so BNK licensing can activate. For EXISTING clusters only \u2014 the deadlock arises when a cluster that has already run BNK recycles the cwc pod under a RollingUpdate, so a freshly created cluster cannot hit it and should not include this module. Runs alongside the BNK install; harmless once F5 ships the fix.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:02c6ef391c55cf46db7cd6a17d5fb5ddcf283b4e7b1714272bcd1da0a2433d35"
+    "digest": "sha256:16169df3e0718b9bd171fc1ce3e4d9cbd7a1aab48d4a976699de89f3a659f1d8"
   },
   "lifecycle": {
     "supports_apply": true,
