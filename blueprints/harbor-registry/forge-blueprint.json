@@ -314,7 +314,7 @@
     {
       "id": "harbor-registry",
       "module": "harbor",
-      "version": "5.5.0",
+      "version": "5.7.0",
       "name": "Harbor registry (VSI)",
       "description": "Services VPC + Transit Gateway attachment + Harbor on a VSI, installed by cloud-init.",
       "optional": false,

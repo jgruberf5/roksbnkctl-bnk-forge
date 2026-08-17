@@ -51,34 +51,48 @@ def input_names(schema) -> set[str]:
     }
 
 
+# Discover by PACK manifest, not by artifact: an opentofu module (harbor) has a
+# pack and no artifact, and globbing only roksbnkctl/*/bnkforge.artifact.json
+# silently treated it as somebody else's module. It is not — and while it was
+# invisible here the harbor-registry blueprint pinned harbor 5.5.0 against a
+# module still declaring 5.4.0, so every Harbor deploy failed at the API with
+# "Required modules missing from catalog: harbor".
+#
+# A blueprint's modules[].module matches the pack's module.path, which is how
+# `harbor` and `roksbnkctl/far-mirror` are both addressed.
 modules: dict[str, dict] = {}
-for artifact_path in sorted(ROOT.glob("roksbnkctl/*/bnkforge.artifact.json")):
-    d = load(artifact_path)
-    if d is None:
+for pack_path in sorted(ROOT.glob("**/bnkforge.pack.json")):
+    if "node_modules" in pack_path.parts:
         continue
-    mod = f"roksbnkctl/{artifact_path.parent.name}"
-    pack = load(artifact_path.parent / "bnkforge.pack.json")
+    pack = load(pack_path)
+    if pack is None:
+        continue
+    meta = pack.get("module") or {}
+    mod = meta.get("path") or str(pack_path.parent.relative_to(ROOT))
+    pack_inputs = input_names(pack.get("inputs"))
 
-    art_inputs = input_names(d.get("inputs"))
+    artifact_path = pack_path.parent / "bnkforge.artifact.json"
+    art = load(artifact_path) if artifact_path.exists() else None
+
     entry = {
-        "version": d.get("version"),
-        "inputs": art_inputs,
-        "digest": (d.get("container_image") or {}).get("digest"),
-        "path": artifact_path,
+        "version": meta.get("version"),
+        "inputs": pack_inputs,
+        "digest": ((art or {}).get("container_image") or {}).get("digest"),
+        "engine": (pack.get("deployment_pack") or {}).get("engine"),
+        "path": pack_path,
     }
     modules[mod] = entry
 
-    if pack is not None:
-        pack_version = (pack.get("module") or {}).get("version")
-        if pack_version != entry["version"]:
+    if art is not None:
+        if art.get("version") != entry["version"]:
             problems.append(
-                f"{mod}: artifact version {entry['version']} != pack version {pack_version}"
+                f"{mod}: artifact version {art.get('version')} != pack version {entry['version']}"
             )
-        missing = art_inputs - input_names(pack.get("inputs"))
-        extra = input_names(pack.get("inputs")) - art_inputs
-        for n in sorted(missing):
+        art_inputs = input_names(art.get("inputs"))
+        entry["inputs"] = pack_inputs | art_inputs
+        for n in sorted(art_inputs - pack_inputs):
             problems.append(f"{mod}: input {n!r} in artifact but not in pack.json")
-        for n in sorted(extra):
+        for n in sorted(pack_inputs - art_inputs):
             problems.append(f"{mod}: input {n!r} in pack.json but not in artifact")
 
 digests = {m["digest"] for m in modules.values() if m["digest"]}
