@@ -7,10 +7,71 @@ are the useful part.
 
 Started 2026-08-08 ~18:30 UTC. BNK Forge 3.1.6 at `161.156.198.185:8443`.
 
-> **This is a record of that run, not a statement of current state.** The modules
-> now pin **v1.44.0** and the catalog is **5.6.0**. The create path was re-verified
-> on v1.43.0 (7/7, 59m10s); the BYO-VPC/BYO-subnet adopt path added in 5.6.0 has
-> been verified only by rendering tfvars, never against live IBM Cloud.
+## v1.45.0 / catalog 5.7.0 — all four use cases, 2026-08-17
+
+Re-verified end to end on **roksbnkctl v1.45.0** (`sha256:16169df3…`) and catalog
+**5.7.0**, against BNK Forge **3.1.6** running the `ghcr.io/f5devcentral` images.
+Every cluster adopted the pre-existing **`bnkci-testing`** gateway rather than
+creating one.
+
+| Variant | Cluster | Wall clock | Result |
+|---|---|---|---|
+| 1 — new, connected | `f5e2e1` | 60m12s | 7/7 |
+| 2 — new, disconnected | `f5e2e2` | 65m24s | 5/5 |
+| 3 — existing, connected | `f5e2e3` | 9m44s | 7/7 |
+| 4 — existing, disconnected | `f5e2e4` | 9m21s | 6/6 |
+
+Supporting: harbor VSI 6m46s, FAR mirror 10m25s, FLP appliance 2m27s. Variants 3
+and 4 adopted bare clusters built by `make-bare-cluster.sh`, and both proved the
+cluster id was unchanged across the adopt.
+
+Disjoint /16s, because everything shares one gateway and an overlap blackholes a
+VPC silently: 10.243 services, 10.244 f5e2e1, 10.245 f5e2e2, 10.246 f5e2e3,
+10.247 f5e2e4.
+
+### Exceptions hit on the way
+
+1. **`harbor` was missing from the catalog.** `harbor-registry` pinned harbor
+   5.5.0 against a module still declaring 5.4.0, so every Harbor deploy failed
+   `HTTP 400: Required modules missing from catalog: harbor`. `check-catalog.py`
+   had not caught it because it discovered modules by globbing
+   `roksbnkctl/*/bnkforge.artifact.json` — harbor is opentofu, has no artifact,
+   and was written off as "external". Fixed in both places.
+2. **Correcting the pin in place was not enough.** Forge keys blueprint releases
+   on version, so release 214 kept pointing at harbor 5.5.0 and the deploy failed
+   identically; `harbor-registry` needed a version bump to publish the fix.
+3. **The demo driver prompted for a value it could not resolve.** Harbor's
+   floating IP lookup ran against the operator's *targeted* region — `eu-de`, not
+   the deployment's `us-east` — found nothing, fell back to `read < /dev/tty`,
+   and with stdin closed wrote an EMPTY `harbor.fip` and carried on waiting on a
+   host that did not exist. Harbor had deployed correctly throughout.
+4. **`make-bare-cluster.sh connected` always created its own gateway.** The
+   connected branch never set `E2E_TGW` and never emitted
+   `existing_transit_gateway`; only the disconnected branch did. It cost one
+   gateway (`f5e2e3-tgw`) out of a quota of 10. Fixed here.
+5. **Adopting a bare cluster needs its Forge registration released first.** Since
+   v1.42.0 `bnkforge register` refuses a cluster held by another project. Deleting
+   the `/api/k8s/clusters/<id>` record releases it while leaving the owning
+   project — and so the cluster's teardown path — intact.
+
+### Still true
+
+Variants 3 and 4 cannot reuse variant 1's and 2's clusters. The adopting project
+gets a fresh deployment-scoped `/work`, so `bnk up` plans a full install over the
+one already there; and BNK cannot be stripped afterwards, because destroying
+`bnk-install` cascades into `cluster-create` and takes the cluster with it.
+
+---
+
+> **The sections below record the v1.42.0 run, not current state.** The modules
+> now pin **v1.45.0** and the catalog is **5.7.0**; see the v1.45.0 section above
+> for the current result.
+>
+> Still unverified against live IBM Cloud: the **BYO-VPC / BYO-subnet** path added
+> in 5.6.0 (`cluster_vpc_id` + `existing_subnet_ids`, issue #8). The v1.45.0 run
+> exercises adopting an existing **cluster** (variants 3 and 4), which is a
+> different path — those clusters brought their own VPCs, created by
+> `cluster-create` in the usual way. #8 remains proven only by rendering tfvars.
 
 ---
 
