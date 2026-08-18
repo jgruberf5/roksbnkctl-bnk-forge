@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-orphan-cleanup-roksbnkctl",
-    "version": "5.7.0",
+    "version": "5.7.1",
     "name": "Remove orphaned IBM Cloud resources (list, then delete)",
     "description": "Find and DELETE the IBM Cloud resources a failed teardown stranded, for one resource prefix. Two modules: the scan lists, the reap deletes. The reap lists again before it deletes anything, and its deleting step runs only when 'Actually delete' is set \u2014 so deploying this with that field blank behaves exactly like the read-only report."
   },
