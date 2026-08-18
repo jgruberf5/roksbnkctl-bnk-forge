@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "blueprint": {
+    "id": "ibm-roks-register-cluster-roksbnkctl",
+    "version": "5.7.0",
+    "name": "Register an existing IBM ROKS cluster (no BNK install)",
+    "description": "Adopt a ROKS cluster you already own into a roksbnkctl workspace and register it with BNK Forge — and stop there. Nothing is created, nothing is installed: the cluster, its VPC and its worker pool are left exactly as found, and BNK is never touched. Use it to bring a cluster under management so it is visible on the Kubernetes page, to fetch a kubeconfig into a shared deployment workspace, or to attach the cluster's VPC to a Transit Gateway ahead of a disconnected install. The BNK install blueprints do this same registration as their first step, so this is that step on its own."
+  },
+  "category": "bnk",
+  "cloud_provider": "ibm",
+  "icon": "link",
+  "color": "cyan",
+  "estimated_time": "2-4 minutes",
+  "difficulty": "beginner",
+  "maturity": "preview",
+  "bnk_version": "2.3",
+  "tags": [
+    "ibm",
+    "roks",
+    "openshift",
+    "roksbnkctl",
+    "existing-cluster",
+    "register"
+  ],
+  "outcomes": [
+    "An existing ROKS cluster adopted into the workspace (cluster-outputs.json)",
+    "The cluster registered with BNK Forge and visible on the Kubernetes page",
+    "A kubeconfig fetched into the shared deployment workspace",
+    "Optionally, the cluster's VPC attached to an existing Transit Gateway"
+  ],
+  "prerequisites": [
+    {
+      "type": "credential_template",
+      "description": "An IBM Cloud credential template on the project. Region and resource group inherit from it."
+    },
+    {
+      "type": "existing_cluster",
+      "description": "A ROKS cluster that already exists in the named region and resource group. It is adopted, never created."
+    }
+  ],
+  "input_summary": [
+    {
+      "label": "What it changes",
+      "value": "Nothing on the cluster. It reads the cluster's identity, writes cluster-outputs.json and a kubeconfig into the deployment workspace, registers the cluster with Forge, and — only if you name a gateway — attaches the cluster's VPC to it."
+    },
+    {
+      "label": "BNK is not installed",
+      "value": "This blueprint carries no bnk-install module. To install BNK onto the cluster, use 'BNK on an existing IBM ROKS cluster' (connected) or 'BNK on a disconnected IBM ROKS cluster' (air-gapped) — both perform this registration themselves as their first step, so you do not need to run this one first."
+    },
+    {
+      "label": "Teardown",
+      "value": "Destroy runs `bnkforge unregister` then `tgw disconnect --auto`. It never runs `cluster down`: the cluster survives, because this blueprint never created it. A Transit Gateway attachment that pre-existed is left alone — roksbnkctl records it without managing it."
+    },
+    {
+      "label": "One cluster, one project",
+      "value": "Since roksbnkctl v1.42.0 `bnkforge register` REFUSES a cluster already held by another Forge project rather than silently moving it. Release the other project's registration first if you mean to re-home the cluster."
+    }
+  ],
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "label": "Resource prefix",
+        "description": "Prefix roksbnkctl uses for anything it names in the workspace. It does NOT rename the cluster — the cluster is identified by 'Existing cluster name' below.",
+        "example": "acme-eu",
+        "order": 1
+      },
+      {
+        "name": "cluster_name",
+        "type": "string",
+        "label": "Existing cluster name (or id)",
+        "description": "Name or id of the ROKS cluster to adopt. It must already exist in the region and resource group below. It is never created and never destroyed by this blueprint.",
+        "example": "acme-prod-eu",
+        "order": 2
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "label": "IBM Cloud region",
+        "description": "Region the cluster lives in. Inherits from the selected credential template. A mismatch surfaces later as a confusing 'cluster not found' for a cluster you can plainly see in the console.",
+        "example": "us-south",
+        "source": "credential_template",
+        "source_field": "region",
+        "order": 3
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "label": "Resource group",
+        "description": "IBM Cloud resource group the cluster is in. Inherits from the selected credential template.",
+        "example": "default",
+        "source": "credential_template",
+        "source_field": "ibmcloud_resource_group",
+        "order": 4
+      }
+    ],
+    "optional": [
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "label": "Existing Transit Gateway (name or id)",
+        "description": "Attach the cluster's VPC to this gateway as part of the registration. Leave blank to register the cluster and touch its networking not at all — which is the right answer for a connected cluster, and for one whose VPC is already attached. Supply it when you are preparing the cluster for a disconnected install and it must reach a private registry and License Proxy over the gateway. An attachment that already exists is adopted, not re-created.",
+        "default": "",
+        "order": 5
+      },
+      {
+        "name": "registry_cos_name",
+        "type": "string",
+        "label": "Registry COS instance name",
+        "description": "Overrides the registry COS instance `cluster register` looks for. Blank = probe <prefix>-registry-cos, <cluster>-registry-cos, <cluster>-cos.",
+        "default": "",
+        "order": 6
+      },
+      {
+        "name": "cos_instance",
+        "type": "string",
+        "label": "Supply-chain COS instance",
+        "description": "COS instance holding the FAR auth key + subscription JWT. Blank = bnk-supply-chain. Registration itself needs no entitlement material; this only matters if a later module reuses this workspace.",
+        "default": "",
+        "order": 7
+      },
+      {
+        "name": "cos_bucket",
+        "type": "string",
+        "label": "Supply-chain COS bucket",
+        "description": "Bucket holding the FAR auth key + subscription JWT. Blank = bnk-artifacts. Account-suffixed buckets (bnk-artifacts-<account>) must be named explicitly. Only matters if a later module reuses this workspace.",
+        "default": "",
+        "order": 8
+      },
+      {
+        "name": "cos_region",
+        "type": "string",
+        "label": "Supply-chain COS region",
+        "description": "Region of that bucket. Blank = us-south.",
+        "default": "",
+        "order": 9
+      },
+      {
+        "name": "far_auth_file",
+        "type": "string",
+        "label": "FAR auth object name",
+        "description": "Object name of the FAR auth tarball in the bucket. Blank = f5-far-auth-key.tgz.",
+        "default": "",
+        "order": 10
+      },
+      {
+        "name": "subscription_jwt_file",
+        "type": "string",
+        "label": "Subscription JWT object name",
+        "description": "Object name of the subscription JWT in the bucket. Blank = subscription.jwt.",
+        "default": "",
+        "order": 11
+      },
+      {
+        "name": "manifest_version",
+        "type": "string",
+        "label": "BNK manifest version",
+        "description": "BNK manifest release the workspace is pinned to. Blank = the roksbnkctl default. Registration does not read it; it is recorded for a later install that shares this workspace.",
+        "default": "",
+        "order": 12
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "label": "BNK Forge URL",
+        "description": "Forge to register the cluster into. Blank skips the Forge registration entirely and leaves you with the workspace adoption only.",
+        "default": "",
+        "order": 20
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "label": "BNK Forge username",
+        "description": "Username used to register the cluster.",
+        "default": "",
+        "order": 21
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "label": "BNK Forge password",
+        "description": "Password for that login. Passed to the step as an environment variable only — never on the command line.",
+        "default": "",
+        "sensitive": true,
+        "order": 22
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "label": "BNK Forge project",
+        "description": "Project to register the cluster into. Blank = this project.",
+        "default": "",
+        "order": 23
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "label": "Skip Forge TLS verification",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out.",
+        "default": "false",
+        "order": 24
+      },
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "label": "IBM Cloud API key",
+        "description": "Filled from the project's credential template at creation and carried by the module, so it keeps working even if the project's template is cleared later.",
+        "default": "",
+        "sensitive": true,
+        "order": 25
+      }
+    ]
+  },
+  "modules": [
+    {
+      "id": "roksbnkctl-cluster-registry",
+      "module": "roksbnkctl/cluster-registry",
+      "version": "5.7.0",
+      "name": "roksbnkctl Cluster Registry",
+      "description": "init -> cluster register -> kubeconfig fetch -> bnkforge register, against a cluster that already exists. Creates no infrastructure.",
+      "optional": false,
+      "depends_on": [],
+      "inputs": {
+        "prefix": "${prefix}",
+        "cluster_name": "${cluster_name}",
+        "region": "${region}",
+        "resource_group": "${resource_group}",
+        "existing_transit_gateway": "${existing_transit_gateway}",
+        "registry_cos_name": "${registry_cos_name}",
+        "cos_instance": "${cos_instance}",
+        "cos_bucket": "${cos_bucket}",
+        "cos_region": "${cos_region}",
+        "far_auth_file": "${far_auth_file}",
+        "subscription_jwt_file": "${subscription_jwt_file}",
+        "manifest_version": "${manifest_version}",
+        "bnkforge_url": "${bnkforge_url}",
+        "bnkforge_username": "${bnkforge_username}",
+        "bnkforge_password": "${bnkforge_password}",
+        "bnkforge_project": "${bnkforge_project}",
+        "bnkforge_insecure": "${bnkforge_insecure}",
+        "ibmcloud_api_key": "${ibmcloud_api_key}"
+      }
+    }
+  ],
+  "is_featured": false
+}
