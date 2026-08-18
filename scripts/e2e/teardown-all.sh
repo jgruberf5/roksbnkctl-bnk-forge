@@ -13,6 +13,10 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 set -a; . "$HERE/../demos/.env"; set +a
 source "$HERE/e2e-lib.sh"
+# API/T are what forge-destroy-lib.sh polls with; e2e-lib owns the login.
+API="$FORGE_URL"
+# shellcheck source=forge-destroy-lib.sh
+source "$HERE/forge-destroy-lib.sh"
 
 forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD"
 
@@ -22,7 +26,7 @@ LEFTOVERS=0
 
 # destroy_project <id> <label>  — destroy-all, wait for every module, then delete.
 destroy_project() {
-  local pid="$1" label="$2" mods st i
+  local pid="$1" label="$2" mods i rc=1
   if ! forge_api GET "/api/projects/$pid" >/dev/null 2>&1; then
     e2e_say "$label (project $pid) already gone"; return 0
   fi
@@ -32,25 +36,33 @@ destroy_project() {
   # Poll the project rather than named modules: ids differ per project, and a
   # module that never deployed has nothing to destroy.
   #
-  # deployed_count alone is NOT a success signal: a module in destroy_failed
-  # leaves deployed_count and moves to failed_count, so a wholly failed destroy
-  # looks identical to a clean one. Reading only deployed_count is how project
-  # 112 (v143-new-connected) got deleted in 22s with its ROKS cluster, VPC, 3
-  # subnets and 3 public gateways still live. Require failed_count == 0 too, and
-  # refuse to delete the project otherwise — a project still holding cloud
-  # resources is recoverable, a deleted one orphans them with no way to retry.
+  # The project SUMMARY cannot answer "is the teardown finished?", in two ways:
+  #
+  #   deployed_count = count(status in ["applied"])
+  #   failed_count   = count(status in [... "destroy_failed" ...])
+  #
+  # A module in destroy_failed leaves deployed_count and lands in failed_count,
+  # so reading deployed_count alone made a wholly FAILED destroy look clean —
+  # that deleted project 112 in 22s with its cluster, VPC, 3 subnets and 3 public
+  # gateways still live. Adding failed_count == 0 fixed that half.
+  #
+  # It does not fix the other half: a module in `destroying` is in NEITHER set,
+  # so a teardown still RUNNING also reports 0/0. On 2026-08-17 that deleted
+  # project 114 three seconds before its own in-flight destroy task died on the
+  # cascade (PendingRollbackError: the Task row had been deleted), orphaning
+  # f5e2e1 and f5e2e4 with their VPCs. See bnk-forge#125.
+  #
+  # So poll the MODULES and require each to be terminally cleared.
   for i in $(seq 1 180); do
-    st=$(forge_api GET "/api/projects/$pid" 2>/dev/null \
-         | python3 -c 'import sys,json
-d=json.load(sys.stdin)
-print("%s/%s"%(d.get("deployed_count") or 0,d.get("failed_count") or 0))' 2>/dev/null)
-    [[ "$st" == "0/0" ]] && { e2e_say "$label: all modules destroyed"; break; }
+    forge_project_destroyed "$pid"; rc=$?
+    (( rc == 0 )) && { e2e_say "$label: every module terminally destroyed"; break; }
     sleep 20
   done
-  if [[ "$st" != "0/0" ]]; then
-    warn "$label: destroy did not finish clean (deployed/failed = ${st:-unknown})"
-    warn "$label: NOT deleting the project — it still owns cloud resources."
-    warn "$label: inspect it, destroy the failed modules, then re-run this script."
+  if (( rc != 0 )); then
+    warn "$label: destroy did not finish clean — $(forge_project_module_report "$pid")"
+    warn "$label: NOT deleting the project — a delete now would cascade away any"
+    warn "$label: in-flight destroy task and orphan whatever it still holds."
+    warn "$label: inspect it, re-run the destroy, then re-run this script."
     LEFTOVERS=1
     return 1
   fi
