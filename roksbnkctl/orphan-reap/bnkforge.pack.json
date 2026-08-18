@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "module": {
+    "name": "roksbnkctl-orphan-reap",
+    "path": "roksbnkctl/orphan-reap",
+    "version": "5.7.0",
+    "category": "infra",
+    "description": "Delete the orphans reported by roksbnkctl-orphan-scan. DESTRUCTIVE. It acts only on that module's inventory, re-checks every name against the allowlist, and does nothing at all unless explicitly confirmed.",
+    "estimated_time_minutes": 25
+  },
+  "deployment_pack": {
+    "engine": "container",
+    "runner_profile": "container-default",
+    "working_directory": ".",
+    "lifecycle": {
+      "supports_init": false,
+      "supports_plan": false,
+      "supports_apply": true,
+      "supports_destroy": true,
+      "supports_refresh": false,
+      "supports_drift": false
+    },
+    "entrypoints": {}
+  },
+  "dependencies": {
+    "required": [
+      "roksbnkctl-orphan-scan"
+    ],
+    "optional": []
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "name_prefixes",
+        "type": "string",
+        "source": "user",
+        "label": "Name prefixes to consider (comma-separated)",
+        "description": "Re-checked against every name before it is touched, deliberately duplicating the scan's allowlist. The inventory arrives through Forge's module-output wiring, and a deleter should not take its target list entirely on trust from the layer that hands it over. Anything outside this list is refused and the run reports failure.",
+        "example": "f5e2e,f5demo",
+        "order": 1
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "label": "IBM Cloud region",
+        "description": "Region the orphans are in. Inherits from the credential template. Must match the region the scan ran against.",
+        "order": 2
+      },
+      {
+        "name": "confirm",
+        "type": "string",
+        "source": "user",
+        "label": "Type DELETE to confirm",
+        "description": "Must be exactly DELETE. Anything else — including blank — and the module exits 0 having deleted nothing. The guard is checked INSIDE the module rather than left to enabled:false, because bnk-forge#120 is the bug where Forge dispatched a module that was explicitly disabled, and neither cancel nor deleting the project stopped the container. A cluster-deleting module must not stake safety on the orchestration layer's opinion about whether to call it.",
+        "example": "DELETE",
+        "order": 3
+      }
+    ],
+    "optional": [
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "label": "IBM Cloud API key",
+        "description": "Filled from the project's credential template. Needs delete rights on clusters, VPCs, subnets, public gateways and Transit Gateways.",
+        "order": 4
+      },
+      {
+        "name": "orphan_cluster_names",
+        "type": "string",
+        "source": "module",
+        "default": "",
+        "from_module": "roksbnkctl-orphan-scan",
+        "from_output": "orphan_cluster_names",
+        "label": "Clusters to delete",
+        "description": "Wired from the scan. Set by hand only if you are reaping a list you produced yourself and have checked."
+      },
+      {
+        "name": "orphan_vpc_ids",
+        "type": "string",
+        "source": "module",
+        "default": "",
+        "from_module": "roksbnkctl-orphan-scan",
+        "from_output": "orphan_vpc_ids",
+        "label": "VPCs to delete",
+        "description": "Wired from the scan. Their subnets and public gateways go first, then the VPC."
+      },
+      {
+        "name": "orphan_gateway_ids",
+        "type": "string",
+        "source": "module",
+        "default": "",
+        "from_module": "roksbnkctl-orphan-scan",
+        "from_output": "orphan_gateway_ids",
+        "label": "Transit Gateways to delete",
+        "description": "Wired from the scan. Connections are removed first."
+      }
+    ]
+  },
+  "outputs": {
+    "key_outputs": []
+  }
+}

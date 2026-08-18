@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "blueprint": {
+    "id": "ibm-orphan-cleanup-roksbnkctl",
+    "version": "5.7.0",
+    "name": "Remove orphaned IBM Cloud resources (scan, then delete)",
+    "description": "Find ROKS clusters, VPCs and Transit Gateways that match a name allowlist you own but that no BNK Forge project owns, then DELETE them. Two modules: the scan reports, the reap acts only on what the scan found. The reap deletes nothing unless you type DELETE into its confirmation field, so deploying this blueprint without that field set behaves exactly like the read-only report."
+  },
+  "category": "bnk",
+  "cloud_provider": "ibm",
+  "icon": "trash",
+  "color": "red",
+  "estimated_time": "5-30 minutes",
+  "difficulty": "advanced",
+  "maturity": "preview",
+  "tags": [
+    "ibm",
+    "roks",
+    "roksbnkctl",
+    "housekeeping",
+    "orphans",
+    "destructive"
+  ],
+  "outcomes": [
+    "Orphaned clusters deleted, then the VPCs they leave behind emptied and removed",
+    "Orphaned Transit Gateways disconnected and deleted",
+    "An inventory of exactly what was considered, whether or not it was deleted"
+  ],
+  "prerequisites": [
+    {
+      "type": "credential_template",
+      "description": "An IBM Cloud credential template on the project. The API key needs delete rights on clusters, VPCs, subnets, public gateways and Transit Gateways; region inherits from it."
+    }
+  ],
+  "input_summary": [
+    {
+      "label": "It does nothing until you confirm",
+      "value": "The reap module requires 'Type DELETE to confirm' to be exactly DELETE. Anything else and it exits 0 having deleted nothing. Deploy it blank first, read the scan's inventory, then set the field and re-run the reap."
+    },
+    {
+      "label": "Why the guard is in the module",
+      "value": "The obvious design ships the reap disabled and lets you enable it. bnk-forge#120 is the bug where Forge dispatched a module that was explicitly enabled:false, and neither cancel nor deleting the project stopped the container — that is how a cluster came to exist with nothing in Forge representing it. A cluster-deleting module must not stake safety on the orchestration layer's opinion about whether to call it, so the confirmation is checked inside the script."
+    },
+    {
+      "label": "The allowlist is checked twice",
+      "value": "The scan only reports names matching your prefixes, and the reap re-checks every name against them before touching it. Anything outside is refused and the run reports failure. This account is shared with other teams; the prefix is the only thing separating your leftovers from their infrastructure."
+    },
+    {
+      "label": "Teardown",
+      "value": "Destroy is a no-op on both modules. They own no state, so tearing the PROJECT down must not become a second, unreviewed reap."
+    }
+  ],
+  "inputs": {
+    "required": [
+      {
+        "name": "name_prefixes",
+        "type": "string",
+        "label": "Name prefixes to consider (comma-separated)",
+        "description": "Only resources whose name starts with one of these is looked at, by either module. No default, and blank is refused.",
+        "example": "f5e2e,f5demo",
+        "order": 1
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "label": "IBM Cloud region",
+        "description": "Region to scan and reap. Inherits from the selected credential template.",
+        "example": "us-east",
+        "source": "credential_template",
+        "source_field": "region",
+        "order": 2
+      }
+    ],
+    "optional": [
+      {
+        "name": "confirm",
+        "type": "string",
+        "label": "Type DELETE to confirm deletion",
+        "description": "Must be exactly DELETE for anything to be removed. Leave blank on the first run: the scan still reports everything it would consider, and the reap exits having done nothing.",
+        "default": "",
+        "order": 3
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "label": "BNK Forge URL",
+        "description": "Forge to ask which clusters are still owned. A cluster with a live project is not an orphan and is skipped. If Forge cannot be reached the scan ABORTS rather than treat every cluster as unclaimed.",
+        "default": "",
+        "order": 4
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "label": "BNK Forge username",
+        "description": "Read-only access is enough.",
+        "default": "",
+        "order": 5
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "label": "BNK Forge password",
+        "description": "Passed to the step as an environment variable only.",
+        "default": "",
+        "sensitive": true,
+        "order": 6
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "label": "Skip Forge TLS verification",
+        "description": "Set true only for a Forge with a self-signed certificate.",
+        "default": "false",
+        "order": 7
+      },
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "label": "IBM Cloud API key",
+        "description": "Filled from the project's credential template at creation.",
+        "default": "",
+        "sensitive": true,
+        "order": 8
+      }
+    ]
+  },
+  "modules": [
+    {
+      "id": "roksbnkctl-orphan-scan",
+      "module": "roksbnkctl/orphan-scan",
+      "version": "5.7.0",
+      "name": "roksbnkctl Orphan Scan",
+      "description": "Cross-reference IBM Cloud against Forge's records and report what nothing owns. Read-only.",
+      "optional": false,
+      "depends_on": [],
+      "inputs": {
+        "name_prefixes": "${name_prefixes}",
+        "region": "${region}",
+        "bnkforge_url": "${bnkforge_url}",
+        "bnkforge_username": "${bnkforge_username}",
+        "bnkforge_password": "${bnkforge_password}",
+        "bnkforge_insecure": "${bnkforge_insecure}",
+        "ibmcloud_api_key": "${ibmcloud_api_key}"
+      }
+    },
+    {
+      "id": "roksbnkctl-orphan-reap",
+      "module": "roksbnkctl/orphan-reap",
+      "version": "5.7.0",
+      "name": "roksbnkctl Orphan Reap",
+      "description": "Delete what the scan found. Acts only on that inventory, re-checks the allowlist, and does nothing unless confirmed.",
+      "optional": false,
+      "depends_on": [
+        "roksbnkctl-orphan-scan"
+      ],
+      "inputs": {
+        "name_prefixes": "${name_prefixes}",
+        "region": "${region}",
+        "confirm": "${confirm}",
+        "ibmcloud_api_key": "${ibmcloud_api_key}"
+      }
+    }
+  ],
+  "is_featured": false
+}

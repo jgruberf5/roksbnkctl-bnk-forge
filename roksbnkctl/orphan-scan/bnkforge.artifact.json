@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "name": "roksbnkctl-orphan-scan",
+  "version": "5.7.0",
+  "kind": "container_image",
+  "description": "Report IBM Cloud clusters, VPCs and Transit Gateways matching a name allowlist that no BNK Forge project owns. Read-only.",
+  "container_image": {
+    "registry_host": "ghcr.io",
+    "repository": "jgruberf5/roksbnkctl-tools-runner",
+    "digest": "sha256:16169df3e0718b9bd171fc1ce3e4d9cbd7a1aab48d4a976699de89f3a659f1d8"
+  },
+  "lifecycle": {
+    "supports_apply": true,
+    "supports_destroy": true
+  },
+  "credentials": {
+    "cloud": "ibmcloud"
+  },
+  "state": {
+    "mount_path": "/work",
+    "outputs_file": "orphan-scan.json",
+    "home_env": {
+      "HOME": "/home/runner"
+    },
+    "scope": "deployment"
+  },
+  "execution": {
+    "engine": "container",
+    "limits": {
+      "cpus": "1",
+      "memory": "1g"
+    }
+  },
+  "steps": {
+    "apply": [
+      {
+        "name": "orphan-scan",
+        "env": {
+          "HOME": "/home/runner",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
+          "ORPHAN_NAME_PREFIXES": "{{inputs.name_prefixes}}",
+          "ORPHAN_REGION": "{{inputs.region}}",
+          "BNK_FORGE_URL": "{{inputs.bnkforge_url}}",
+          "BNK_FORGE_USER": "{{inputs.bnkforge_username}}",
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}",
+          "BNK_FORGE_INSECURE": "{{inputs.bnkforge_insecure}}",
+          "ORPHAN_OUTPUTS_FILE": "/work/orphan-scan.json"
+        },
+        "args": [
+          "bash",
+          "-c",
+          "#!/usr/bin/env bash\n# Find IBM Cloud resources this catalog created that no BNK Forge project owns.\n#\n# READ-ONLY. It deletes nothing. Its whole job is to produce the inventory that\n# orphan-reap consumes, so that the destructive half can only ever act on\n# something this scan actually found.\n#\n# WHY REST AND NOT THE ibmcloud CLI\n# The runner image ships only the container-service (ks) plugin \u2014 no `is` (VPC)\n# and no `tg` (transit gateway). Those are exactly what is needed to find leaked\n# VPCs and gateways, which is most of what leaks. Installing plugins at runtime\n# would mutate the image and need egress to IBM's plugin repo on every run, so\n# this talks to the IAM/VPC/TG/Containers REST APIs with curl + jq, both of which\n# the image does have.\n#\n# WHY A PREFIX ALLOWLIST IS MANDATORY\n# This account is shared. A scan run here sees 21 ROKS clusters across nine\n# regions belonging to other teams, plus VPCs named ecosystems-*, tf-*, pqt-*,\n# garuda-*, tc-harness-* and app-us-east-1. \"Orphan\" cannot mean \"not in Forge\" \u2014\n# almost nothing in this account is in Forge. It means \"matches a prefix WE own\n# AND no Forge project claims it\". Refusing to run without a prefix is the single\n# most important guard here.\nset -uo pipefail\n\n: \"${ORPHAN_NAME_PREFIXES:?set ORPHAN_NAME_PREFIXES \u2014 refusing to scan the whole account}\"\n: \"${IBMCLOUD_API_KEY:?set IBMCLOUD_API_KEY}\"\n: \"${ORPHAN_REGION:?set ORPHAN_REGION}\"\nOUT=\"${ORPHAN_OUTPUTS_FILE:-/work/orphan-scan.json}\"\nAPI_VERSION=\"${ORPHAN_API_VERSION:-2026-01-01}\"\n\nsay() { printf '%s\\n' \"$*\" >&2; }\n\n# Empty or whitespace-only prefixes would match everything once turned into a\n# regex alternation. Fail loudly instead.\nPREFIX_RE=$(printf '%s' \"$ORPHAN_NAME_PREFIXES\" | tr ',' '\\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | paste -sd'|' -)\n[[ -n \"$PREFIX_RE\" ]] || { say \"ORPHAN_NAME_PREFIXES contained no usable prefix\"; exit 2; }\nsay \"== scanning region $ORPHAN_REGION for names matching: $PREFIX_RE\"\n\nTOKEN=$(curl -s --max-time 60 -X POST https://iam.cloud.ibm.com/identity/token \\\n  -H 'Content-Type: application/x-www-form-urlencoded' \\\n  --data-urlencode 'grant_type=urn:ibm:params:oauth:grant-type:apikey' \\\n  --data-urlencode \"apikey=$IBMCLOUD_API_KEY\" | jq -r '.access_token // empty')\n[[ -n \"$TOKEN\" ]] || { say \"could not get an IAM token from the supplied API key\"; exit 1; }\n\niam()  { curl -s --max-time 120 -H \"Authorization: Bearer $TOKEN\" \"$@\"; }\nvpcapi() { iam \"https://${ORPHAN_REGION}.iaas.cloud.ibm.com/v1/$1?version=${API_VERSION}&generation=2&limit=100\"; }\n\nCLUSTERS_JSON=$(iam \"https://containers.cloud.ibm.com/global/v2/vpc/getClusters\")\nVPCS_JSON=$(vpcapi vpcs)\nTGWS_JSON=$(iam \"https://transit.cloud.ibm.com/v1/transit_gateways?version=${API_VERSION}\")\nSUBNETS_JSON=$(vpcapi subnets)\nPGWS_JSON=$(vpcapi public_gateways)\n\nfor pair in \"clusters:$CLUSTERS_JSON\" \"vpcs:$VPCS_JSON\" \"gateways:$TGWS_JSON\"; do\n  [[ -n \"${pair#*:}\" ]] || { say \"empty response listing ${pair%%:*} \u2014 refusing to report an empty inventory\"; exit 1; }\ndone\n\n# Which clusters does Forge still own? A cluster with a live project is BY\n# DEFINITION not an orphan, however well its name matches. When Forge cannot be\n# reached we abort rather than assume it owns nothing \u2014 assuming that turns every\n# managed cluster into a deletion candidate.\nCLAIMED=\"\"\nif [[ -n \"${BNK_FORGE_URL:-}\" ]]; then\n  INSEC=\"\"; [[ \"${BNK_FORGE_INSECURE:-false}\" == \"true\" ]] && INSEC=\"-k\"\n  FT=$(curl -s $INSEC --max-time 60 -X POST \"$BNK_FORGE_URL/api/auth/login\" \\\n        -H 'Content-Type: application/json' \\\n        -d \"{\\\"username\\\":\\\"${BNK_FORGE_USER:-}\\\",\\\"password\\\":\\\"${BNK_FORGE_PASSWORD:-}\\\"}\" \\\n        | jq -r '.token // empty')\n  [[ -n \"$FT\" ]] || { say \"could not authenticate to BNK Forge at $BNK_FORGE_URL \u2014 aborting rather than treating every cluster as unclaimed\"; exit 1; }\n  CLAIMED=$(curl -s $INSEC --max-time 60 \"$BNK_FORGE_URL/api/k8s/clusters\" -H \"Authorization: Bearer $FT\" \\\n            | jq -r 'if type==\"array\" then .[] else (.clusters // [])[] end | .name' | sort -u)\n  say \"== Forge claims: ${CLAIMED:-nothing}\"\nelse\n  say \"== no BNK_FORGE_URL given: every prefix match will be reported as unclaimed\"\nfi\n\nis_claimed() { [[ -n \"$CLAIMED\" ]] && printf '%s\\n' \"$CLAIMED\" | grep -qx -- \"$1\"; }\n\norphan_clusters=(); orphan_vpcs=(); orphan_gws=()\n\nwhile IFS=$'\\t' read -r name id state; do\n  [[ -z \"$name\" ]] && continue\n  if is_claimed \"$name\"; then say \"   cluster $name \u2014 claimed by Forge, skipping\"; continue; fi\n  say \"   cluster $name ($state) \u2014 ORPHAN\"\n  orphan_clusters+=(\"$(jq -nc --arg n \"$name\" --arg i \"$id\" --arg s \"$state\" '{name:$n,id:$i,state:$s}')\")\ndone < <(printf '%s' \"$CLUSTERS_JSON\" | jq -r --arg re \"^($PREFIX_RE)\" '.[] | select(.name|test($re)) | [.name,.id,.state] | @tsv')\n\n# A VPC is only an orphan once no cluster is left inside it. A matching VPC whose\n# cluster is still running belongs to that cluster, and reaping it would fail on\n# vpc_in_use anyway.\nLIVE_VPCS=$(printf '%s' \"$CLUSTERS_JSON\" | jq -r '.[] | .vpcs // [] | .[]' 2>/dev/null | sort -u)\nwhile IFS=$'\\t' read -r name id; do\n  [[ -z \"$name\" ]] && continue\n  if printf '%s\\n' \"$LIVE_VPCS\" | grep -qx -- \"$id\"; then say \"   vpc $name \u2014 still holds a cluster, skipping\"; continue; fi\n  sub=$(printf '%s' \"$SUBNETS_JSON\" | jq -r --arg v \"$id\" '[.subnets[]|select(.vpc.id==$v)]|length')\n  pgw=$(printf '%s' \"$PGWS_JSON\"   | jq -r --arg v \"$id\" '[.public_gateways[]|select(.vpc.id==$v)]|length')\n  say \"   vpc $name \u2014 ORPHAN ($sub subnets, $pgw public gateways)\"\n  orphan_vpcs+=(\"$(jq -nc --arg n \"$name\" --arg i \"$id\" --argjson s \"$sub\" --argjson p \"$pgw\" '{name:$n,id:$i,subnets:$s,public_gateways:$p}')\")\ndone < <(printf '%s' \"$VPCS_JSON\" | jq -r --arg re \"^($PREFIX_RE)\" '.vpcs[] | select(.name|test($re)) | [.name,.id] | @tsv')\n\nwhile IFS=$'\\t' read -r name id; do\n  [[ -z \"$name\" ]] && continue\n  conns=$(iam \"https://transit.cloud.ibm.com/v1/transit_gateways/$id/connections?version=${API_VERSION}\" | jq -r '[.connections // []]|flatten|length')\n  say \"   gateway $name \u2014 ORPHAN ($conns connections)\"\n  orphan_gws+=(\"$(jq -nc --arg n \"$name\" --arg i \"$id\" --argjson c \"${conns:-0}\" '{name:$n,id:$i,connections:$c}')\")\ndone < <(printf '%s' \"$TGWS_JSON\" | jq -r --arg re \"^($PREFIX_RE)\" '.transit_gateways[] | select(.name|test($re)) | [.name,.id] | @tsv')\n\njoin() { local IFS=,; printf '[%s]' \"$*\"; }\nTOTAL=$(( ${#orphan_clusters[@]} + ${#orphan_vpcs[@]} + ${#orphan_gws[@]} ))\nmkdir -p \"$(dirname \"$OUT\")\"\njq -n \\\n  --argjson c \"$(join \"${orphan_clusters[@]+\"${orphan_clusters[@]}\"}\")\" \\\n  --argjson v \"$(join \"${orphan_vpcs[@]+\"${orphan_vpcs[@]}\"}\")\" \\\n  --argjson g \"$(join \"${orphan_gws[@]+\"${orphan_gws[@]}\"}\")\" \\\n  --arg region \"$ORPHAN_REGION\" --arg prefixes \"$ORPHAN_NAME_PREFIXES\" --argjson total \"$TOTAL\" \\\n  '{region:$region, prefixes:$prefixes, orphan_count:$total,\n    orphan_clusters:$c, orphan_vpcs:$v, orphan_gateways:$g,\n    orphan_cluster_names:($c|map(.name)|join(\",\")),\n    orphan_vpc_ids:($v|map(.id)|join(\",\")),\n    orphan_gateway_ids:($g|map(.id)|join(\",\"))}' > \"$OUT\"\n\nsay \"== $TOTAL orphan(s): ${#orphan_clusters[@]} cluster(s), ${#orphan_vpcs[@]} vpc(s), ${#orphan_gws[@]} gateway(s)\"\nsay \"== inventory written to $OUT\"\ncat \"$OUT\" >&2\n"
+        ],
+        "timeout_seconds": 3600
+      }
+    ],
+    "destroy": [
+      {
+        "name": "noop",
+        "env": {
+          "HOME": "/home/runner"
+        },
+        "args": [
+          "bash",
+          "-c",
+          "echo 'orphan modules own no state - nothing to destroy'"
+        ],
+        "timeout_seconds": 60
+      }
+    ]
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "name_prefixes",
+        "type": "string",
+        "source": "user",
+        "label": "Name prefixes to consider (comma-separated)",
+        "description": "ONLY resources whose name starts with one of these is even looked at. There is no default and blank is refused, because this account is shared \u2014 a scan here sees 21 ROKS clusters across nine regions belonging to other teams. 'Orphan' cannot mean 'not in Forge': almost nothing in this account is in Forge. It means 'matches a prefix you own AND no Forge project claims it'.",
+        "example": "f5e2e,f5demo",
+        "order": 1
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "label": "IBM Cloud region",
+        "description": "Region to scan. Inherits from the credential template. VPCs and subnets are regional, so a scan only sees the region you point it at.",
+        "order": 2
+      }
+    ],
+    "optional": [
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "label": "IBM Cloud API key",
+        "description": "Filled from the project's credential template. Needs only read access to list clusters, VPCs and Transit Gateways.",
+        "order": 3
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "BNK Forge URL",
+        "description": "Forge to ask which clusters are still owned. A cluster with a live project is BY DEFINITION not an orphan, however well its name matches. Leave blank and every prefix match is reported as unclaimed \u2014 useful for a dry look, dangerous as input to a reap.",
+        "order": 4
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "BNK Forge username",
+        "description": "Read-only access is enough.",
+        "order": 5
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "label": "BNK Forge password",
+        "description": "Passed as an environment variable only, never on the command line.",
+        "order": 6
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "source": "user",
+        "default": "false",
+        "label": "Skip Forge TLS verification",
+        "description": "Set true only for a Forge with a self-signed certificate.",
+        "order": 7
+      }
+    ]
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "module": {
+    "name": "roksbnkctl-orphan-scan",
+    "path": "roksbnkctl/orphan-scan",
+    "version": "5.7.0",
+    "category": "infra",
+    "description": "Report IBM Cloud clusters, VPCs and Transit Gateways matching a name allowlist that no BNK Forge project owns. Read-only — it deletes nothing, and produces the inventory roksbnkctl-orphan-reap consumes.",
+    "estimated_time_minutes": 2
+  },
+  "deployment_pack": {
+    "engine": "container",
+    "runner_profile": "container-default",
+    "working_directory": ".",
+    "lifecycle": {
+      "supports_init": false,
+      "supports_plan": false,
+      "supports_apply": true,
+      "supports_destroy": true,
+      "supports_refresh": false,
+      "supports_drift": false
+    },
+    "entrypoints": {}
+  },
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
+  "inputs": {
+    "required": [
+      {
+        "name": "name_prefixes",
+        "type": "string",
+        "source": "user",
+        "label": "Name prefixes to consider (comma-separated)",
+        "description": "ONLY resources whose name starts with one of these is even looked at. There is no default and blank is refused, because this account is shared — a scan here sees 21 ROKS clusters across nine regions belonging to other teams. 'Orphan' cannot mean 'not in Forge': almost nothing in this account is in Forge. It means 'matches a prefix you own AND no Forge project claims it'.",
+        "example": "f5e2e,f5demo",
+        "order": 1
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "source": "user",
+        "label": "IBM Cloud region",
+        "description": "Region to scan. Inherits from the credential template. VPCs and subnets are regional, so a scan only sees the region you point it at.",
+        "order": 2
+      }
+    ],
+    "optional": [
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "label": "IBM Cloud API key",
+        "description": "Filled from the project's credential template. Needs only read access to list clusters, VPCs and Transit Gateways.",
+        "order": 3
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "BNK Forge URL",
+        "description": "Forge to ask which clusters are still owned. A cluster with a live project is BY DEFINITION not an orphan, however well its name matches. Leave blank and every prefix match is reported as unclaimed — useful for a dry look, dangerous as input to a reap.",
+        "order": 4
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "BNK Forge username",
+        "description": "Read-only access is enough.",
+        "order": 5
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "label": "BNK Forge password",
+        "description": "Passed as an environment variable only, never on the command line.",
+        "order": 6
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "source": "user",
+        "default": "false",
+        "label": "Skip Forge TLS verification",
+        "description": "Set true only for a Forge with a self-signed certificate.",
+        "order": 7
+      }
+    ]
+  },
+  "outputs": {
+    "key_outputs": [
+      {
+        "name": "orphan_count",
+        "type": "string",
+        "description": "Total orphans found. 0 means there is nothing to reap."
+      },
+      {
+        "name": "orphan_cluster_names",
+        "type": "string",
+        "description": "Comma-separated cluster names with no owning Forge project."
+      },
+      {
+        "name": "orphan_vpc_ids",
+        "type": "string",
+        "description": "Comma-separated VPC ids that match the allowlist and hold no live cluster."
+      },
+      {
+        "name": "orphan_gateway_ids",
+        "type": "string",
+        "description": "Comma-separated Transit Gateway ids that match the allowlist."
+      }
+    ]
+  }
+}

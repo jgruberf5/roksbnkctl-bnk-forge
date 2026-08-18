@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "blueprint": {
+    "id": "ibm-orphan-report-roksbnkctl",
+    "version": "5.7.0",
+    "name": "Find orphaned IBM Cloud resources (read-only)",
+    "description": "Report ROKS clusters, VPCs and Transit Gateways that match a name allowlist you own but that no BNK Forge project owns — infrastructure left behind when a project was deleted while its teardown was still running, or when a destroy failed and the record went with it. This blueprint DELETES NOTHING. Run it whenever you want to know what is being paid for, then use 'Remove orphaned IBM Cloud resources' if the answer needs acting on."
+  },
+  "category": "bnk",
+  "cloud_provider": "ibm",
+  "icon": "search",
+  "color": "amber",
+  "estimated_time": "1-2 minutes",
+  "difficulty": "beginner",
+  "maturity": "preview",
+  "tags": [
+    "ibm",
+    "roks",
+    "roksbnkctl",
+    "housekeeping",
+    "orphans",
+    "read-only"
+  ],
+  "outcomes": [
+    "An inventory of clusters, VPCs and Transit Gateways matching your prefixes that no Forge project claims",
+    "Per-VPC counts of the subnets and public gateways holding it open",
+    "Nothing created, nothing changed, nothing deleted"
+  ],
+  "prerequisites": [
+    {
+      "type": "credential_template",
+      "description": "An IBM Cloud credential template on the project. The API key needs only read access; region inherits from it."
+    }
+  ],
+  "input_summary": [
+    {
+      "label": "Why a prefix is mandatory",
+      "value": "This account is shared. A scan sees ROKS clusters across nine regions belonging to other teams, plus VPCs named ecosystems-*, tf-*, pqt-*, garuda-* and tc-harness-*. 'Orphan' cannot mean 'not in Forge' — almost nothing here is in Forge. It means 'matches a prefix you own AND no Forge project claims it'. There is no default and blank is refused."
+    },
+    {
+      "label": "What counts as claimed",
+      "value": "The scan asks Forge which clusters it still owns and skips them. If Forge cannot be reached it ABORTS rather than assume Forge owns nothing — assuming that would turn every managed cluster into a deletion candidate for whatever consumes this inventory."
+    },
+    {
+      "label": "Regional",
+      "value": "VPCs, subnets and public gateways are regional, so this sees only the region it is pointed at. Clusters and Transit Gateways are listed globally and then filtered by prefix."
+    }
+  ],
+  "inputs": {
+    "required": [
+      {
+        "name": "name_prefixes",
+        "type": "string",
+        "label": "Name prefixes to consider (comma-separated)",
+        "description": "Only resources whose name starts with one of these is looked at. Use the prefixes this catalog's blueprints create under.",
+        "example": "f5e2e,f5demo",
+        "order": 1
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "label": "IBM Cloud region",
+        "description": "Region to scan. Inherits from the selected credential template.",
+        "example": "us-east",
+        "source": "credential_template",
+        "source_field": "region",
+        "order": 2
+      }
+    ],
+    "optional": [
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "label": "BNK Forge URL",
+        "description": "Forge to ask which clusters are still owned. Strongly recommended: without it every prefix match is reported as unclaimed.",
+        "default": "",
+        "order": 3
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "label": "BNK Forge username",
+        "description": "Read-only access is enough.",
+        "default": "",
+        "order": 4
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "label": "BNK Forge password",
+        "description": "Passed to the step as an environment variable only.",
+        "default": "",
+        "sensitive": true,
+        "order": 5
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "label": "Skip Forge TLS verification",
+        "description": "Set true only for a Forge with a self-signed certificate.",
+        "default": "false",
+        "order": 6
+      },
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "label": "IBM Cloud API key",
+        "description": "Filled from the project's credential template at creation.",
+        "default": "",
+        "sensitive": true,
+        "order": 7
+      }
+    ]
+  },
+  "modules": [
+    {
+      "id": "roksbnkctl-orphan-scan",
+      "module": "roksbnkctl/orphan-scan",
+      "version": "5.7.0",
+      "name": "roksbnkctl Orphan Scan",
+      "description": "Cross-reference IBM Cloud against Forge's project and cluster records and report what nothing owns. Read-only.",
+      "optional": false,
+      "depends_on": [],
+      "inputs": {
+        "name_prefixes": "${name_prefixes}",
+        "region": "${region}",
+        "bnkforge_url": "${bnkforge_url}",
+        "bnkforge_username": "${bnkforge_username}",
+        "bnkforge_password": "${bnkforge_password}",
+        "bnkforge_insecure": "${bnkforge_insecure}",
+        "ibmcloud_api_key": "${ibmcloud_api_key}"
+      }
+    }
+  ],
+  "is_featured": false
+}
