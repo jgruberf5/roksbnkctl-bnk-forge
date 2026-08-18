@@ -95,30 +95,6 @@ for pack_path in sorted(ROOT.glob("**/bnkforge.pack.json")):
         for n in sorted(pack_inputs - art_inputs):
             problems.append(f"{mod}: input {n!r} in pack.json but not in artifact")
 
-# The orphan modules carry their script inside argv, because the container runner
-# mounts the deployment workspace and not this repo. The .sh file is the source of
-# truth and scripts/build-orphan-artifacts.py embeds it; if someone edits one and
-# forgets the other, the module that RUNS is the stale copy in the JSON and
-# nothing else would notice.
-for mod, script in (("orphan-scan", "scan.sh"), ("orphan-reap", "reap.sh")):
-    src = ROOT / "roksbnkctl" / mod / script
-    art = ROOT / "roksbnkctl" / mod / "bnkforge.artifact.json"
-    if not (src.exists() and art.exists()):
-        continue
-    d = load(art)
-    if d is None:
-        continue
-    try:
-        embedded = d["steps"]["apply"][0]["args"][2]
-    except (KeyError, IndexError):
-        problems.append(f"roksbnkctl/{mod}: artifact has no embedded script in apply[0].args[2]")
-        continue
-    if embedded != src.read_text():
-        problems.append(
-            f"roksbnkctl/{mod}: {script} does not match the copy embedded in the artifact "
-            f"— re-run scripts/build-orphan-artifacts.py"
-        )
-
 digests = {m["digest"] for m in modules.values() if m["digest"]}
 if len(digests) > 1:
     problems.append(f"modules pin {len(digests)} different runner digests: {sorted(digests)}")

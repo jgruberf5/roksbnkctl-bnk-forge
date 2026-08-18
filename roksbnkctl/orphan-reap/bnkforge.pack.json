@@ -5,7 +5,7 @@
     "path": "roksbnkctl/orphan-reap",
     "version": "5.7.0",
     "category": "infra",
-    "description": "Delete the orphans reported by roksbnkctl-orphan-scan. DESTRUCTIVE. It acts only on that module's inventory, re-checks every name against the allowlist, and does nothing at all unless explicitly confirmed.",
+    "description": "Delete the IBM Cloud resources named <prefix>-* that a failed teardown stranded. DESTRUCTIVE: wraps `roksbnkctl cleanup --auto`. It always lists what it found first, and the deleting step runs only when confirm_delete is set.",
     "estimated_time_minutes": 25
   },
   "deployment_pack": {
@@ -24,19 +24,22 @@
   },
   "dependencies": {
     "required": [
-      "roksbnkctl-orphan-scan"
+      {
+        "module": "roksbnkctl-orphan-scan",
+        "reason": "the scan lists what is there first; reaping without having looked is how the wrong prefix gets swept"
+      }
     ],
     "optional": []
   },
   "inputs": {
     "required": [
       {
-        "name": "name_prefixes",
+        "name": "prefix",
         "type": "string",
         "source": "user",
-        "label": "Name prefixes to consider (comma-separated)",
-        "description": "Re-checked against every name before it is touched, deliberately duplicating the scan's allowlist. The inventory arrives through Forge's module-output wiring, and a deleter should not take its target list entirely on trust from the layer that hands it over. Anything outside this list is refused and the run reports failure.",
-        "example": "f5e2e,f5demo",
+        "label": "Resource prefix to sweep",
+        "description": "roksbnkctl's cleanup sweeps for resources named <prefix>-* and deletes them in dependency order. This prefix IS the safety boundary: it is the only thing separating your leftovers from the rest of the account, which is shared \u2014 it holds ROKS clusters across nine regions belonging to other teams, plus VPCs named ecosystems-*, tf-*, pqt-*, garuda-* and tc-harness-*. Use the prefix this catalog's blueprints deploy under.",
+        "example": "f5e2e",
         "order": 1
       },
       {
@@ -44,16 +47,15 @@
         "type": "string",
         "source": "user",
         "label": "IBM Cloud region",
-        "description": "Region the orphans are in. Inherits from the credential template. Must match the region the scan ran against.",
+        "description": "Region to sweep. Inherits from the credential template. roksbnkctl also sweeps the client region recorded in the workspace.",
         "order": 2
       },
       {
-        "name": "confirm",
+        "name": "resource_group",
         "type": "string",
         "source": "user",
-        "label": "Type DELETE to confirm",
-        "description": "Must be exactly DELETE. Anything else — including blank — and the module exits 0 having deleted nothing. The guard is checked INSIDE the module rather than left to enabled:false, because bnk-forge#120 is the bug where Forge dispatched a module that was explicitly disabled, and neither cancel nor deleting the project stopped the container. A cluster-deleting module must not stake safety on the orchestration layer's opinion about whether to call it.",
-        "example": "DELETE",
+        "label": "Resource group",
+        "description": "IBM Cloud resource group. Inherits from the credential template.",
         "order": 3
       }
     ],
@@ -65,38 +67,17 @@
         "sensitive": true,
         "default": "",
         "label": "IBM Cloud API key",
-        "description": "Filled from the project's credential template. Needs delete rights on clusters, VPCs, subnets, public gateways and Transit Gateways.",
+        "description": "Filled from the project's credential template at creation.",
+        "order": 10
+      },
+      {
+        "name": "confirm_delete",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Set to true to actually delete",
+        "description": "Blank (the default) runs the listing step ONLY and deletes nothing, so the module is safe to deploy and inspect. Any value other than blank/false/0/no/none enables the delete. Note the exact word is NOT checked \u2014 Forge evaluates a step's `when` as truthiness, not equality \u2014 so treat this as an on/off switch, not a passphrase. The real boundary is the prefix above.",
         "order": 4
-      },
-      {
-        "name": "orphan_cluster_names",
-        "type": "string",
-        "source": "module",
-        "default": "",
-        "from_module": "roksbnkctl-orphan-scan",
-        "from_output": "orphan_cluster_names",
-        "label": "Clusters to delete",
-        "description": "Wired from the scan. Set by hand only if you are reaping a list you produced yourself and have checked."
-      },
-      {
-        "name": "orphan_vpc_ids",
-        "type": "string",
-        "source": "module",
-        "default": "",
-        "from_module": "roksbnkctl-orphan-scan",
-        "from_output": "orphan_vpc_ids",
-        "label": "VPCs to delete",
-        "description": "Wired from the scan. Their subnets and public gateways go first, then the VPC."
-      },
-      {
-        "name": "orphan_gateway_ids",
-        "type": "string",
-        "source": "module",
-        "default": "",
-        "from_module": "roksbnkctl-orphan-scan",
-        "from_output": "orphan_gateway_ids",
-        "label": "Transit Gateways to delete",
-        "description": "Wired from the scan. Connections are removed first."
       }
     ]
   },

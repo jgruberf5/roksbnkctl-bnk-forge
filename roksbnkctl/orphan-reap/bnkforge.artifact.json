@@ -3,7 +3,7 @@
   "name": "roksbnkctl-orphan-reap",
   "version": "5.7.0",
   "kind": "container_image",
-  "description": "Delete the orphans reported by roksbnkctl-orphan-scan. Destructive, and does nothing unless explicitly confirmed.",
+  "description": "Delete the IBM Cloud resources named <prefix>-* that a failed teardown stranded. Wraps 'roksbnkctl cleanup --auto'. Always lists first, and the destructive step runs only when confirm_delete is set.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
@@ -19,7 +19,8 @@
   "state": {
     "mount_path": "/work",
     "home_env": {
-      "HOME": "/home/runner"
+      "HOME": "/home/runner",
+      "ROKSBNKCTL_HOME": "/work/.roksbnkctl"
     },
     "scope": "deployment"
   },
@@ -33,21 +34,54 @@
   "steps": {
     "apply": [
       {
-        "name": "orphan-reap",
+        "name": "init",
         "env": {
           "HOME": "/home/runner",
           "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
-          "ORPHAN_NAME_PREFIXES": "{{inputs.name_prefixes}}",
-          "ORPHAN_REGION": "{{inputs.region}}",
-          "ORPHAN_CONFIRM": "{{inputs.confirm}}",
-          "ORPHAN_CLUSTER_NAMES": "{{inputs.orphan_cluster_names}}",
-          "ORPHAN_VPC_IDS": "{{inputs.orphan_vpc_ids}}",
-          "ORPHAN_GATEWAY_IDS": "{{inputs.orphan_gateway_ids}}"
+          "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
+          "ROKSBNKCTL_REGION": "{{inputs.region}}",
+          "ROKSBNKCTL_RESOURCE_GROUP": "{{inputs.resource_group}}",
+          "ROKSBNKCTL_CLUSTER_CREATE": "false",
+          "ROKSBNKCTL_CLUSTER_NAME": "none"
         },
         "args": [
-          "bash",
-          "-c",
-          "#!/usr/bin/env bash\n# Delete the orphans that orphan-scan found. DESTRUCTIVE.\n#\n# It acts only on an inventory produced by orphan-scan, and re-checks every name\n# against the prefix allowlist before touching it. That re-check is deliberate\n# duplication: the inventory arrives through Forge's module-output wiring, and a\n# deleter should not take its target list entirely on trust from the layer that\n# hands it over.\n#\n# WHY THE CONFIRMATION IS CHECKED HERE AND NOT LEFT TO `enabled: false`\n# The obvious design ships this module optional-and-disabled and lets the\n# operator enable it. bnk-forge#120 is exactly the bug where Forge dispatched a\n# module that was explicitly enabled:false, and neither cancel nor deleting the\n# project stopped the container \u2014 that is how cluster f5e2e5 came to exist with\n# nothing in Forge representing it. A cluster-deleting module must not stake\n# safety on the orchestration layer's opinion about whether to call it. So the\n# guard is in-band: a spurious dispatch finds ORPHAN_CONFIRM unset and exits 0\n# having done nothing.\nset -uo pipefail\n\nsay() { printf '%s\\n' \"$*\" >&2; }\n\nCONFIRM=\"${ORPHAN_CONFIRM:-}\"\nif [[ \"$CONFIRM\" != \"DELETE\" ]]; then\n  say \"== orphan-reap: ORPHAN_CONFIRM is not 'DELETE' (got ${CONFIRM:-<empty>}) \u2014 nothing will be deleted\"\n  say \"== this is the safe default. Set it to DELETE only when you mean it.\"\n  exit 0\nfi\n\n: \"${ORPHAN_NAME_PREFIXES:?set ORPHAN_NAME_PREFIXES \u2014 refusing to reap without an allowlist}\"\n: \"${IBMCLOUD_API_KEY:?set IBMCLOUD_API_KEY}\"\n: \"${ORPHAN_REGION:?set ORPHAN_REGION}\"\nAPI_VERSION=\"${ORPHAN_API_VERSION:-2026-01-01}\"\n\nPREFIX_RE=$(printf '%s' \"$ORPHAN_NAME_PREFIXES\" | tr ',' '\\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | paste -sd'|' -)\n[[ -n \"$PREFIX_RE\" ]] || { say \"ORPHAN_NAME_PREFIXES contained no usable prefix\"; exit 2; }\n\nCLUSTERS=\"${ORPHAN_CLUSTER_NAMES:-}\"\nVPCS=\"${ORPHAN_VPC_IDS:-}\"\nGWS=\"${ORPHAN_GATEWAY_IDS:-}\"\nif [[ -z \"$CLUSTERS$VPCS$GWS\" ]]; then\n  say \"== nothing in the inventory \u2014 orphan-scan found no orphans. Done.\"\n  exit 0\nfi\n\nTOKEN=$(curl -s --max-time 60 -X POST https://iam.cloud.ibm.com/identity/token \\\n  -H 'Content-Type: application/x-www-form-urlencoded' \\\n  --data-urlencode 'grant_type=urn:ibm:params:oauth:grant-type:apikey' \\\n  --data-urlencode \"apikey=$IBMCLOUD_API_KEY\" | jq -r '.access_token // empty')\n[[ -n \"$TOKEN\" ]] || { say \"could not get an IAM token\"; exit 1; }\niam() { curl -s --max-time 120 -H \"Authorization: Bearer $TOKEN\" \"$@\"; }\nVPCBASE=\"https://${ORPHAN_REGION}.iaas.cloud.ibm.com/v1\"\nQ=\"version=${API_VERSION}&generation=2\"\n\nFAILED=0\nguard() {  # guard <name> \u2014 refuse anything outside the allowlist\n  if [[ ! \"$1\" =~ ^(${PREFIX_RE}) ]]; then\n    say \"   REFUSING $1 \u2014 does not match the allowlist ($PREFIX_RE)\"\n    FAILED=1; return 1\n  fi\n  return 0\n}\n\n# Clusters first: a VPC cannot be deleted while a cluster still lives in it.\nIFS=',' read -ra CL <<< \"$CLUSTERS\"\nSUBMITTED=()\nfor name in \"${CL[@]}\"; do\n  [[ -z \"$name\" ]] && continue\n  guard \"$name\" || continue\n  say \"== deleting cluster $name\"\n  SUBMITTED+=(\"$name\")\n  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 -X DELETE \\\n    -H \"Authorization: Bearer $TOKEN\" \\\n    \"https://containers.cloud.ibm.com/global/v1/clusters/${name}?deleteResources=true\")\n  case \"$code\" in 200|201|202|204|404) say \"   accepted (HTTP $code)\";; *) say \"   FAILED (HTTP $code)\"; FAILED=1;; esac\ndone\n\n# A cluster delete is asynchronous. Deleting its VPC while the workers are still\n# going away fails on vpc_in_use, so wait for the clusters to actually disappear\n# before touching any network. Verified BY NAME: the cluster list endpoint has\n# reported count:0 over demonstrably running clusters in this account.\n# Wait only on clusters actually SUBMITTED for deletion. Waiting on the raw\n# inventory meant one refused name sent this into a 30-minute poll for a cluster\n# nothing had asked to delete.\nif (( ${#SUBMITTED[@]} )); then\n  say \"== waiting for ${#SUBMITTED[@]} cluster(s) to go\"\n  for _ in $(seq 1 90); do\n    left=0\n    for name in \"${SUBMITTED[@]}\"; do\n      [[ -z \"$name\" ]] && continue\n      c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 -H \"Authorization: Bearer $TOKEN\" \\\n          \"https://containers.cloud.ibm.com/global/v2/getCluster?cluster=${name}\")\n      [[ \"$c\" == \"200\" ]] && left=$((left+1))\n    done\n    (( left == 0 )) && { say \"   all gone\"; break; }\n    sleep 20\n  done\nfi\n\n# VPC contents before the VPC: subnets and public gateways hold it open.\nIFS=',' read -ra VP <<< \"$VPCS\"\nfor vid in \"${VP[@]}\"; do\n  [[ -z \"$vid\" ]] && continue\n  vname=$(iam \"$VPCBASE/vpcs/$vid?$Q\" | jq -r '.name // empty')\n  [[ -n \"$vname\" ]] || { say \"== vpc $vid already gone\"; continue; }\n  guard \"$vname\" || continue\n  say \"== emptying vpc $vname\"\n  for sid in $(iam \"$VPCBASE/subnets?$Q&limit=100\" | jq -r --arg v \"$vid\" '.subnets[]|select(.vpc.id==$v)|.id'); do\n    c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 -X DELETE -H \"Authorization: Bearer $TOKEN\" \"$VPCBASE/subnets/$sid?$Q\")\n    say \"   subnet $sid -> HTTP $c\"\n  done\n  for gid in $(iam \"$VPCBASE/public_gateways?$Q&limit=100\" | jq -r --arg v \"$vid\" '.public_gateways[]|select(.vpc.id==$v)|.id'); do\n    c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 -X DELETE -H \"Authorization: Bearer $TOKEN\" \"$VPCBASE/public_gateways/$gid?$Q\")\n    say \"   public gateway $gid -> HTTP $c\"\n  done\n  sleep 15\n  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 -X DELETE -H \"Authorization: Bearer $TOKEN\" \"$VPCBASE/vpcs/$vid?$Q\")\n  case \"$code\" in 200|202|204|404) say \"   vpc $vname deleted (HTTP $code)\";; *) say \"   vpc $vname FAILED (HTTP $code)\"; FAILED=1;; esac\ndone\n\n# Gateways last: their connections must go first, and a cluster VPC may still\n# have been attached until a moment ago.\nIFS=',' read -ra GW <<< \"$GWS\"\nfor gid in \"${GW[@]}\"; do\n  [[ -z \"$gid\" ]] && continue\n  gname=$(iam \"https://transit.cloud.ibm.com/v1/transit_gateways/$gid?version=$API_VERSION\" | jq -r '.name // empty')\n  [[ -n \"$gname\" ]] || { say \"== gateway $gid already gone\"; continue; }\n  guard \"$gname\" || continue\n  say \"== deleting gateway $gname\"\n  for cid in $(iam \"https://transit.cloud.ibm.com/v1/transit_gateways/$gid/connections?version=$API_VERSION\" | jq -r '.connections[]?.id'); do\n    c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 -X DELETE -H \"Authorization: Bearer $TOKEN\" \\\n        \"https://transit.cloud.ibm.com/v1/transit_gateways/$gid/connections/$cid?version=$API_VERSION\")\n    say \"   connection $cid -> HTTP $c\"\n  done\n  sleep 20\n  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 -X DELETE -H \"Authorization: Bearer $TOKEN\" \\\n      \"https://transit.cloud.ibm.com/v1/transit_gateways/$gid?version=$API_VERSION\")\n  case \"$code\" in 200|202|204|404) say \"   gateway $gname deleted (HTTP $code)\";; *) say \"   gateway $gname FAILED (HTTP $code)\"; FAILED=1;; esac\ndone\n\n(( FAILED )) && { say \"== orphan-reap finished WITH FAILURES \u2014 re-run the scan to see what is left\"; exit 1; }\nsay \"== orphan-reap complete\"\n"
+          "roksbnkctl",
+          "init",
+          "-w",
+          "bnk",
+          "--override-from-env",
+          "--non-interactive"
+        ],
+        "timeout_seconds": 300
+      },
+      {
+        "name": "list-before-delete",
+        "env": {
+          "HOME": "/home/runner",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "cleanup",
+          "--dry-run"
+        ],
+        "timeout_seconds": 1800
+      },
+      {
+        "name": "cleanup",
+        "when": "{{inputs.confirm_delete}}",
+        "env": {
+          "HOME": "/home/runner",
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "bnk",
+          "cleanup",
+          "--auto"
         ],
         "timeout_seconds": 3600
       }
@@ -59,9 +93,8 @@
           "HOME": "/home/runner"
         },
         "args": [
-          "bash",
-          "-c",
-          "echo 'orphan modules own no state - nothing to destroy'"
+          "roksbnkctl",
+          "version"
         ],
         "timeout_seconds": 60
       }
@@ -70,12 +103,12 @@
   "inputs": {
     "required": [
       {
-        "name": "name_prefixes",
+        "name": "prefix",
         "type": "string",
         "source": "user",
-        "label": "Name prefixes to consider (comma-separated)",
-        "description": "Re-checked against every name before it is touched, deliberately duplicating the scan's allowlist. The inventory arrives through Forge's module-output wiring, and a deleter should not take its target list entirely on trust from the layer that hands it over. Anything outside this list is refused and the run reports failure.",
-        "example": "f5e2e,f5demo",
+        "label": "Resource prefix to sweep",
+        "description": "roksbnkctl's cleanup sweeps for resources named <prefix>-* and deletes them in dependency order. This prefix IS the safety boundary: it is the only thing separating your leftovers from the rest of the account, which is shared \u2014 it holds ROKS clusters across nine regions belonging to other teams, plus VPCs named ecosystems-*, tf-*, pqt-*, garuda-* and tc-harness-*. Use the prefix this catalog's blueprints deploy under.",
+        "example": "f5e2e",
         "order": 1
       },
       {
@@ -83,16 +116,15 @@
         "type": "string",
         "source": "user",
         "label": "IBM Cloud region",
-        "description": "Region the orphans are in. Inherits from the credential template. Must match the region the scan ran against.",
+        "description": "Region to sweep. Inherits from the credential template. roksbnkctl also sweeps the client region recorded in the workspace.",
         "order": 2
       },
       {
-        "name": "confirm",
+        "name": "resource_group",
         "type": "string",
         "source": "user",
-        "label": "Type DELETE to confirm",
-        "description": "Must be exactly DELETE. Anything else \u2014 including blank \u2014 and the module exits 0 having deleted nothing. The guard is checked INSIDE the module rather than left to enabled:false, because bnk-forge#120 is the bug where Forge dispatched a module that was explicitly disabled, and neither cancel nor deleting the project stopped the container. A cluster-deleting module must not stake safety on the orchestration layer's opinion about whether to call it.",
-        "example": "DELETE",
+        "label": "Resource group",
+        "description": "IBM Cloud resource group. Inherits from the credential template.",
         "order": 3
       }
     ],
@@ -104,38 +136,17 @@
         "sensitive": true,
         "default": "",
         "label": "IBM Cloud API key",
-        "description": "Filled from the project's credential template. Needs delete rights on clusters, VPCs, subnets, public gateways and Transit Gateways.",
+        "description": "Filled from the project's credential template at creation.",
+        "order": 10
+      },
+      {
+        "name": "confirm_delete",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "Set to true to actually delete",
+        "description": "Blank (the default) runs the listing step ONLY and deletes nothing, so the module is safe to deploy and inspect. Any value other than blank/false/0/no/none enables the delete. Note the exact word is NOT checked \u2014 Forge evaluates a step's `when` as truthiness, not equality \u2014 so treat this as an on/off switch, not a passphrase. The real boundary is the prefix above.",
         "order": 4
-      },
-      {
-        "name": "orphan_cluster_names",
-        "type": "string",
-        "source": "module",
-        "default": "",
-        "from_module": "roksbnkctl-orphan-scan",
-        "from_output": "orphan_cluster_names",
-        "label": "Clusters to delete",
-        "description": "Wired from the scan. Set by hand only if you are reaping a list you produced yourself and have checked."
-      },
-      {
-        "name": "orphan_vpc_ids",
-        "type": "string",
-        "source": "module",
-        "default": "",
-        "from_module": "roksbnkctl-orphan-scan",
-        "from_output": "orphan_vpc_ids",
-        "label": "VPCs to delete",
-        "description": "Wired from the scan. Their subnets and public gateways go first, then the VPC."
-      },
-      {
-        "name": "orphan_gateway_ids",
-        "type": "string",
-        "source": "module",
-        "default": "",
-        "from_module": "roksbnkctl-orphan-scan",
-        "from_output": "orphan_gateway_ids",
-        "label": "Transit Gateways to delete",
-        "description": "Wired from the scan. Connections are removed first."
       }
     ]
   }
