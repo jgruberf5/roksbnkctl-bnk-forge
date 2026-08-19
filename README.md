@@ -69,7 +69,7 @@ See [Adopting an existing cluster](#adopting-an-existing-cluster),
 
 ## The runner image
 
-All eight container modules pin **roksbnkctl v1.47.0** (`sha256:0c857f00…`). The
+All eight container modules pin **roksbnkctl v1.49.0** (`sha256:bfd395b2…`). The
 image carries the whole toolchain (terraform, helm, kubectl, oc, the ibmcloud
 CLI), so a step needs nothing on the host.
 
@@ -77,6 +77,8 @@ The releases that matter for this repo, and why:
 
 | Release | What it gave us |
 |---|---|
+| **v1.49.0** | Appendix B of the book — replicating FAR into a registry you already run, ICR or JFrog Artifactory — which is what the **Mirror the BNK supply chain into JFrog Artifactory** blueprint here automates. Also working examples of every route kind BNK 2.3 supports, and a fix for `tools-ibmcloud` whose HOME was writable only by uid 1000. |
+| **v1.48.0** | The adopt guard read a populated state as empty (#100), and FLO's crd-installer can now recover when it loses the admission-policy race (#96). Both matter to the existing-cluster blueprints, neither needed a module change. |
 | **v1.47.0** | Five fixes, three of them found by running this repo's blueprints. `cleanup` refuses a foreign Transit Gateway connection **immediately** rather than after the settle wait, and waits out a connection still *arriving* instead of failing its DELETE with 409 (#87). The FLP VSI's resource names can finally carry the workspace prefix (#88), which is what lets a second standalone proxy exist in an account **and** what makes one visible to the orphan blueprints, since they sweep by `<prefix>-*`. "Nothing to destroy" is success rather than an error in every `down` path (#89), and the License CR is gated on quota admission instead of retried (#90). |
 | **v1.46.0** | `cleanup` waits for a Transit Gateway's connections to clear before deleting it, and REFUSES a gateway still attached to networks outside the sweep (#85) rather than silently detaching another tenant. That is what makes the orphan blueprints usable: before it, a gateway delete raced its own detach and failed 412, and the "re-run cleanup" advice could never clear a foreign attachment. |
 | **v1.45.0** | `create_vpc` can finally deploy a **cluster-less** proxy (#76). v1.44.0 exposed the override but `StandaloneFLPVSI` still demanded an existing VPC id, and the FLP-phase override forced `use_existing_cluster_vpc = true`, so the create path failed at plan. Both are fixed, which is what makes the FLP-VSI blueprint's create option real. |

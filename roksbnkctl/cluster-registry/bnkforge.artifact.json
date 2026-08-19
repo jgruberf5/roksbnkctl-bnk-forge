@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-registry",
-  "version": "5.9.0",
+  "version": "5.10.0",
   "kind": "container_image",
   "description": "Adopt an EXISTING IBM Cloud ROKS cluster into the workspace and register it with BNK Forge, so the cluster is visible and monitorable BEFORE anything is installed onto it. Runs first in the graph; the cluster itself is never created or destroyed.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:0c857f003baf8d4318baddd474b1b1ffd454ac3ba2ce179fe5807699fb6eef52"
+    "digest": "sha256:bfd395b24191d1ad445323b98f4447f2fb52a4662de2358af2c64fddd0c8ea6b"
   },
   "lifecycle": {
     "supports_apply": true,
