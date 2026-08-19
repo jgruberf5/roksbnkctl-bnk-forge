@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "artifactory-far-mirror-roksbnkctl",
-    "version": "5.10.0",
+    "version": "5.10.1",
     "name": "Mirror the BNK supply chain into JFrog Artifactory",
-    "description": "Replicate the F5 Artifact Repository into a JFrog Artifactory you already run, then verify every artifact against the BOM. Nothing is created in IBM Cloud and no cluster is needed — replication copies registry-to-registry, so the mirror can be seeded as a supply-chain step long before an air-gapped cluster exists. Follows Appendix B of the roksbnkctl book; requires roksbnkctl v1.49.0+."
+    "description": "Replicate the F5 Artifact Repository into a JFrog Artifactory you already run, then verify every artifact against the BOM. Nothing is created in IBM Cloud and no cluster is needed \u2014 replication copies registry-to-registry, so the mirror can be seeded as a supply-chain step long before an air-gapped cluster exists. Follows Appendix B of the roksbnkctl book; requires roksbnkctl v1.49.0+."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -31,11 +31,11 @@
   "prerequisites": [
     {
       "type": "credential_template",
-      "description": "An IBM Cloud credential template on the project. It is used only to reach the supply-chain COS bucket holding the FAR auth tarball and subscription JWT — no IBM Cloud infrastructure is created or touched."
+      "description": "An IBM Cloud credential template on the project. It is used only to reach the supply-chain COS bucket holding the FAR auth tarball and subscription JWT \u2014 no IBM Cloud infrastructure is created or touched."
     },
     {
       "type": "artifactory_repository",
-      "description": "A LOCAL Docker repository in Artifactory, created beforehand through its UI or REST API. It must be local: a remote repository is a read-through cache and cannot be pushed to. Artifactory OSS has no Docker repository type at all — Pro, Enterprise or Cloud is required."
+      "description": "A LOCAL Docker repository in Artifactory, created beforehand through its UI or REST API. It must be local: a remote repository is a read-through cache and cannot be pushed to. Artifactory OSS has no Docker repository type at all \u2014 Pro, Enterprise or Cloud is required."
     },
     {
       "type": "artifactory_credentials",
@@ -52,12 +52,12 @@
       "value": "roksbnkctl composes references as <host>/<repo prefix>/<image>, which is Artifactory's repository-path form. If your instance uses the subdomain method instead (bnk-mirror.artifactory.example.com/f5-tmm), put the full subdomain host in the host field and leave the repository prefix EMPTY. Getting this wrong surfaces as 404 / repository not found, which reads like the prefix is wrong rather than like the access method differs."
     },
     {
-      "label": "The token is the credential",
-      "value": "The token is sent as both the username and the password, which is what JFrog access and reference tokens expect. If your instance requires a distinct account name alongside the token, use the general 'Mirror F5 artifacts from FAR' blueprint instead — it exposes the registry username separately."
+      "label": "Username and token are both required",
+      "value": "JFrog needs the account the token was issued to as the username, and the token as the password. Sending the token as the username instead returns 401 \u2014 verified against a live JFrog Container Registry 7.161.16. The username is the token's `sub` claim: decode the JWT and take the name after /users/."
     },
     {
       "label": "Private CA",
-      "value": "Supply the CA only if Artifactory presents a certificate from a private CA. Record it from the file that issued the certificate, not by capturing it from the connection — a CA learned over the connection it is meant to authenticate proves nothing. When it is set, replicate never dials the registry to discover trust."
+      "value": "Supply the CA only if Artifactory presents a certificate from a private CA. Record it from the file that issued the certificate, not by capturing it from the connection \u2014 a CA learned over the connection it is meant to authenticate proves nothing. When it is set, replicate never dials the registry to discover trust."
     },
     {
       "label": "verify is the step that means anything",
@@ -87,12 +87,20 @@
         "order": 2
       },
       {
+        "name": "artifactory_username",
+        "type": "string",
+        "label": "Artifactory username",
+        "description": "The account the token was issued to. For a JFrog access token this is the token's `sub` claim \u2014 decode the JWT and take the name after /users/, e.g. \"jfac@\u2026/users/admin\" means admin. It is NOT optional and the token cannot stand in for it: JFrog rejects the token-as-username form with 401, verified against a live 7.161.16 instance. Anonymous push works only if your instance permits it, in which case both fields can be left blank.",
+        "example": "admin",
+        "order": 3
+      },
+      {
         "name": "artifactory_token",
         "type": "string",
         "label": "Artifactory access token",
-        "description": "An access token with Deploy/Cache and Read on the repository. Sent as both the username and the password. Stored base64 in the workspace config — obfuscation, not encryption — and passed to the step as an environment variable, never on the command line.",
+        "description": "An access token with Deploy/Cache and Read on the repository, sent as the password alongside the username above. Stored base64 in the workspace config \u2014 obfuscation, not encryption \u2014 and passed to the step as an environment variable, never on the command line.",
         "sensitive": true,
-        "order": 3
+        "order": 4
       },
       {
         "name": "region",
@@ -102,7 +110,7 @@
         "example": "us-east",
         "source": "credential_template",
         "source_field": "region",
-        "order": 4
+        "order": 5
       },
       {
         "name": "resource_group",
@@ -112,14 +120,14 @@
         "example": "default",
         "source": "credential_template",
         "source_field": "ibmcloud_resource_group",
-        "order": 5
+        "order": 6
       },
       {
         "name": "cos_bucket",
         "type": "string",
         "label": "Supply-chain COS bucket",
         "description": "Bucket holding the FAR auth tarball and subscription JWT. Account-suffixed buckets (bnk-artifacts-<account>) must be named explicitly.",
-        "order": 6
+        "order": 7
       }
     ],
     "optional": [
@@ -127,7 +135,7 @@
         "name": "artifactory_ca_b64",
         "type": "string",
         "label": "Artifactory root CA (base64 PEM)",
-        "description": "Base64 PEM of the CA that issued Artifactory's certificate. Needed ONLY when that certificate comes from a private CA — leave blank for a publicly trusted certificate. Already base64: it is stored verbatim. Setting it stops replicate from dialling the registry to discover trust. If a run fails with 'x509: certificate signed by unknown authority', this is what is missing — and on a load-balanced instance the CA that issued the certificate actually in use may not be the one issued to the origin.",
+        "description": "Base64 PEM of the CA that issued Artifactory's certificate. Needed ONLY when that certificate comes from a private CA \u2014 leave blank for a publicly trusted certificate. Already base64: it is stored verbatim. Setting it stops replicate from dialling the registry to discover trust. If a run fails with 'x509: certificate signed by unknown authority', this is what is missing \u2014 and on a load-balanced instance the CA that issued the certificate actually in use may not be the one issued to the origin.",
         "default": "",
         "sensitive": false,
         "order": 10
@@ -136,7 +144,7 @@
         "name": "artifactory_ca_sha256",
         "type": "string",
         "label": "Certificate SHA-256 pin",
-        "description": "Optional pin of the served chain, enforced during the TLS handshake. Accepts bare hex, sha256:…, colon-separated, or raw `openssl x509 -fingerprint -sha256` output.",
+        "description": "Optional pin of the served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output.",
         "default": "",
         "order": 11
       },
@@ -192,7 +200,7 @@
         "name": "delete_artifacts_on_destroy",
         "type": "string",
         "label": "Delete artifacts on destroy",
-        "description": "Set true to remove every replicated artifact from Artifactory when this deployment is destroyed. Blank (the default) leaves the mirror in place — the usual answer for a registry you already run and that outlives this deployment.",
+        "description": "Set true to remove every replicated artifact from Artifactory when this deployment is destroyed. Blank (the default) leaves the mirror in place \u2014 the usual answer for a registry you already run and that outlives this deployment.",
         "default": "",
         "order": 18
       },
@@ -223,7 +231,7 @@
         "registry_target": "generic",
         "registry_generic_host": "${artifactory_host}",
         "registry_repo_prefix": "${artifactory_repo_prefix}",
-        "registry_username": "${artifactory_token}",
+        "registry_username": "${artifactory_username}",
         "registry_password": "${artifactory_token}",
         "registry_ca_b64": "${artifactory_ca_b64}",
         "registry_ca_sha256": "${artifactory_ca_sha256}",
