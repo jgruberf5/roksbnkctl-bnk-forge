@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-flp",
     "path": "roksbnkctl/flp",
-    "version": "5.8.0",
+    "version": "5.9.0",
     "category": "bnk",
     "description": "Deploy the F5 License Proxy as a standalone IBM Cloud VSI appliance (no cluster) with roksbnkctl's flp phase. Procedural container_image artifact run by the container engine.",
     "estimated_time_minutes": 3
@@ -53,7 +53,7 @@
         "type": "string",
         "source": "user",
         "label": "Existing VPC (id) to deploy into",
-        "description": "Existing VPC ID to deploy the FLP VSI into — the adopt path, and what a cluster on a Transit Gateway needs. Leave blank ONLY if 'Build the proxy its own VPC' is true; roksbnkctl refuses both together, and refuses neither.",
+        "description": "Existing VPC ID to deploy the FLP VSI into \u2014 the adopt path, and what a cluster on a Transit Gateway needs. Leave blank ONLY if 'Build the proxy its own VPC' is true; roksbnkctl refuses both together, and refuses neither.",
         "order": 19,
         "default": ""
       },
@@ -62,7 +62,7 @@
         "type": "string",
         "source": "user",
         "label": "Build the proxy its own VPC",
-        "description": "true builds the proxy a VPC, address prefix and public gateway of its own instead of placing it in one that already exists (roksbnkctl v1.45.0+). Mutually exclusive with the existing-VPC id — roksbnkctl refuses both, because the new VPC would silently win and the proxy would come up with no route to the clusters licensing against it. NOTE: a VPC created this way has no Transit Gateway attachment, and roksbnkctl has no way to add one, so only clusters IN that VPC can reach the proxy. To serve clusters over a gateway, adopt a VPC already on it.",
+        "description": "true builds the proxy a VPC, address prefix and public gateway of its own instead of placing it in one that already exists (roksbnkctl v1.45.0+). Mutually exclusive with the existing-VPC id \u2014 roksbnkctl refuses both, because the new VPC would silently win and the proxy would come up with no route to the clusters licensing against it. NOTE: a VPC created this way has no Transit Gateway attachment, and roksbnkctl has no way to add one, so only clusters IN that VPC can reach the proxy. To serve clusters over a gateway, adopt a VPC already on it.",
         "order": 20,
         "default": ""
       },
@@ -80,7 +80,7 @@
         "type": "string",
         "source": "user",
         "label": "Address prefix for the created VPC",
-        "description": "Address prefix for the VPC built when the option above is true, e.g. 10.250.0.0/24. It must not overlap anything the consuming clusters can already route to — a Transit Gateway silently blackholes one of two overlapping VPCs. Ignored on the adopt path.",
+        "description": "Address prefix for the VPC built when the option above is true, e.g. 10.250.0.0/24. It must not overlap anything the consuming clusters can already route to \u2014 a Transit Gateway silently blackholes one of two overlapping VPCs. Ignored on the adopt path.",
         "order": 22,
         "default": ""
       },
@@ -200,6 +200,15 @@
         "type": "string",
         "source": "user",
         "description": "Kubernetes namespace the F5 License Proxy client resources go into. Blank keeps the default the subscription JWT implies."
+      },
+      {
+        "name": "flp_vsi_name_prefix",
+        "type": "string",
+        "source": "user",
+        "label": "Prefix for the appliance's resource names",
+        "description": "Prefix for the appliance's IBM Cloud resource names (roksbnkctl v1.47.0+). Blank keeps the legacy unprefixed names \u2014 flp-vsi, flp-vsi-subnet, flp-vsi-sg and so on \u2014 which is the default so that upgrading does not rename and therefore REPLACE a running proxy. Set it to run more than one standalone proxy in an account (the literal names collide otherwise), and to make the appliance visible to the orphan blueprints, which sweep by <prefix>-* and cannot see an unprefixed flp-vsi.",
+        "order": 23,
+        "default": ""
       }
     ]
   },

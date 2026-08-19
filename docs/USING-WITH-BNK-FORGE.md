@@ -10,7 +10,7 @@ docker-compose install already ships the `docker-socket-proxy` the Docker runner
 uses, and `ghcr.io` is in the default registry-host allowlist — so the public
 runner image needs **no** registry credential.
 
-All modules pin **roksbnkctl v1.46.0** (`sha256:7f814a42…`). The four use cases
+All modules pin **roksbnkctl v1.47.0** (`sha256:0c857f00…`). The four use cases
 were verified end to end against v1.42.0 and the create path re-verified on
 v1.43.0; see [The runner image](../README.md#the-runner-image) for what each
 release contributed, and [`scripts/e2e/RUN-LOG.md`](../scripts/e2e/RUN-LOG.md)
@@ -65,7 +65,7 @@ Adding the second by hand just makes a duplicate.
 > **Deploy** disabled — click **Import** to enable it. On 3.1.6 the blueprints are
 > deployable straight after the sync.
 
-The sync ingests **9 modules** and **10 blueprints** at version **5.8.0** (the `harbor` module below comes from Forge itself, not this repo):
+The sync ingests **9 modules** and **10 blueprints** at version **5.9.0** (the `harbor` module below comes from Forge itself, not this repo):
 
 | Module | What it does | Destroy |
 |---|---|---|

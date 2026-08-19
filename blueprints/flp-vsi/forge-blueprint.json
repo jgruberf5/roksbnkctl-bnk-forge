@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-flp-vsi-roksbnkctl",
-    "version": "5.8.0",
+    "version": "5.9.0",
     "name": "Deploying F5 License Proxy as an IBM Cloud VSI",
     "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC \u2014 no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
   },
@@ -98,7 +98,7 @@
         "name": "flp_vsi_vpc",
         "type": "string",
         "label": "Existing VPC (ID)",
-        "description": "ID of an existing VPC to deploy the appliance into — the adopt path. This is what a cluster on a Transit Gateway needs: attach the proxy to a VPC already on that gateway. Leave blank ONLY if you set 'Build the proxy its own VPC' below; roksbnkctl refuses both together, and refuses neither.",
+        "description": "ID of an existing VPC to deploy the appliance into \u2014 the adopt path. This is what a cluster on a Transit Gateway needs: attach the proxy to a VPC already on that gateway. Leave blank ONLY if you set 'Build the proxy its own VPC' below; roksbnkctl refuses both together, and refuses neither.",
         "example": "r006-1a2b3c4d-5e6f-7890-abcd-ef1234567890",
         "default": "",
         "order": 4
@@ -107,7 +107,7 @@
         "name": "flp_vsi_create_vpc",
         "type": "string",
         "label": "Build the proxy its own VPC",
-        "description": "true builds the proxy a VPC, address prefix and public gateway of its own rather than adopting one (roksbnkctl v1.45.0+). This is what lets the proxy be the FIRST thing deployed in an air-gapped estate, with no registry or cluster to borrow a network from. Mutually exclusive with the VPC id above. NOTE: roksbnkctl cannot attach a VPC it creates here to a Transit Gateway, so only clusters inside that VPC can reach the proxy — to serve clusters over a gateway, adopt a VPC already on it.",
+        "description": "true builds the proxy a VPC, address prefix and public gateway of its own rather than adopting one (roksbnkctl v1.45.0+). This is what lets the proxy be the FIRST thing deployed in an air-gapped estate, with no registry or cluster to borrow a network from. Mutually exclusive with the VPC id above. NOTE: roksbnkctl cannot attach a VPC it creates here to a Transit Gateway, so only clusters inside that VPC can reach the proxy \u2014 to serve clusters over a gateway, adopt a VPC already on it.",
         "default": "",
         "order": 16
       },
@@ -123,7 +123,7 @@
         "name": "flp_vsi_subnet_cidr",
         "type": "string",
         "label": "Address prefix for the created VPC",
-        "description": "Address prefix for the VPC built when the option above is true. It must not overlap anything the consuming clusters can already route to — a Transit Gateway silently blackholes one of two overlapping VPCs.",
+        "description": "Address prefix for the VPC built when the option above is true. It must not overlap anything the consuming clusters can already route to \u2014 a Transit Gateway silently blackholes one of two overlapping VPCs.",
         "example": "10.250.0.0/24",
         "default": "",
         "order": 18
@@ -274,6 +274,15 @@
         "label": "IBM Cloud API key",
         "description": "Resolved from the project's credential template when the project is created. Not entered by hand.",
         "order": 99
+      },
+      {
+        "name": "flp_vsi_name_prefix",
+        "type": "string",
+        "label": "Prefix for the appliance's resource names",
+        "description": "Blank keeps the legacy unprefixed names (flp-vsi, flp-vsi-subnet, \u2026), which is the default so upgrading roksbnkctl does not rename \u2014 and therefore REPLACE \u2014 a running proxy. Set it if you want a second standalone proxy in this account (the literal names collide otherwise), or so the 'Find/Remove orphaned IBM Cloud resources' blueprints can see this appliance: they sweep by <prefix>-* and an unprefixed flp-vsi is invisible to them. Requires roksbnkctl v1.47.0+.",
+        "example": "acme-flp",
+        "default": "",
+        "order": 23
       }
     ]
   },
@@ -281,7 +290,7 @@
     {
       "id": "roksbnkctl-flp",
       "module": "roksbnkctl/flp",
-      "version": "5.8.0",
+      "version": "5.9.0",
       "name": "roksbnkctl FLP (VSI)",
       "description": "roksbnkctl flp up in vsi mode \u2014 a standalone F5 License Proxy appliance in an existing VPC.",
       "optional": false,
@@ -312,7 +321,8 @@
         "far_auth_file": "${far_auth_file}",
         "subscription_jwt_file": "${subscription_jwt_file}",
         "flp_namespace": "${flp_namespace}",
-        "ibmcloud_api_key": "${ibmcloud_api_key}"
+        "ibmcloud_api_key": "${ibmcloud_api_key}",
+        "flp_vsi_name_prefix": "${flp_vsi_name_prefix}"
       }
     }
   ],

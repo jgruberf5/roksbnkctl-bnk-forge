@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-create",
-  "version": "5.8.0",
+  "version": "5.9.0",
   "kind": "container_image",
   "description": "Create a ROKS cluster, its VPC and its Transit Gateway with roksbnkctl, then register it with BNK Forge.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:7f814a428a1a94b5b5505c89e398514e23990a0d39fb6c549ab983c1279e8123"
+    "digest": "sha256:0c857f003baf8d4318baddd474b1b1ffd454ac3ba2ce179fe5807699fb6eef52"
   },
   "lifecycle": {
     "supports_apply": true,

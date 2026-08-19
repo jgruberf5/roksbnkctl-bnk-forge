@@ -369,15 +369,31 @@ k=sys.argv[1:]
 print(json.dumps({"prefix":k[0]+"-flp","region":k[1],"resource_group":k[2],"flp_vsi_vpc":k[3],
  "flp_vsi_zone":k[4],"flp_vsi_ssh_key":k[5],"flp_vsi_floating_ip":True,
  "cos_instance":k[6],"cos_bucket":k[7],"cos_region":k[8],
- "far_auth_file":k[9],"subscription_jwt_file":k[10]}))' \
+ "far_auth_file":k[9],"subscription_jwt_file":k[10],
+ "flp_vsi_name_prefix":k[11]}))' \
   "$PREFIX" "$REGION" "$RESOURCE_GROUP" "$HARBOR_VPC" "$ZONE" "$SSH_KEY_NAME" \
-  "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE")
+  "$COS_INSTANCE" "$COS_BUCKET" "$COS_REGION" "$FAR_AUTH_FILE" "$SUBSCRIPTION_JWT_FILE" \
+  "${FLP_VSI_NAME_PREFIX:-}")
 deploy flp "$FLP_REL" "$PROJECT_FLP" "$FLP_VARS"
 FLP_PID="$DEPLOY_PID"
 
-# roksbnkctl names the appliance "flp-vsi" unprefixed (terraform/modules/flp_vsi/
-# main.tf), so the lookup is by that literal name — and only one can exist per region.
-resolve FLP_IP "FLP private IP" vsi_field "flp-vsi" private
+# The appliance's VSI name depends on whether a name prefix was set. roksbnkctl
+# v1.47.0 (#88) made the names prefixable — "<prefix>-flp-vsi" — but left the
+# default EMPTY on purpose, because renaming a resource replaces it, and an
+# upgrade must not destroy a running proxy. So the unprefixed literal is still
+# the default and still what this demo gets.
+#
+# Look for the prefixed name first anyway: the moment anyone sets
+# FLP_VSI_NAME_PREFIX (to run a second proxy, or to make this one visible to the
+# orphan-cleanup blueprints, which sweep by <prefix>-* and cannot see a bare
+# flp-vsi), the old lookup would fail with "no VSI named flp-vsi" — which reads
+# like the deploy failed rather than like the demo looked for the wrong name.
+FLP_VSI_NAME="flp-vsi"
+if [[ -n "${FLP_VSI_NAME_PREFIX:-}" ]]; then
+  FLP_VSI_NAME="${FLP_VSI_NAME_PREFIX}-flp-vsi"
+  say "FLP resource names are prefixed: looking for $FLP_VSI_NAME"
+fi
+resolve FLP_IP "FLP private IP" vsi_field "$FLP_VSI_NAME" private
 echo "$FLP_IP" > "$STATE/flp.ip"
 # The proxy's root CA lives on the appliance (terraform writes it to /opt/flp/ca.crt
 # and also publishes it as the flp_root_ca output). The FLP's :22 is on the private
