@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-bnk-install",
-  "version": "5.10.0",
+  "version": "5.11.0",
   "kind": "container_image",
-  "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy — never the cluster.",
+  "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:bfd395b24191d1ad445323b98f4447f2fb52a4662de2358af2c64fddd0c8ea6b"
+    "digest": "sha256:76301cb41dab9923bb2e1620362d2b7e71350d35efb2fcfee992148a28ad8f2d"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -83,7 +83,8 @@
           "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}",
           "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
           "ROKSBNKCTL_CLUSTER_VPC_ID": "{{inputs.cluster_vpc_id}}",
-          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
+          "ROKSBNKCTL_BNKFORGE_CA_B64": "{{inputs.bnkforge_ca_b64}}"
         },
         "args": [
           "roksbnkctl",
@@ -97,7 +98,7 @@
       },
       {
         "name": "registry-record",
-        "description": "Record the mirror this workspace did not populate, so `bnk up` will render against it. The record is workspace-scoped and the deployment that filled the registry cannot hand it over, so the install has to write its own. `adopt` derives it from the configured target and sanity-checks the mirror; it needs no FAR access, which is the point — an air-gapped install should not have to reach the source it mirrored to avoid. Requires roksbnkctl v1.36.0. Skipped entirely off the mirror path.",
+        "description": "Record the mirror this workspace did not populate, so `bnk up` will render against it. The record is workspace-scoped and the deployment that filled the registry cannot hand it over, so the install has to write its own. `adopt` derives it from the configured target and sanity-checks the mirror; it needs no FAR access, which is the point \u2014 an air-gapped install should not have to reach the source it mirrored to avoid. Requires roksbnkctl v1.36.0. Skipped entirely off the mirror path.",
         "when": "{{inputs.registry_target}}",
         "env": {
           "ROKSBNKCTL_PREFIX": "{{inputs.prefix}}",
@@ -287,7 +288,6 @@
         "name": "bigip_password",
         "type": "string",
         "source": "user",
-        "sensitive": true,
         "description": "BIG-IP password for CIS (optional)."
       },
       {
@@ -330,7 +330,7 @@
         "name": "registry_generic_host",
         "type": "string",
         "source": "user",
-        "description": "The mirror's host — for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
+        "description": "The mirror's host \u2014 for an air-gapped cluster this is its PRIVATE IP or DNS name, reached over the Transit Gateway."
       },
       {
         "name": "registry_repo_prefix",
@@ -348,7 +348,6 @@
         "name": "registry_password",
         "type": "string",
         "source": "user",
-        "sensitive": true,
         "description": "Password / access token for that user. Stored base64 in the workspace config, never logged."
       },
       {
@@ -361,14 +360,13 @@
         "name": "flp_external_url",
         "type": "string",
         "source": "user",
-        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own — `flp output flp_external_endpoint` on the workspace that does."
+        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own \u2014 `flp output flp_external_endpoint` on the workspace that does."
       },
       {
         "name": "flp_root_ca_b64",
         "type": "string",
         "source": "user",
-        "sensitive": true,
-        "description": "That proxy's base64 root CA, which the cluster's CWC must trust — `flp output flp_root_ca`. Already base64: it is stored verbatim."
+        "description": "That proxy's base64 root CA, which the cluster's CWC must trust \u2014 `flp output flp_root_ca`. Already base64: it is stored verbatim."
       },
       {
         "name": "zone1_ext_vlan_cidr",
@@ -482,13 +480,13 @@
         "name": "registry_ca_b64",
         "type": "string",
         "source": "user",
-        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry."
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) \u2014 this is the CA you generated for the registry."
       },
       {
         "name": "registry_ca_sha256",
         "type": "string",
         "source": "user",
-        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:…, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
+        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output."
       },
       {
         "name": "bnkforge_url",
@@ -506,8 +504,7 @@
         "name": "bnkforge_password",
         "type": "string",
         "source": "user",
-        "sensitive": true,
-        "description": "Password for that login. Passed to the step as an environment variable only — never on the command line."
+        "description": "Password for that login. Passed to the step as an environment variable only \u2014 never on the command line."
       },
       {
         "name": "bnkforge_project",
@@ -520,13 +517,7 @@
         "type": "string",
         "source": "user",
         "default": "false",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out."
-      },
-      {
-        "name": "flp_namespace",
-        "type": "string",
-        "source": "user",
-        "description": "Kubernetes namespace the F5 License Proxy client resources go into. Blank keeps the default the subscription JWT implies."
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out."
       },
       {
         "name": "cluster_vpc_id",
@@ -553,6 +544,21 @@
         "description": "How long bnk up waits for every node to report its preflight verdict (roksbnkctl v1.42.0+, ROKSBNKCTL_REACHABILITY_TIMEOUT_SECONDS). Blank = the tool default of 480s. roksbnkctl clamps this above the retry budget, so it can never be smaller than the time it has been told to keep retrying.",
         "order": 96,
         "default": ""
+      },
+      {
+        "name": "flp_namespace",
+        "type": "string",
+        "source": "user",
+        "description": "Kubernetes namespace the F5 License Proxy client resources go into. Blank keeps the default the subscription JWT implies."
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "BNK Forge CA (base64 PEM)",
+        "description": "Base64 PEM of the CA that issued the Forge server's certificate, pinning the registration call (roksbnkctl v1.50.0+). Supply this INSTEAD of enabling 'Skip Forge TLS verification': v1.50.0 warns on every unverified Forge request, and a pin is the answer to that warning rather than a way to silence it. Leave blank when the Forge certificate is publicly trusted.",
+        "order": 97
       }
     ]
   },

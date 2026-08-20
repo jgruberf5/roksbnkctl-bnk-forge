@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-bnk-roksbnkctl",
-    "version": "5.10.0",
+    "version": "5.11.0",
     "name": "BNK on a NEW IBM ROKS cluster (created end to end)",
-    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct — no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
+    "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct \u2014 no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -40,11 +40,11 @@
   "input_summary": [
     {
       "label": "What it changes",
-      "value": "Only the BNK layer — cert-manager, FLO, the CNEInstance and the License CR. The cluster, its VPC and its worker pool are left exactly as found."
+      "value": "Only the BNK layer \u2014 cert-manager, FLO, the CNEInstance and the License CR. The cluster, its VPC and its worker pool are left exactly as found."
     },
     {
       "label": "Teardown",
-      "value": "Destroy runs `bnk down --auto` then `tgw disconnect --auto`. It never runs `cluster down`, so an adopted cluster survives. A Transit Gateway attachment that pre-existed is left alone — roksbnkctl records it without managing it."
+      "value": "Destroy runs `bnk down --auto` then `tgw disconnect --auto`. It never runs `cluster down`, so an adopted cluster survives. A Transit Gateway attachment that pre-existed is left alone \u2014 roksbnkctl records it without managing it."
     }
   ],
   "inputs": {
@@ -53,7 +53,7 @@
         "name": "prefix",
         "type": "string",
         "label": "Resource prefix (and cluster name)",
-        "description": "Prefix for every IBM resource created here. The ROKS cluster is named exactly this — roksbnkctl names a new cluster after the prefix.",
+        "description": "Prefix for every IBM resource created here. The ROKS cluster is named exactly this \u2014 roksbnkctl names a new cluster after the prefix.",
         "example": "acme-eu",
         "order": 1
       },
@@ -377,7 +377,7 @@
         "name": "bnkforge_insecure",
         "type": "string",
         "label": "Skip Forge TLS verification",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out.",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
         "default": "false",
         "order": 38
       },
@@ -396,7 +396,7 @@
         "type": "string",
         "source": "user",
         "label": "Cluster VPC address block",
-        "description": "Address block for the new cluster's VPC (/18 or larger). Optional when this cluster creates its own Transit Gateway — nothing to overlap. REQUIRED when you adopt an existing gateway: IBM Cloud's default gives every VPC in a region the same prefixes, so a second VPC on that gateway would collide and the gateway would blackhole one of them. Pick a block no other attached VPC uses.",
+        "description": "Address block for the new cluster's VPC (/18 or larger). Optional when this cluster creates its own Transit Gateway \u2014 nothing to overlap. REQUIRED when you adopt an existing gateway: IBM Cloud's default gives every VPC in a region the same prefixes, so a second VPC on that gateway would collide and the gateway would blackhole one of them. Pick a block no other attached VPC uses.",
         "order": 9,
         "default": ""
       },
@@ -405,7 +405,7 @@
         "type": "string",
         "source": "user",
         "label": "Existing Transit Gateway (name or id)",
-        "description": "Adopt a Transit Gateway you already have instead of creating one. Blank creates a gateway for this cluster. Adopt one when the cluster must reach resources already on it, or to stay inside the account's gateway quota. When you adopt, set the cluster VPC address block too — every VPC on a gateway needs a distinct block.",
+        "description": "Adopt a Transit Gateway you already have instead of creating one. Blank creates a gateway for this cluster. Adopt one when the cluster must reach resources already on it, or to stay inside the account's gateway quota. When you adopt, set the cluster VPC address block too \u2014 every VPC on a gateway needs a distinct block.",
         "order": 5,
         "default": ""
       },
@@ -423,9 +423,25 @@
         "type": "string",
         "source": "user",
         "label": "Existing cluster subnets (ids, comma-separated)",
-        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' — roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
+        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' \u2014 roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
         "order": 93,
         "default": ""
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "label": "BNK Forge CA (base64 PEM)",
+        "description": "Base64 PEM of the CA that issued the Forge server's certificate, pinning the registration call. Supply this INSTEAD of 'Skip Forge TLS verification': roksbnkctl v1.50.0 warns on every unverified Forge request, and a pin answers that warning rather than silencing it. Blank when the certificate is publicly trusted.",
+        "default": "",
+        "order": 97
+      },
+      {
+        "name": "cluster_http_allowed_cidrs",
+        "type": "string",
+        "label": "CIDRs allowed to reach the cluster",
+        "description": "Comma-separated CIDRs permitted inbound to the cluster's security group. Blank keeps the tool default, which before roksbnkctl v1.50.0 was hard-coded 0.0.0.0/0 \u2014 set your operator and client ranges rather than leaving a cluster open to the Internet.",
+        "default": "",
+        "order": 98
       }
     ]
   },
@@ -433,9 +449,9 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.10.0",
+      "version": "5.11.0",
       "name": "roksbnkctl Cluster Create",
-      "description": "Create the VPC, ROKS cluster and Transit Gateway, then register the cluster with BNK Forge — registration runs first, so it is visible and monitorable while BNK installs.",
+      "description": "Create the VPC, ROKS cluster and Transit Gateway, then register the cluster with BNK Forge \u2014 registration runs first, so it is visible and monitorable while BNK installs.",
       "optional": false,
       "depends_on": [],
       "inputs": {
@@ -454,13 +470,15 @@
         "ibmcloud_api_key": "${ibmcloud_api_key}",
         "cluster_vpc_cidr": "${cluster_vpc_cidr}",
         "cluster_vpc_id": "${cluster_vpc_id}",
-        "existing_subnet_ids": "${existing_subnet_ids}"
+        "existing_subnet_ids": "${existing_subnet_ids}",
+        "bnkforge_ca_b64": "${bnkforge_ca_b64}",
+        "cluster_http_allowed_cidrs": "${cluster_http_allowed_cidrs}"
       }
     },
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.10.0",
+      "version": "5.11.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,
@@ -507,7 +525,8 @@
         "bnkforge_project": "${bnkforge_project}",
         "bnkforge_insecure": "${bnkforge_insecure}",
         "cluster_vpc_id": "",
-        "ibmcloud_api_key": "${ibmcloud_api_key}"
+        "ibmcloud_api_key": "${ibmcloud_api_key}",
+        "bnkforge_ca_b64": "${bnkforge_ca_b64}"
       }
     }
   ],

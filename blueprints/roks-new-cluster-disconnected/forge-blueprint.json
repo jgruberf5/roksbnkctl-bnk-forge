@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-disconnected-bnk-roksbnkctl",
-    "version": "5.10.0",
+    "version": "5.11.0",
     "name": "BNK on a NEW disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway and NO worker Internet egress, then install BIG-IP Next for Kubernetes onto it from a private registry you have already mirrored, licensed through an F5 License Proxy. Build the mirror and the proxy first with the Harbor and FLP blueprints. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -37,17 +37,17 @@
     },
     {
       "type": "f5_license_proxy",
-      "description": "A running F5 License Proxy the cluster can reach privately — deploy one with the 'Deploying F5 License Proxy as an IBM Cloud VSI' blueprint, then paste its external_endpoint and root_ca_b64 here."
+      "description": "A running F5 License Proxy the cluster can reach privately \u2014 deploy one with the 'Deploying F5 License Proxy as an IBM Cloud VSI' blueprint, then paste its external_endpoint and root_ca_b64 here."
     },
     {
       "type": "cos_bucket",
-      "description": "An orchestration COS bucket holding the FAR auth tarball and the subscription JWT — the only artifacts not served from the mirror."
+      "description": "An orchestration COS bucket holding the FAR auth tarball and the subscription JWT \u2014 the only artifacts not served from the mirror."
     }
   ],
   "input_summary": [
     {
       "label": "Two phases",
-      "value": "Mirror (init -> registry replicate --target generic -> registry verify) then Install (cluster register -> bnk up -> bnk status), sharing one deployment workspace — the same split, and the same shared state, as the demo's two Argo Workflows over one PVC."
+      "value": "Mirror (init -> registry replicate --target generic -> registry verify) then Install (cluster register -> bnk up -> bnk status), sharing one deployment workspace \u2014 the same split, and the same shared state, as the demo's two Argo Workflows over one PVC."
     },
     {
       "label": "Registry trust",
@@ -55,7 +55,7 @@
     },
     {
       "label": "Known gap",
-      "value": "The demo pairs `bnk up` with a cwc-guard sidecar that clears F5's ReadWriteOnce Multi-Attach deadlock on a REUSED cluster. A Forge container step is a single container with no sidecar, so that guard is not reproduced here — on a cluster where BNK was previously installed, licensing may stall until f5-spk-cwc is cycled by hand."
+      "value": "The demo pairs `bnk up` with a cwc-guard sidecar that clears F5's ReadWriteOnce Multi-Attach deadlock on a REUSED cluster. A Forge container step is a single container with no sidecar, so that guard is not reproduced here \u2014 on a cluster where BNK was previously installed, licensing may stall until f5-spk-cwc is cycled by hand."
     }
   ],
   "inputs": {
@@ -64,7 +64,7 @@
         "name": "prefix",
         "type": "string",
         "label": "Resource prefix (and cluster name)",
-        "description": "Prefix for every IBM resource created here. The ROKS cluster is named exactly this — roksbnkctl names a new cluster after the prefix.",
+        "description": "Prefix for every IBM resource created here. The ROKS cluster is named exactly this \u2014 roksbnkctl names a new cluster after the prefix.",
         "example": "acme-eu",
         "order": 1
       },
@@ -108,7 +108,7 @@
         "name": "flp_external_url",
         "type": "string",
         "label": "FLP endpoint",
-        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own — `flp output flp_external_endpoint` on the workspace that does.",
+        "description": "Licensing endpoint of an F5 License Proxy this cluster does NOT own \u2014 `flp output flp_external_endpoint` on the workspace that does.",
         "example": "https://10.241.0.5:8443",
         "order": 8
       },
@@ -116,7 +116,7 @@
         "name": "flp_root_ca_b64",
         "type": "string",
         "label": "FLP root CA (base64)",
-        "description": "That proxy's base64 root CA, which the cluster's CWC must trust — `flp output flp_root_ca`. Already base64: it is stored verbatim.",
+        "description": "That proxy's base64 root CA, which the cluster's CWC must trust \u2014 `flp output flp_root_ca`. Already base64: it is stored verbatim.",
         "sensitive": true,
         "order": 9
       },
@@ -131,7 +131,7 @@
         "name": "registry_ca_b64",
         "type": "string",
         "label": "Registry CA (base64)",
-        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) — this is the CA you generated for the registry.",
+        "description": "Base64 PEM of the private registry's CA. v1.35.0 REFUSES to auto-capture a self-signed mirror's CA over the wire, so supply it here (or pin it below) \u2014 this is the CA you generated for the registry.",
         "order": 40
       },
       {
@@ -139,7 +139,7 @@
         "type": "string",
         "source": "user",
         "label": "Cluster VPC address block",
-        "description": "Address block for the new cluster's VPC (/18 or larger). REQUIRED here: this cluster shares a Transit Gateway with the private mirror, and IBM's default 'auto' gives every VPC in the region the same prefixes — a second cluster on that gateway would overlap and the gateway would blackhole one of them. Pick a block no other attached VPC uses, e.g. 10.242.0.0/16.",
+        "description": "Address block for the new cluster's VPC (/18 or larger). REQUIRED here: this cluster shares a Transit Gateway with the private mirror, and IBM's default 'auto' gives every VPC in the region the same prefixes \u2014 a second cluster on that gateway would overlap and the gateway would blackhole one of them. Pick a block no other attached VPC uses, e.g. 10.242.0.0/16.",
         "order": 9
       }
     ],
@@ -419,7 +419,7 @@
         "name": "registry_ca_sha256",
         "type": "string",
         "label": "Registry CA SHA-256 pin",
-        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:…, colon-separated, or raw `openssl x509 -fingerprint -sha256` output. Leave blank to use roksbnkctl's default.",
+        "description": "SHA-256 pin of the registry's served chain, enforced during the TLS handshake. Accepts bare hex, sha256:\u2026, colon-separated, or raw `openssl x509 -fingerprint -sha256` output. Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 41
       },
@@ -461,7 +461,7 @@
         "name": "bnkforge_insecure",
         "type": "string",
         "label": "Skip Forge TLS verification",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out.",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
         "default": "false",
         "order": 46
       },
@@ -516,7 +516,7 @@
         "type": "string",
         "source": "user",
         "label": "Existing Transit Gateway (name or id)",
-        "description": "The gateway the private mirror and F5 License Proxy already sit on. Supply it when this blueprint creates the cluster's VPC — a VPC built from nothing has no route to the registry it must pull every image from, so the gateway is what gives it one. Leave it blank only when the cluster's VPC can already reach both, which in practice means adopting a VPC via 'Existing cluster VPC (id)' that shares or is peered to their network. `bnk up` proves every node can reach the registry and the proxy before installing, so a wrong answer fails fast and says so.",
+        "description": "The gateway the private mirror and F5 License Proxy already sit on. Supply it when this blueprint creates the cluster's VPC \u2014 a VPC built from nothing has no route to the registry it must pull every image from, so the gateway is what gives it one. Leave it blank only when the cluster's VPC can already reach both, which in practice means adopting a VPC via 'Existing cluster VPC (id)' that shares or is peered to their network. `bnk up` proves every node can reach the registry and the proxy before installing, so a wrong answer fails fast and says so.",
         "order": 5,
         "default": ""
       },
@@ -525,9 +525,25 @@
         "type": "string",
         "source": "user",
         "label": "Existing cluster subnets (ids, comma-separated)",
-        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' — roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
+        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' \u2014 roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
         "order": 93,
         "default": ""
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "label": "BNK Forge CA (base64 PEM)",
+        "description": "Base64 PEM of the CA that issued the Forge server's certificate, pinning the registration call. Supply this INSTEAD of 'Skip Forge TLS verification': roksbnkctl v1.50.0 warns on every unverified Forge request, and a pin answers that warning rather than silencing it. Blank when the certificate is publicly trusted.",
+        "default": "",
+        "order": 97
+      },
+      {
+        "name": "cluster_http_allowed_cidrs",
+        "type": "string",
+        "label": "CIDRs allowed to reach the cluster",
+        "description": "Comma-separated CIDRs permitted inbound to the cluster's security group. Blank keeps the tool default, which before roksbnkctl v1.50.0 was hard-coded 0.0.0.0/0 \u2014 set your operator and client ranges rather than leaving a cluster open to the Internet.",
+        "default": "",
+        "order": 98
       }
     ]
   },
@@ -535,9 +551,9 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.10.0",
+      "version": "5.11.0",
       "name": "roksbnkctl Cluster Create",
-      "description": "Create the VPC and ROKS cluster with no worker egress, attach it to the existing Transit Gateway, then register the cluster with BNK Forge — registration runs first, so it is visible and monitorable while BNK installs.",
+      "description": "Create the VPC and ROKS cluster with no worker egress, attach it to the existing Transit Gateway, then register the cluster with BNK Forge \u2014 registration runs first, so it is visible and monitorable while BNK installs.",
       "optional": false,
       "depends_on": [],
       "inputs": {
@@ -556,13 +572,15 @@
         "ibmcloud_api_key": "${ibmcloud_api_key}",
         "cluster_vpc_cidr": "${cluster_vpc_cidr}",
         "cluster_vpc_id": "${cluster_vpc_id}",
-        "existing_subnet_ids": "${existing_subnet_ids}"
+        "existing_subnet_ids": "${existing_subnet_ids}",
+        "bnkforge_ca_b64": "${bnkforge_ca_b64}",
+        "cluster_http_allowed_cidrs": "${cluster_http_allowed_cidrs}"
       }
     },
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.10.0",
+      "version": "5.11.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, pulling from the mirror and licensing via the FLP.",
       "optional": false,
@@ -622,7 +640,8 @@
         "cluster_vpc_id": "",
         "ibmcloud_api_key": "${ibmcloud_api_key}",
         "reachability_retry_seconds": "${reachability_retry_seconds}",
-        "reachability_timeout_seconds": "${reachability_timeout_seconds}"
+        "reachability_timeout_seconds": "${reachability_timeout_seconds}",
+        "bnkforge_ca_b64": "${bnkforge_ca_b64}"
       }
     }
   ],

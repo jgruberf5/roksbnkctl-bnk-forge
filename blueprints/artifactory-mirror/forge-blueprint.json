@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "artifactory-far-mirror-roksbnkctl",
-    "version": "5.10.1",
+    "version": "5.11.0",
     "name": "Mirror the BNK supply chain into JFrog Artifactory",
     "description": "Replicate the F5 Artifact Repository into a JFrog Artifactory you already run, then verify every artifact against the BOM. Nothing is created in IBM Cloud and no cluster is needed \u2014 replication copies registry-to-registry, so the mirror can be seeded as a supply-chain step long before an air-gapped cluster exists. Follows Appendix B of the roksbnkctl book; requires roksbnkctl v1.49.0+."
   },
@@ -219,7 +219,7 @@
     {
       "id": "roksbnkctl-FAR-mirror",
       "module": "roksbnkctl/far-mirror",
-      "version": "5.10.0",
+      "version": "5.11.0",
       "name": "roksbnkctl FAR Mirror",
       "description": "init -> registry replicate --target generic -> registry verify, against your Artifactory. Creates no infrastructure.",
       "optional": false,

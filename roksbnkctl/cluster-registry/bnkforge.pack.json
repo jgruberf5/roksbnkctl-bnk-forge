@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-cluster-registry",
     "path": "roksbnkctl/cluster-registry",
-    "version": "5.10.0",
+    "version": "5.11.0",
     "category": "bnk",
     "description": "Adopt an EXISTING IBM Cloud ROKS cluster into the workspace and register it with BNK Forge, so the cluster is visible and monitorable BEFORE anything is installed onto it. Runs first in the graph; the cluster itself is never created or destroyed.",
     "estimated_time_minutes": 3
@@ -332,6 +332,15 @@
         "type": "string",
         "source": "user",
         "description": "Kubernetes namespace the F5 License Proxy client resources go into. Blank keeps the default the subscription JWT implies."
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "BNK Forge CA (base64 PEM)",
+        "description": "Base64 PEM of the CA that issued the Forge server's certificate, pinning the registration call (roksbnkctl v1.50.0+). Supply this INSTEAD of enabling 'Skip Forge TLS verification': v1.50.0 warns on every unverified Forge request, and a pin is the answer to that warning rather than a way to silence it. Leave blank when the Forge certificate is publicly trusted.",
+        "order": 97
       }
     ]
   },

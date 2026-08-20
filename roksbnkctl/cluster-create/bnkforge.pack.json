@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-cluster-create",
     "path": "roksbnkctl/cluster-create",
-    "version": "5.10.0",
+    "version": "5.11.0",
     "category": "infra",
     "description": "Provision a NEW IBM ROKS cluster (named after the prefix) with its own VPC and Transit Gateway, then register it with BNK Forge. The counterpart to cluster-registry, which adopts a cluster you already own.",
     "estimated_time_minutes": 40
@@ -60,7 +60,7 @@
         "source": "user",
         "default": "",
         "label": "Cluster VPC address block",
-        "description": "Address block for the new cluster's VPC, split into three per-zone prefixes, so /18 is the smallest usable value. Blank leaves IBM Cloud's 'auto', which assigns EVERY VPC in a region the same three prefixes (10.241.0.0/18 and friends) — two such VPCs on one Transit Gateway overlap and the gateway silently blackholes one of them. Set a distinct block per cluster whenever clusters share a gateway. 10.241.0.0/16 reproduces the current auto values exactly.",
+        "description": "Address block for the new cluster's VPC, split into three per-zone prefixes, so /18 is the smallest usable value. Blank leaves IBM Cloud's 'auto', which assigns EVERY VPC in a region the same three prefixes (10.241.0.0/18 and friends) \u2014 two such VPCs on one Transit Gateway overlap and the gateway silently blackholes one of them. Set a distinct block per cluster whenever clusters share a gateway. 10.241.0.0/16 reproduces the current auto values exactly.",
         "order": 9
       },
       {
@@ -104,7 +104,7 @@
         "source": "user",
         "default": "true",
         "label": "Worker Internet egress",
-        "description": "false builds a DISCONNECTED cluster whose workers have no egress — images must come from a private mirror and licensing from an F5 License Proxy.",
+        "description": "false builds a DISCONNECTED cluster whose workers have no egress \u2014 images must come from a private mirror and licensing from an F5 License Proxy.",
         "order": 7
       },
       {
@@ -163,9 +163,27 @@
         "type": "string",
         "source": "user",
         "label": "Existing cluster subnets (ids, comma-separated)",
-        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' — roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
+        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' \u2014 roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
         "order": 93,
         "default": ""
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "BNK Forge CA (base64 PEM)",
+        "description": "Base64 PEM of the CA that issued the Forge server's certificate, pinning the registration call (roksbnkctl v1.50.0+). Supply this INSTEAD of enabling 'Skip Forge TLS verification': v1.50.0 warns on every unverified Forge request, and a pin is the answer to that warning rather than a way to silence it. Leave blank when the Forge certificate is publicly trusted.",
+        "order": 97
+      },
+      {
+        "name": "cluster_http_allowed_cidrs",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "label": "CIDRs allowed to reach the cluster over HTTP/HTTPS",
+        "description": "Comma-separated CIDRs permitted inbound to the cluster's security group (roksbnkctl v1.50.0+). Blank keeps the tool's default, which before v1.50.0 was hard-coded 0.0.0.0/0 \u2014 set this to your operator and client ranges rather than leaving a demo cluster open to the Internet.",
+        "order": 98
       }
     ]
   },

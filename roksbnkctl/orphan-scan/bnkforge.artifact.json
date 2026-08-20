@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-orphan-scan",
-  "version": "5.10.0",
+  "version": "5.11.0",
   "kind": "container_image",
   "description": "List IBM Cloud resources named <prefix>-* that a failed teardown stranded, without deleting anything. Wraps 'roksbnkctl cleanup --dry-run'.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:bfd395b24191d1ad445323b98f4447f2fb52a4662de2358af2c64fddd0c8ea6b"
+    "digest": "sha256:76301cb41dab9923bb2e1620362d2b7e71350d35efb2fcfee992148a28ad8f2d"
   },
   "lifecycle": {
     "supports_apply": true,

@@ -2,9 +2,9 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-register-cluster-roksbnkctl",
-    "version": "5.10.0",
+    "version": "5.11.0",
     "name": "Register an existing IBM ROKS cluster (no BNK install)",
-    "description": "Adopt a ROKS cluster you already own into a roksbnkctl workspace and register it with BNK Forge — and stop there. Nothing is created, nothing is installed: the cluster, its VPC and its worker pool are left exactly as found, and BNK is never touched. Use it to bring a cluster under management so it is visible on the Kubernetes page, to fetch a kubeconfig into a shared deployment workspace, or to attach the cluster's VPC to a Transit Gateway ahead of a disconnected install. The BNK install blueprints do this same registration as their first step, so this is that step on its own."
+    "description": "Adopt a ROKS cluster you already own into a roksbnkctl workspace and register it with BNK Forge \u2014 and stop there. Nothing is created, nothing is installed: the cluster, its VPC and its worker pool are left exactly as found, and BNK is never touched. Use it to bring a cluster under management so it is visible on the Kubernetes page, to fetch a kubeconfig into a shared deployment workspace, or to attach the cluster's VPC to a Transit Gateway ahead of a disconnected install. The BNK install blueprints do this same registration as their first step, so this is that step on its own."
   },
   "category": "bnk",
   "cloud_provider": "ibm",
@@ -41,15 +41,15 @@
   "input_summary": [
     {
       "label": "What it changes",
-      "value": "Nothing on the cluster. It reads the cluster's identity, writes cluster-outputs.json and a kubeconfig into the deployment workspace, registers the cluster with Forge, and — only if you name a gateway — attaches the cluster's VPC to it."
+      "value": "Nothing on the cluster. It reads the cluster's identity, writes cluster-outputs.json and a kubeconfig into the deployment workspace, registers the cluster with Forge, and \u2014 only if you name a gateway \u2014 attaches the cluster's VPC to it."
     },
     {
       "label": "BNK is not installed",
-      "value": "This blueprint carries no bnk-install module. To install BNK onto the cluster, use 'BNK on an existing IBM ROKS cluster' (connected) or 'BNK on a disconnected IBM ROKS cluster' (air-gapped) — both perform this registration themselves as their first step, so you do not need to run this one first."
+      "value": "This blueprint carries no bnk-install module. To install BNK onto the cluster, use 'BNK on an existing IBM ROKS cluster' (connected) or 'BNK on a disconnected IBM ROKS cluster' (air-gapped) \u2014 both perform this registration themselves as their first step, so you do not need to run this one first."
     },
     {
       "label": "Teardown",
-      "value": "Destroy runs `bnkforge unregister` then `tgw disconnect --auto`. It never runs `cluster down`: the cluster survives, because this blueprint never created it. A Transit Gateway attachment that pre-existed is left alone — roksbnkctl records it without managing it."
+      "value": "Destroy runs `bnkforge unregister` then `tgw disconnect --auto`. It never runs `cluster down`: the cluster survives, because this blueprint never created it. A Transit Gateway attachment that pre-existed is left alone \u2014 roksbnkctl records it without managing it."
     },
     {
       "label": "One cluster, one project",
@@ -62,7 +62,7 @@
         "name": "prefix",
         "type": "string",
         "label": "Resource prefix",
-        "description": "Prefix roksbnkctl uses for anything it names in the workspace. It does NOT rename the cluster — the cluster is identified by 'Existing cluster name' below.",
+        "description": "Prefix roksbnkctl uses for anything it names in the workspace. It does NOT rename the cluster \u2014 the cluster is identified by 'Existing cluster name' below.",
         "example": "acme-eu",
         "order": 1
       },
@@ -100,7 +100,7 @@
         "name": "existing_transit_gateway",
         "type": "string",
         "label": "Existing Transit Gateway (name or id)",
-        "description": "Attach the cluster's VPC to this gateway as part of the registration. Leave blank to register the cluster and touch its networking not at all — which is the right answer for a connected cluster, and for one whose VPC is already attached. Supply it when you are preparing the cluster for a disconnected install and it must reach a private registry and License Proxy over the gateway. An attachment that already exists is adopted, not re-created.",
+        "description": "Attach the cluster's VPC to this gateway as part of the registration. Leave blank to register the cluster and touch its networking not at all \u2014 which is the right answer for a connected cluster, and for one whose VPC is already attached. Supply it when you are preparing the cluster for a disconnected install and it must reach a private registry and License Proxy over the gateway. An attachment that already exists is adopted, not re-created.",
         "default": "",
         "order": 5
       },
@@ -180,7 +180,7 @@
         "name": "bnkforge_password",
         "type": "string",
         "label": "BNK Forge password",
-        "description": "Password for that login. Passed to the step as an environment variable only — never on the command line.",
+        "description": "Password for that login. Passed to the step as an environment variable only \u2014 never on the command line.",
         "default": "",
         "sensitive": true,
         "order": 22
@@ -197,7 +197,7 @@
         "name": "bnkforge_insecure",
         "type": "string",
         "label": "Skip Forge TLS verification",
-        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false — verification stays on unless you opt out.",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
         "default": "false",
         "order": 24
       },
@@ -209,6 +209,14 @@
         "default": "",
         "sensitive": true,
         "order": 25
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "label": "BNK Forge CA (base64 PEM)",
+        "description": "Base64 PEM of the CA that issued the Forge server's certificate, pinning the registration call. Supply this INSTEAD of 'Skip Forge TLS verification': roksbnkctl v1.50.0 warns on every unverified Forge request, and a pin answers that warning rather than silencing it. Blank when the certificate is publicly trusted.",
+        "default": "",
+        "order": 97
       }
     ]
   },
@@ -216,7 +224,7 @@
     {
       "id": "roksbnkctl-cluster-registry",
       "module": "roksbnkctl/cluster-registry",
-      "version": "5.10.0",
+      "version": "5.11.0",
       "name": "roksbnkctl Cluster Registry",
       "description": "init -> cluster register -> kubeconfig fetch -> bnkforge register, against a cluster that already exists. Creates no infrastructure.",
       "optional": false,
@@ -239,7 +247,8 @@
         "bnkforge_password": "${bnkforge_password}",
         "bnkforge_project": "${bnkforge_project}",
         "bnkforge_insecure": "${bnkforge_insecure}",
-        "ibmcloud_api_key": "${ibmcloud_api_key}"
+        "ibmcloud_api_key": "${ibmcloud_api_key}",
+        "bnkforge_ca_b64": "${bnkforge_ca_b64}"
       }
     }
   ],

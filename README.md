@@ -69,7 +69,7 @@ See [Adopting an existing cluster](#adopting-an-existing-cluster),
 
 ## The runner image
 
-All eight container modules pin **roksbnkctl v1.49.0** (`sha256:bfd395b2…`). The
+All eight container modules pin **roksbnkctl v1.50.0** (`sha256:76301cb4…`). The
 image carries the whole toolchain (terraform, helm, kubectl, oc, the ibmcloud
 CLI), so a step needs nothing on the host.
 
@@ -77,6 +77,7 @@ The releases that matter for this repo, and why:
 
 | Release | What it gave us |
 |---|---|
+| **v1.50.0** | Security-group sources are configurable instead of hard-coded `0.0.0.0/0` (#122), and Forge requests can be CA-pinned rather than merely unverified (#113) — both surfaced here as `cluster_http_allowed_cidrs` and `bnkforge_ca_b64`. One exit-code contract replaces eighteen scattered decisions (#118), which is what makes a partial failure legible to a Forge step. `ROKSBNKCTL_ZONE3_INTERNAL_SELFIP` now binds: the blueprints here had always sent it, and the tool had never read it. |
 | **v1.49.0** | Appendix B of the book — replicating FAR into a registry you already run, ICR or JFrog Artifactory — which is what the **Mirror the BNK supply chain into JFrog Artifactory** blueprint here automates. Also working examples of every route kind BNK 2.3 supports, and a fix for `tools-ibmcloud` whose HOME was writable only by uid 1000. |
 | **v1.48.0** | The adopt guard read a populated state as empty (#100), and FLO's crd-installer can now recover when it loses the admission-policy race (#96). Both matter to the existing-cluster blueprints, neither needed a module change. |
 | **v1.47.0** | Five fixes, three of them found by running this repo's blueprints. `cleanup` refuses a foreign Transit Gateway connection **immediately** rather than after the settle wait, and waits out a connection still *arriving* instead of failing its DELETE with 409 (#87). The FLP VSI's resource names can finally carry the workspace prefix (#88), which is what lets a second standalone proxy exist in an account **and** what makes one visible to the orphan blueprints, since they sweep by `<prefix>-*`. "Nothing to destroy" is success rather than an error in every `down` path (#89), and the License CR is gated on quota admission instead of retried (#90). |
