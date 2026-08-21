@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "blueprint": {
+    "id": "ibm-roks-bare-cluster-roksbnkctl",
+    "version": "5.11.0",
+    "name": "IBM ROKS cluster only \u2014 no BNK installed",
+    "description": "Create a ROKS cluster and stop. BNK is never installed, and this blueprint carries no bnk-install module to install it with. That is the whole point: variants that ADOPT an existing cluster need one with no BNK on it, and BNK cannot be removed afterwards \u2014 destroying bnk-install cascades into cluster-create and takes the cluster with it. Previously the only way to get such a cluster was to deploy a full new-cluster blueprint and disable its bnk-install module before Forge's dependency graph dispatched it, which is fragile: enabling a module recomputes dependencies, and a module left merely undispatched runs by itself the moment cluster-create finishes. Set 'Public egress gateway' false to build the air-gapped equivalent \u2014 that flag is the ONLY difference between the connected and disconnected cluster-create."
+  },
+  "category": "bnk",
+  "cloud_provider": "ibm",
+  "icon": "server",
+  "color": "slate",
+  "estimated_time": "35-45 minutes",
+  "difficulty": "intermediate",
+  "maturity": "preview",
+  "bnk_version": "2.3",
+  "tags": [
+    "ibm",
+    "roks",
+    "openshift",
+    "roksbnkctl",
+    "cluster-only",
+    "bare",
+    "no-bnk"
+  ],
+  "outcomes": [
+    "A ROKS cluster with a worker pool, VPC and subnets, and NO BNK installed",
+    "The cluster registered with BNK Forge and visible on the Kubernetes page",
+    "A cluster ready to be adopted by an 'existing cluster' blueprint"
+  ],
+  "prerequisites": [
+    {
+      "type": "credential_template",
+      "description": "An IBM Cloud credential template on the project. Region and resource group inherit from it."
+    }
+  ],
+  "input_summary": [
+    {
+      "label": "What it does NOT do",
+      "value": "It does not install BNK, and cannot: there is no bnk-install module in this blueprint. Use 'BNK on an existing IBM ROKS cluster' (connected) or 'BNK on a disconnected IBM ROKS cluster' to install onto the cluster this produces."
+    },
+    {
+      "label": "Connected or disconnected",
+      "value": "Set 'Public egress gateway' true for a connected cluster, false for an air-gapped one. That single flag is the only difference between the two cluster-create configurations; everything else is identical."
+    },
+    {
+      "label": "Handing the cluster over",
+      "value": "Before an adopting project can register this cluster, RELEASE its Forge registration \u2014 since roksbnkctl v1.42.0 `bnkforge register` REFUSES a cluster another project holds, and the adopting module fails at step 'bnkforge-register'. Delete the registration: DELETE /api/k8s/clusters/<id>."
+    },
+    {
+      "label": "Teardown",
+      "value": "Destroy removes the cluster, its worker pool and its VPC. Nothing else is installed, so nothing else is removed."
+    }
+  ],
+  "inputs": {
+    "required": [
+      {
+        "name": "prefix",
+        "type": "string",
+        "label": "Resource prefix (and cluster name)",
+        "description": "Prefix for every IBM resource created here. The ROKS cluster is named exactly this \u2014 roksbnkctl names a new cluster after the prefix.",
+        "example": "acme-eu",
+        "order": 1
+      },
+      {
+        "name": "region",
+        "type": "string",
+        "label": "IBM Cloud region",
+        "description": "Region the cluster lives in. Inherits from the selected credential template.",
+        "example": "us-south",
+        "source": "credential_template",
+        "source_field": "region",
+        "order": 3
+      },
+      {
+        "name": "resource_group",
+        "type": "string",
+        "label": "Resource group",
+        "description": "IBM Cloud resource group. Inherits from the selected credential template.",
+        "example": "default",
+        "source": "credential_template",
+        "source_field": "ibmcloud_resource_group",
+        "order": 4
+      }
+    ],
+    "optional": [
+      {
+        "name": "openshift_version",
+        "type": "string",
+        "source": "user",
+        "default": "4.20",
+        "label": "OpenShift version",
+        "order": 90,
+        "description": "OpenShift version for the new cluster."
+      },
+      {
+        "name": "workers_per_zone",
+        "type": "string",
+        "source": "user",
+        "default": "2",
+        "label": "Workers per zone",
+        "description": "Across three zones; 2 gives a 6-worker cluster.",
+        "order": 91
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "label": "BNK Forge URL",
+        "description": "Register the adopted cluster with a BNK Forge instance so it appears on the Kubernetes page (e.g. https://forge.example.com). Blank = skip registration. Leave blank to use roksbnkctl's default.",
+        "default": "",
+        "order": 34
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "label": "BNK Forge username",
+        "description": "Login for that Forge. Leave blank to use roksbnkctl's default.",
+        "default": "",
+        "order": 35
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "label": "BNK Forge password",
+        "description": "Password for that login. Reaches the step as an environment variable only, never on the command line. Leave blank to use roksbnkctl's default.",
+        "default": "",
+        "sensitive": true,
+        "order": 36
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "label": "BNK Forge project",
+        "description": "BNK Forge project to register the cluster into. Filled automatically with THIS project's name, so the cluster appears on the Kubernetes page of the project you deployed and its scans can be watched as BNK installs.",
+        "order": 37,
+        "source": "project",
+        "source_field": "name"
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "label": "Skip Forge TLS verification",
+        "description": "Set true only for a Forge with a self-signed certificate. Defaults to false \u2014 verification stays on unless you opt out.",
+        "default": "false",
+        "order": 38
+      },
+      {
+        "name": "ibmcloud_api_key",
+        "type": "string",
+        "sensitive": true,
+        "source": "credential_template",
+        "source_field": "ibmcloud_api_key",
+        "label": "IBM Cloud API key",
+        "description": "Resolved from the project's credential template when the project is created. Not entered by hand.",
+        "order": 99
+      },
+      {
+        "name": "cluster_vpc_cidr",
+        "type": "string",
+        "source": "user",
+        "label": "Cluster VPC address block",
+        "description": "Address block for the new cluster's VPC (/18 or larger). Optional when this cluster creates its own Transit Gateway \u2014 nothing to overlap. REQUIRED when you adopt an existing gateway: IBM Cloud's default gives every VPC in a region the same prefixes, so a second VPC on that gateway would collide and the gateway would blackhole one of them. Pick a block no other attached VPC uses.",
+        "order": 9,
+        "default": ""
+      },
+      {
+        "name": "existing_transit_gateway",
+        "type": "string",
+        "source": "user",
+        "label": "Existing Transit Gateway (name or id)",
+        "description": "Adopt a Transit Gateway you already have instead of creating one. Blank creates a gateway for this cluster. Adopt one when the cluster must reach resources already on it, or to stay inside the account's gateway quota. When you adopt, set the cluster VPC address block too \u2014 every VPC on a gateway needs a distinct block.",
+        "order": 5,
+        "default": ""
+      },
+      {
+        "name": "cluster_vpc_id",
+        "type": "string",
+        "source": "user",
+        "label": "Existing cluster VPC (id)",
+        "description": "Place the new cluster in a VPC you already have, instead of creating one (roksbnkctl v1.43.0+). Blank creates the VPC, which is the default. Use this where address space is allocated centrally. Leave 'Existing cluster subnets' blank to have roksbnkctl create the three zone subnets inside the adopted VPC.",
+        "order": 92,
+        "default": ""
+      },
+      {
+        "name": "existing_subnet_ids",
+        "type": "string",
+        "source": "user",
+        "label": "Existing cluster subnets (ids, comma-separated)",
+        "description": "Adopt pre-created subnets instead of letting roksbnkctl cut them inside the VPC (roksbnkctl v1.44.0+). Comma-separated subnet ids in ZONE ORDER, e.g. 0717-a,0717-b,0717-c. Requires 'Existing cluster VPC (id)' \u2014 roksbnkctl refuses a subnet adopted independently of the VPC that contains it. Blank creates the subnets, which is the default.",
+        "order": 93,
+        "default": ""
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "label": "BNK Forge CA (base64 PEM)",
+        "description": "Base64 PEM of the CA that issued the Forge server's certificate, pinning the registration call. Supply this INSTEAD of 'Skip Forge TLS verification': roksbnkctl v1.50.0 warns on every unverified Forge request, and a pin answers that warning rather than silencing it. Blank when the certificate is publicly trusted.",
+        "default": "",
+        "order": 97
+      },
+      {
+        "name": "cluster_http_allowed_cidrs",
+        "type": "string",
+        "label": "CIDRs allowed to reach the cluster",
+        "description": "Comma-separated CIDRs permitted inbound to the cluster's security group. Blank keeps the tool default, which before roksbnkctl v1.50.0 was hard-coded 0.0.0.0/0 \u2014 set your operator and client ranges rather than leaving a cluster open to the Internet.",
+        "default": "",
+        "order": 98
+      },
+      {
+        "name": "public_gateway",
+        "type": "string",
+        "label": "Public egress gateway",
+        "description": "true builds a connected cluster whose workers reach the internet directly. false builds the air-gapped equivalent, with no public gateway on the subnets \u2014 use that when the cluster will later be adopted by a disconnected install served from a private mirror and F5 License Proxy.",
+        "default": "true",
+        "order": 15
+      }
+    ]
+  },
+  "modules": [
+    {
+      "id": "roksbnkctl-cluster-create",
+      "module": "roksbnkctl/cluster-create",
+      "version": "5.11.0",
+      "name": "roksbnkctl Cluster Create (no BNK)",
+      "description": "init -> cluster up -> kubeconfig fetch -> bnkforge register. Creates the VPC, subnets, worker pool and cluster, and stops there.",
+      "optional": false,
+      "depends_on": [],
+      "inputs": {
+        "prefix": "${prefix}",
+        "region": "${region}",
+        "resource_group": "${resource_group}",
+        "bnkforge_url": "${bnkforge_url}",
+        "bnkforge_username": "${bnkforge_username}",
+        "bnkforge_password": "${bnkforge_password}",
+        "bnkforge_project": "${bnkforge_project}",
+        "bnkforge_insecure": "${bnkforge_insecure}",
+        "openshift_version": "${openshift_version}",
+        "workers_per_zone": "${workers_per_zone}",
+        "public_gateway": "${public_gateway}",
+        "existing_transit_gateway": "${existing_transit_gateway}",
+        "ibmcloud_api_key": "${ibmcloud_api_key}",
+        "cluster_vpc_cidr": "${cluster_vpc_cidr}",
+        "cluster_vpc_id": "${cluster_vpc_id}",
+        "existing_subnet_ids": "${existing_subnet_ids}",
+        "bnkforge_ca_b64": "${bnkforge_ca_b64}",
+        "cluster_http_allowed_cidrs": "${cluster_http_allowed_cidrs}"
+      }
+    }
+  ],
+  "is_featured": false
+}
