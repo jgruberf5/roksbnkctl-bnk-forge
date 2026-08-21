@@ -312,7 +312,19 @@ e2e_teardown() {
     [[ -z "$pid" ]] && { e2e_say "no project '$project' to tear down"; return 0; }
   fi
   e2e_head "Teardown of project $pid"
-  forge_destroy_project "$pid" || warn "destroy-all returned non-zero"
+  # RETRY the destroy-all rather than warn and poll anyway. On 2026-08-21 this
+  # request returned non-zero against an HTTP 502 -- Forge was briefly unhealthy --
+  # and the modules were therefore never asked to destroy. The old code warned,
+  # then polled a module that sat at `applied` for 47 minutes, and would have
+  # burned forge_wait_module's full 7200s ceiling before saying anything. A
+  # re-issued destroy-all recovered it immediately.
+  local _d
+  for _d in 1 2 3; do
+    forge_destroy_project "$pid" && break
+    warn "destroy-all attempt $_d returned non-zero; retrying in 20s"
+    command sleep 20
+    (( _d == 3 )) && warn "destroy-all failed 3 times — polling anyway, but the modules may never have been asked"
+  done
   for m in $(cat "$STATE/$pid.modules" 2>/dev/null); do
     forge_wait_module "$m" "module $m" 7200 destroyed || ok=0
   done
