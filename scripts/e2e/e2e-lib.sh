@@ -185,10 +185,19 @@ forge_import_release() {
 # backgrounded child inherits it, so without >/dev/null the caller hangs forever
 # on a loop that never exits.
 e2e_watch_cluster() {
-  local name="$1" interval="${2:-60}"
+  local name="$1" interval="${2:-60}" owner=$$
   (
-    local id=""
-    while :; do
+    local id="" n=0
+    # BOUNDED, and orphan-aware. This subshell inherits the parent's argv, so in
+    # `ps` it is indistinguishable from the main script -- which is how one of
+    # these survived its parent by 7h15m, PUTting a rescan every 60s at a project
+    # that had been deleted hours earlier, while `pgrep` cheerfully reported the
+    # "run" as still alive. e2e_stop_watch kills it by PID on the happy path;
+    # these two guards cover every other path.
+    #   kill -0 : the owning script is gone, so there is nothing left to watch
+    #   n < 240 : a 4h ceiling, well past the longest real install (UC2, 58m)
+    while (( n++ < 240 )); do
+      kill -0 "$owner" 2>/dev/null || exit 0
       [[ -z "$id" ]] && id=$(forge_cluster_id_by_name "$name")
       [[ -n "$id" ]] && forge_api PUT "/api/k8s/clusters/$id" '{}' >/dev/null 2>&1
       sleep "$interval"

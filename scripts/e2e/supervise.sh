@@ -87,8 +87,17 @@ while :; do
     # modules are still mid-flight is the ORPHANED case: Forge keeps going, but
     # nothing will apply the NEXT module when this one lands.
     driver="none"
-    if pgrep -f "v[0-9]-(new|existing)-.*\.sh|make-bare-cluster\.sh|drive-modules\.sh|disconnected-roks-cluster-demo\.sh" 2>/dev/null \
-         | grep -qvE "^($$|$PPID)$"; then driver="alive"; fi
+    # Match on ARGV, not with `pgrep -f`, and exclude this harness's own wrapper
+    # shells. `pgrep -f teardown-v150` reported 7 live processes while the script
+    # had already exited 20 minutes earlier -- every hit was a Claude/bash -c
+    # wrapper whose command line merely CONTAINED the pattern. A liveness check
+    # that answers "alive" for a dead process is worse than none: it is exactly
+    # what let an orphaned run sit unnoticed.
+    if ps -eo args --no-headers 2>/dev/null \
+         | grep -vE 'shell-snapshots|supervise\.sh' \
+         | grep -qE '(^|/)(v[0-9]-(new|existing)-[a-z]*\.sh|make-bare-cluster\.sh|drive-modules\.sh|cycle\.sh|disconnected-roks-cluster-demo\.sh)( |$)'; then
+      driver="alive"
+    fi
 
     verdict="RUNNING"
     if [[ "$any_bad" == "1" ]]; then verdict="FAILED"
