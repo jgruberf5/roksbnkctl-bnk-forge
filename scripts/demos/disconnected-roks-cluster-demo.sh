@@ -80,6 +80,15 @@ ask RESOURCE_GROUP       "Resource group"                      "default"
 ask PREFIX               "IBM resource prefix"                 "f5demo"
 ask CLUSTER_NAME         "EXISTING cluster to adopt"           "fdisco"
 ask TRANSIT_GATEWAY      "EXISTING Transit Gateway"            "bnkci-testing"
+# Default the FLP's resource-name prefix rather than leaving it empty.
+# roksbnkctl leaves it empty deliberately — renaming a resource REPLACES it, and
+# an upgrade must not destroy a running proxy — but that default is for UPGRADING
+# an existing proxy, not for CREATING one. Unprefixed, every FLP resource is a
+# region-wide literal ("flp-vsi", "flp-vsi-fip"). This account already holds
+# another team's flp-vsi, so an unprefixed create fails with
+#   409  ibm_is_floating_ip "flp-vsi-fip"
+# which reads like our deploy is broken rather than like the name is taken.
+: "${FLP_VSI_NAME_PREFIX:=${PREFIX:-f5demo}}"
 ask SSH_KEY_NAME         "IBM Cloud VPC SSH key name"
 ask SSH_KEY_FILE         "…matching private key on this host"  "$HOME/.ssh/id_rsa"
 ask SERVICES_SUBNET_CIDR "Services subnet CIDR"                "10.243.0.0/24"
