@@ -80,8 +80,11 @@ phase() {
 
 # ---- prerequisites, built once -------------------------------------------
 if [[ "${SKIP_PREREQ:-0}" != "1" ]]; then
+  # STOP_AFTER=flp is load-bearing: left unset the demo carries straight on into
+  # its own disconnected cluster build (steps 4+5), which is UC2's job and would
+  # burn a Transit Gateway the use cases need.
   phase "prereq-harbor-flp" 5400 "$LOG/cycle-prereq.log" -- \
-    "$HERE/../demos/disconnected-roks-cluster-demo.sh" \
+    env STOP_AFTER=flp "$HERE/../demos/disconnected-roks-cluster-demo.sh" \
     || { say "FATAL: Harbor/FLP prerequisites did not build — the disconnected cases cannot run"; exit 1; }
 fi
 PREREQ_ENV="$HERE/../demos/.demo-state/prereq.env"
