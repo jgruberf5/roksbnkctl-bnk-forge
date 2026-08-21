@@ -490,6 +490,13 @@ print(json.dumps({
 # whole reason registration runs first. Forge scans once at registration and
 # never again, so without this you watch an empty cluster for 40 minutes.
 CLUSTER_WATCH_PID=$(forge_watch_cluster "$CLUSTER_NAME" 60)
+# A cleanup that only runs on success never runs. The kill below is on the happy
+# path only -- `die` inside deploy() skips it -- which is how one of these
+# watchers outlived its phase by 2h45m, still polling Forge, after the run it
+# belonged to had already failed. The trap covers every exit path instead:
+# success, die, and signal. forge_watch_cluster is bounded too, but a bound is a
+# backstop; this is the cleanup actually running when it should.
+trap 'kill "${CLUSTER_WATCH_PID:-}" 2>/dev/null' EXIT
 say "rescanning $CLUSTER_NAME every 60s so BNK appears on the Kubernetes page as it installs"
 
 deploy disco "$DISCO_REL" "$PROJECT_DISCO" "$DISCO_VARS"
