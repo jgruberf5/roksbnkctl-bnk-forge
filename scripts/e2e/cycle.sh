@@ -37,15 +37,24 @@ RESULTS="$LOG/cycle-results.txt"
 : "${T_UC1:=4800}"; : "${T_UC2:=6000}"; : "${T_UC3:=3600}"; : "${T_UC4:=3600}"
 : "${T_TEARDOWN:=5400}"
 
-PHASE="starting"; PHASE_AT=$(date +%s); CYCLE=0
+PHASE_FILE="$LOG/cycle-phase.txt"
+CYCLE=0
+set_phase() {  # the only writer; the heartbeat is the only reader
+  printf '%s %s %s\n' "$CYCLE" "$1" "$(date +%s)" > "$PHASE_FILE.tmp"
+  mv -f "$PHASE_FILE.tmp" "$PHASE_FILE"
+}
+set_phase starting
 say() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 
 # The heartbeat runs in its own process so it keeps ticking while a phase blocks.
 # Its mtime is the liveness signal: stale file == this driver is dead, full stop.
+DRIVER_PID=$$
 heartbeat_loop() {
+  local c ph at
   while :; do
-    printf '%s cycle=%s phase=%s elapsed=%ss pid=%s\n' \
-      "$(date -u +%s)" "$CYCLE" "$PHASE" "$(( $(date +%s) - PHASE_AT ))" "$$" > "$HEARTBEAT.tmp"
+    read -r c ph at < "$PHASE_FILE" 2>/dev/null || { c=?; ph=?; at=$(date +%s); }
+    printf '%s cycle=%s phase=%s elapsed=%ss driver_pid=%s\n' \
+      "$(date -u +%s)" "$c" "$ph" "$(( $(date +%s) - at ))" "$DRIVER_PID" > "$HEARTBEAT.tmp"
     mv -f "$HEARTBEAT.tmp" "$HEARTBEAT"
     sleep 30
   done
@@ -62,7 +71,7 @@ trap cleanup EXIT
 # command's status.
 phase() {
   local name="$1" secs="$2" logf="$3"; shift 4
-  PHASE="$name"; PHASE_AT=$(date +%s)
+  set_phase "$name"; PHASE_AT=$(date +%s)
   say "▶ $name (ceiling ${secs}s) → $logf"
   # --kill-after: some of these block in ssh/curl and ignore a plain TERM.
   timeout --signal=TERM --kill-after=90 "$secs" "$@" > "$logf" 2>&1
@@ -80,11 +89,13 @@ phase() {
 
 # ---- prerequisites, built once -------------------------------------------
 if [[ "${SKIP_PREREQ:-0}" != "1" ]]; then
-  # STOP_AFTER=flp is load-bearing: left unset the demo carries straight on into
-  # its own disconnected cluster build (steps 4+5), which is UC2's job and would
-  # burn a Transit Gateway the use cases need.
+  # "up flp" -- the stop phase is the demo's SECOND POSITIONAL ARGUMENT, not an
+  # environment variable (STOP_AFTER="${2:-all}"). Passing it as `env STOP_AFTER=flp`
+  # was silently overwritten by that default, so the demo carried on into step 4/4
+  # and built a disconnected cluster that then failed at cluster-register -- work
+  # that is UC2's job and that burns a Transit Gateway the use cases need.
   phase "prereq-harbor-flp" 5400 "$LOG/cycle-prereq.log" -- \
-    env STOP_AFTER=flp "$HERE/../demos/disconnected-roks-cluster-demo.sh" \
+    "$HERE/../demos/disconnected-roks-cluster-demo.sh" up flp \
     || { say "FATAL: Harbor/FLP prerequisites did not build — the disconnected cases cannot run"; exit 1; }
 fi
 PREREQ_ENV="$HERE/../demos/.demo-state/prereq.env"
@@ -113,7 +124,7 @@ while (( CYCLE < MAX_CYCLES )); do
 
   if (( ! failed )); then
     say "════════ CYCLE $CYCLE PASSED CLEAN — all four use cases ════════"
-    PHASE="passed"; exit 0
+    set_phase passed; exit 0
   fi
   say "cycle $CYCLE had failures; state torn down, retrying"
 done
