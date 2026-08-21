@@ -337,15 +337,26 @@ for c in cs:
 #
 # Echoes the watcher pid; the caller kills it when the phase ends.
 forge_watch_cluster() {
-  local name="$1" interval="${2:-60}"
+  local name="$1" interval="${2:-60}" owner=$$
   # The child's stdout MUST be closed off, not just its output discarded: this is
   # called as CLUSTER_WATCH_PID=$(forge_watch_cluster ...), and command
   # substitution waits for every writer to the pipe to let go. A backgrounded
   # child inherits that pipe, so without the redirect $(...) blocks forever on a
   # loop that never exits — the caller hangs before it has done anything.
   (
-    local id=""
-    while :; do
+    local id="" n=0
+    # BOUNDED, and it dies with its owner. The caller kills this by pid when the
+    # phase ends -- but only on the happy path: the demo `die`s inside deploy() on
+    # any module failure, so that kill is skipped and `while :;` has no other exit.
+    # One of these was found parked on `sleep 60` 2h45m after its phase had ended,
+    # still polling Forge, having survived a failure at step 4/4. It inherits the
+    # parent's argv, so `ps` cannot tell it from the real script.
+    #
+    # `ppid==1` does not find these: on WSL the subreaper is /init at its own pid,
+    # not 1, so a reparented orphan keeps a non-1 ppid. Age plus argv is what
+    # actually finds them -- and bounding the loop is what stops them existing.
+    while (( n++ < 240 )); do
+      kill -0 "$owner" 2>/dev/null || exit 0
       [[ -z "$id" ]] && id=$(forge_cluster_id_by_name "$name")
       [[ -n "$id" ]] && forge_api PUT "/api/k8s/clusters/$id" '{}' >/dev/null 2>&1
       sleep "$interval"
