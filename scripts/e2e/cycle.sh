@@ -145,6 +145,13 @@ while (( CYCLE < MAX_CYCLES )); do
   fi
   (( failed )) || phase "c$CYCLE-bare-connected" "$T_BARE" "$LOG/cycle$CYCLE-bare-conn.log" -- \
       "$HERE/make-bare-cluster.sh" connected f5e2e3 "$BARE_CONN_CIDR" || failed=1
+  # Release the bare cluster's Forge registration before UC3 adopts it. The bare
+  # project registered it on creation, and since roksbnkctl v1.42.0 `bnkforge
+  # register` REFUSES a cluster another project holds rather than moving it, so
+  # UC3 dies at `step 'bnkforge-register' failed (exit 1)` in 35s. CONSTRAINTS.md
+  # prescribes exactly this step; make-bare-cluster.sh's last line says so too.
+  (( failed )) || phase "c$CYCLE-release-f5e2e3" 300 "$LOG/cycle$CYCLE-release-conn.log" -- \
+      "$HERE/release-registration.sh" f5e2e3 || failed=1
   (( failed )) || phase "c$CYCLE-uc3-existing-connected" "$T_UC3" "$LOG/cycle$CYCLE-uc3.log" -- \
       "$HERE/v3-existing-connected.sh" up || failed=1
 
@@ -156,6 +163,8 @@ while (( CYCLE < MAX_CYCLES )); do
     phase "c$CYCLE-uc2-new-disconnected" "$T_UC2" "$LOG/cycle$CYCLE-uc2.log" -- "$HERE/v2-new-disconnected.sh" up || failed=1
     (( failed )) || phase "c$CYCLE-bare-disconnected" "$T_BARE" "$LOG/cycle$CYCLE-bare-disc.log" -- \
         "$HERE/make-bare-cluster.sh" disconnected f5e2e4 "$BARE_DISC_CIDR" || failed=1
+    (( failed )) || phase "c$CYCLE-release-f5e2e4" 300 "$LOG/cycle$CYCLE-release-disc.log" -- \
+        "$HERE/release-registration.sh" f5e2e4 || failed=1
     (( failed )) || phase "c$CYCLE-uc4-existing-disconnected" "$T_UC4" "$LOG/cycle$CYCLE-uc4.log" -- \
         "$HERE/v4-existing-disconnected.sh" up || failed=1
 

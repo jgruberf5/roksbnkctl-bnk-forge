@@ -410,7 +410,31 @@ forge_wait_module() {
         forge_api GET "/api/project-modules/$id/status" | python3 -c '
 import sys,json; d=json.load(sys.stdin)
 print("   error:", (d.get("deployment_error") or "(none recorded)")[:400])' >&2
-        die "$label failed ($st) — see the module log in the Forge UI for the step output" ;;
+        # Dump the STEP OUTPUT here, while it still exists. deployment_error is a
+        # one-line summary ("step X failed (exit 1)") and says nothing about why.
+        # The detail lives in the task log, and deleting the project cascades that
+        # away -- so a teardown running straight after a failure destroys the only
+        # copy. That happened to module 39: by the time it was examined the project
+        # was gone, the task with it, and the cause had to be guessed.
+        #
+        # /api/project-modules/<id>/logs returns an empty 200 for container modules;
+        # /api/tasks is where their output actually is.
+        local _tid
+        _tid=$(forge_api GET "/api/tasks?module_id=$id&limit=10" 2>/dev/null \
+               | python3 -c 'import sys,json
+try: d=json.load(sys.stdin)
+except Exception: raise SystemExit(0)
+ts=d.get("tasks") if isinstance(d,dict) else d
+print(max((t["id"] for t in (ts or []) if t.get("id")), default=""))' 2>/dev/null)
+        if [[ -n "$_tid" ]]; then
+          echo "   --- task $_tid step output (last 40 lines) ---" >&2
+          forge_api GET "/api/tasks/$_tid" 2>/dev/null | python3 -c 'import sys,json
+try: d=json.load(sys.stdin)
+except Exception: raise SystemExit(0)
+log=d.get("logs_full") or d.get("logs") or ""
+print("\n".join("   "+l for l in log.splitlines()[-40:]) or "   (task carried no log)")' >&2
+        fi
+        die "$label failed ($st)" ;;
     esac
     (( waited += 20 )); (( waited > limit )) && die "$label still '$st' after ${limit}s"
     sleep 20
