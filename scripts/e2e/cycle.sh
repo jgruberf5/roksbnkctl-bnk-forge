@@ -102,6 +102,18 @@ PREREQ_ENV="$HERE/../demos/.demo-state/prereq.env"
 if [[ -f "$PREREQ_ENV" ]]; then set -a; . "$PREREQ_ENV"; set +a; say "loaded Harbor/FLP handoff from $PREREQ_ENV"
 else say "FATAL: no $PREREQ_ENV — the disconnected cases would fail on their HARBOR_IP guard"; exit 1; fi
 
+# Pin what UC3 and UC4 adopt. v3/v4 fall back to $CLUSTER_NAME and $PREFIX, and
+# those come from demos/.env (f5demo / fdisco) which every one of these scripts
+# sources with `set -a` AFTER the caller's environment -- the exact clobber the
+# header of v3-existing-connected.sh warns about. Unset, UC3 tried to adopt the
+# demo estate's `fdisco` instead of UC1's cluster and died in 35s at
+# cluster-register. Only the E2E_* names survive the .env sourcing.
+#
+# UC3 adopts UC1's cluster, UC4 adopts UC2's; the cluster name equals the
+# creating variant's prefix (v1 sets CLUSTER="$PREFIX_V1").
+export E2E_V3_CLUSTER="${E2E_V1_PREFIX:-f5e2e1}"  E2E_V3_PREFIX="f5e2e3"
+export E2E_V4_CLUSTER="${E2E_V2_PREFIX:-f5e2e2}"  E2E_V4_PREFIX="f5e2e4"
+
 # ---- the loop -------------------------------------------------------------
 while (( CYCLE < MAX_CYCLES )); do
   CYCLE=$(( CYCLE + 1 ))
