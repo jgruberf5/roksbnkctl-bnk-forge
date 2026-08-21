@@ -115,6 +115,22 @@ forge_api() {
             -H "Authorization: Bearer $FORGE_TOKEN")
   fi
   code="${out##*$'\n'}"; out="${out%$'\n'*}"
+  # A Forge token outlives a short command and not a long run. These demos run
+  # for hours, so a 401 partway through is expected rather than exceptional —
+  # and it used to surface as an empty body that the caller fed to jq, producing
+  # "Cannot iterate over null", which reads like an API shape change rather than
+  # an expired session. Re-authenticate once and retry the same call.
+  if [[ "$code" == "401" && -n "${FORGE_USER:-}" && -n "${FORGE_PASSWORD:-}" && -z "${_FORGE_REAUTH:-}" ]]; then
+    _FORGE_REAUTH=1
+    say "Forge token expired — re-authenticating"
+    if forge_login "$FORGE_URL" "$FORGE_USER" "$FORGE_PASSWORD" >/dev/null 2>&1; then
+      unset _FORGE_REAUTH
+      forge_api "$method" "$path" "$data"
+      return $?
+    fi
+    unset _FORGE_REAUTH
+    die "Forge token expired and re-authentication failed"
+  fi
   printf '%s' "$out"
   if [[ ! "$code" =~ ^2 ]]; then
     printf '\n' >&2

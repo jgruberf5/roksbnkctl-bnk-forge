@@ -40,9 +40,20 @@ esac
 [[ -f "$HERE/.env" ]] && { set -a; . "$HERE/.env"; set +a; }
 
 # ── inputs ───────────────────────────────────────────────────────────────────
+# A prompt is only an answer when someone is there to type one. Unattended (no
+# controlling terminal — nohup, CI, an agent), reading /dev/tty fails and the
+# old code then accepted the EMPTY string as the answer and carried on. That is
+# how a run once wrote an empty harbor.fip and spent the next half hour waiting
+# for cloud-init on a host with no address. Refusing loudly beats guessing.
+interactive() { [[ -r /dev/tty && -t 0 ]]; }
 ask()      { local v="$1" p="$2" d="${3:-}" cur="${!1:-}"; [[ -n "$cur" ]] && return 0
+             if ! interactive; then
+               [[ -n "$d" ]] && { printf -v "$v" '%s' "$d"; say "$p: using default '$d' (no terminal)"; return 0; }
+               die "$p is required and there is no terminal to ask on — set ${v} in the environment or .env"
+             fi
              read -r -p "   $p${d:+ [$d]}: " REPLY </dev/tty; printf -v "$v" '%s' "${REPLY:-$d}"; }
 ask_secret() { local v="$1" p="$2" cur="${!1:-}"; [[ -n "$cur" ]] && return 0
+             interactive || die "$p is required and there is no terminal to ask on — set ${v} in the environment or .env"
              read -r -s -p "   $p: " REPLY </dev/tty; echo >&2; printf -v "$v" '%s' "$REPLY"; }
 
 phase "BNK Forge credentials"
@@ -159,7 +170,16 @@ resolve() {
   [[ -n "$cur" ]] && return 0
   v="$("$@")"
   if [[ -n "$v" ]]; then printf -v "$var" '%s' "$v"; say "$desc = $v"; return 0; fi
-  warn "could not resolve $desc from IBM Cloud — falling back to a prompt"
+  # Resolution failures are almost never "the operator knows the value" — they are
+  # the CLI pointed at the wrong region, an expired session, or a resource that
+  # genuinely is not there. Prompting invited an empty answer; naming the region
+  # points at the actual cause. The commonest one, by some distance, is a shell
+  # whose `ibmcloud target` region is not the region being deployed into.
+  warn "could not resolve $desc from IBM Cloud (region: ${REGION:-<unset>})"
+  warn "  check: ibmcloud target -r ${REGION:-<region>}, and that the resource exists there"
+  if ! interactive; then
+    die "cannot resolve $desc and there is no terminal to ask on — set $var in the environment"
+  fi
   ask "$var" "$desc"
 }
 
@@ -334,6 +354,10 @@ HARBOR_PID="$DEPLOY_PID"
 
 ibm_ready
 resolve HARBOR_FIP "Harbor floating IP" fip_by_name "$PREFIX-svc-harbor-fip"
+# Recorded for the operator (and for teardown by hand); NOT read back. Every run
+# re-derives these from IBM Cloud, because a cached address from a previous
+# instance is worse than no address at all — editing this file looks like it
+# should fix a bad lookup and does nothing, which cost real time once.
 echo "$HARBOR_FIP" > "$STATE/harbor.fip"
 say "waiting for Harbor's cloud-init to finish installing …"
 for i in $(seq 1 90); do
@@ -362,7 +386,7 @@ phase "3/4  F5 License Proxy appliance"
 say "A standalone VSI in the services VPC — no cluster. The proxy is the only"
 say "component needing egress to F5; the cluster reaches it privately."
 resolve HARBOR_VPC "Services VPC id" vsi_field "$PREFIX-svc-harbor" vpc
-echo "$HARBOR_VPC" > "$STATE/harbor.vpc"
+echo "$HARBOR_VPC" > "$STATE/harbor.vpc"   # informational; re-derived each run (see harbor.fip)
 FLP_VARS=$(python3 -c '
 import json,sys
 k=sys.argv[1:]
@@ -394,7 +418,7 @@ if [[ -n "${FLP_VSI_NAME_PREFIX:-}" ]]; then
   say "FLP resource names are prefixed: looking for $FLP_VSI_NAME"
 fi
 resolve FLP_IP "FLP private IP" vsi_field "$FLP_VSI_NAME" private
-echo "$FLP_IP" > "$STATE/flp.ip"
+echo "$FLP_IP" > "$STATE/flp.ip"           # informational; re-derived each run (see harbor.fip)
 # The proxy's root CA lives on the appliance (terraform writes it to /opt/flp/ca.crt
 # and also publishes it as the flp_root_ca output). The FLP's :22 is on the private
 # plane only, so reach it through Harbor with ProxyJump — which keeps the private key
