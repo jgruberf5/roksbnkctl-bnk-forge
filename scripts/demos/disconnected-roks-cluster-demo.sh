@@ -443,6 +443,20 @@ FLP_CA=$(ssh "${SSH_OPTS[@]}" \
 [[ -n "$FLP_CA" ]] || die "could not read the FLP root CA (jumped via $HARBOR_FIP)"
 ok "FLP at https://$FLP_IP:8443 — root CA captured"
 
+# Persist what the disconnected use cases need. Everything above is derived in
+# THIS process -- over ssh, from module outputs -- and was never written down, so
+# a separate run of v2-new-disconnected.sh died on its own `${HARBOR_IP:?}` guard
+# within a second, having rebuilt nothing and explained nothing. These five values
+# are the entire contract between the lab infrastructure and the tests.
+{
+  printf 'HARBOR_IP=%q\n'  "$HARBOR_IP"
+  printf 'HARBOR_CA=%q\n'  "$HARBOR_CA"
+  printf 'HARBOR_PIN=%q\n' "$HARBOR_PIN"
+  printf 'FLP_IP=%q\n'     "$FLP_IP"
+  printf 'FLP_CA=%q\n'     "$FLP_CA"
+} > "$STATE/prereq.env"
+ok "prerequisite handoff written to $STATE/prereq.env"
+
 if [[ "$STOP_AFTER" == "flp" ]]; then
   timing_summary
   ok "stopped after the FLP phase"
