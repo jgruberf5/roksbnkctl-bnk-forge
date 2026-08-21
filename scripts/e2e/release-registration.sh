@@ -27,9 +27,19 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 set -a; . "$HERE/../demos/.env"; set +a
 NAME="${1:?usage: release-registration.sh <cluster-name>}"
-T=$(curl -sk --max-time 30 -X POST "$FORGE_URL/api/auth/login" -H 'Content-Type: application/json' \
-  -d "{\"username\":\"$FORGE_USER\",\"password\":\"$FORGE_PASSWORD\"}" | jq -r '.token//empty')
-[[ -n "$T" ]] || { echo "cannot authenticate to $FORGE_URL" >&2; exit 2; }
+# Retry the login. Exiting on ONE failed auth cost a whole cycle: this script
+# returned rc=2 at 09:48:56 after the bare cluster had already taken 2417s to
+# build, and the identical call succeeded 4s later on the next attempt. Every
+# other API path in this harness re-authenticates and retries; this one did not.
+T=""
+for _try in 1 2 3 4 5; do
+  T=$(curl -sk --max-time 30 -X POST "$FORGE_URL/api/auth/login" -H 'Content-Type: application/json' \
+    -d "{\"username\":\"$FORGE_USER\",\"password\":\"$FORGE_PASSWORD\"}" 2>/dev/null | jq -r '.token//empty')
+  [[ -n "$T" ]] && break
+  echo "   auth attempt $_try failed; retrying in 10s" >&2
+  command sleep 10
+done
+[[ -n "$T" ]] || { echo "cannot authenticate to $FORGE_URL after 5 attempts" >&2; exit 2; }
 
 ID=$(curl -sk --max-time 40 "$FORGE_URL/api/k8s/clusters" -H "Authorization: Bearer $T" \
      | jq -r --arg n "$NAME" '(.clusters//.)[]?|select(.name==$n)|.id' | head -1)
