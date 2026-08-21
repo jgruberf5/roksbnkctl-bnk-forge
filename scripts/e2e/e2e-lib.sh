@@ -265,7 +265,14 @@ e2e_deploy() {
     [[ -n "$ct" ]] || die "project $E2E_PID still has no credential template — every step would run without IBMCLOUD_API_KEY"
   fi
   e2e_say "credential template $ct attached — IBMCLOUD_API_KEY will be injected"
-  echo "$E2E_PID" > "$STATE/e2e.project"; echo "$E2E_MODS" > "$STATE/$E2E_PID.modules"
+  # Key this by PROJECT NAME, not one shared "e2e.project". All four variants
+  # share $STATE, so a single unqualified file is owned by whichever variant
+  # deployed last -- and e2e_teardown reads that file BEFORE falling back to the
+  # name it was handed. c2-uc4-down was asked to tear down f5e2e-v4-existing-disco
+  # and destroyed project 24, f5e2e-v2-new-disco, because UC2 had written the
+  # shared file last. That project needed destroying anyway; with two live
+  # projects it would have destroyed the wrong one.
+  echo "$E2E_PID" > "$STATE/$project.project"; echo "$E2E_MODS" > "$STATE/$E2E_PID.modules"
   e2e_say "project $E2E_PID, modules: $E2E_MODS"
   for m in $E2E_MODS; do forge_enable_module "$m"; done
   forge_restore_dependencies "$E2E_HERE/../../blueprints/$bp_dir/forge-blueprint.json" $E2E_MODS
@@ -299,7 +306,7 @@ e2e_deploy() {
 # module left to describe them.
 e2e_teardown() {
   local project="$1" pid m ok=1
-  pid=$(cat "$STATE/e2e.project" 2>/dev/null)
+  pid=$(cat "$STATE/$project.project" 2>/dev/null)
   if [[ -z "$pid" ]]; then
     pid=$(forge_project_id_by_name "$project" 2>/dev/null)
     [[ -z "$pid" ]] && { e2e_say "no project '$project' to tear down"; return 0; }
@@ -311,7 +318,7 @@ e2e_teardown() {
   done
   if (( ok )); then
     forge_delete_project "$pid"
-    rm -f "$STATE/e2e.project" "$STATE/$pid.modules"
+    rm -f "$STATE/$project.project" "$STATE/$pid.modules"
     e2e_say "project $pid destroyed and deleted"
   else
     warn "project $pid has modules that did not destroy — leaving it in place"
