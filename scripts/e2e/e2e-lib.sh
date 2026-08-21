@@ -325,7 +325,36 @@ e2e_teardown() {
     command sleep 20
     (( _d == 3 )) && warn "destroy-all failed 3 times — polling anyway, but the modules may never have been asked"
   done
-  for m in $(cat "$STATE/$pid.modules" 2>/dev/null); do
+  # Enumerate the modules from FORGE, not from a local file.
+  #
+  # This used to read $STATE/$pid.modules, and if that file was absent the loop
+  # body never ran, `ok` stayed 1, and the project was DELETED having waited for
+  # nothing. The file is keyed by project id, which changes on every rebuild, and
+  # is only written by e2e_deploy -- so any project created another way (the demo
+  # writes its own state elsewhere), or run from a different $STATE, or simply
+  # rebuilt since the file was written, silently took that path. That is the
+  # bnk-forge#125 mechanism self-inflicted: DELETE the project while its modules
+  # are still destroying and whatever they hold is orphaned with no retry path.
+  #
+  # It also explains a destroy that appears not to "walk back" a dependent module:
+  # destroy-all is issued, nothing is awaited, the row is deleted, and a module
+  # still working -- far-mirror's registry-delete, say -- dies with the task row.
+  local mods
+  mods=$(forge_api GET "/api/projects/$pid/execution-plan" 2>/dev/null \
+         | python3 -c 'import sys,json
+try: d=json.load(sys.stdin)
+except Exception: raise SystemExit(0)
+print(" ".join(str(m["id"]) for l in (d.get("layers") or []) for m in (l.get("modules") or []) if m.get("id")))' 2>/dev/null)
+  # Fall back to the recorded file, then REFUSE rather than assume emptiness.
+  [[ -z "$mods" ]] && mods=$(cat "$STATE/$pid.modules" 2>/dev/null)
+  if [[ -z "$mods" ]]; then
+    warn "project $pid: cannot enumerate modules — NOT deleting it."
+    warn "  An unreadable plan is not an empty project. Deleting now would cascade"
+    warn "  away any in-flight destroy task and orphan whatever it still holds."
+    return 1
+  fi
+  e2e_say "waiting on modules: $mods"
+  for m in $mods; do
     forge_wait_module "$m" "module $m" 7200 destroyed || ok=0
   done
   if (( ok )); then
