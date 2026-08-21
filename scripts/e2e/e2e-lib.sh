@@ -78,7 +78,23 @@ e2e_wait_pods_settled() {
     [[ "$n" == "0" ]] && { (( waited > 0 )) && e2e_say "pods settled after ${waited}s"; return 0; }
     sleep 10; waited=$(( waited + 10 ))
   done
-  e2e_say "pods did NOT settle in ${timeout}s — ${n} still not Running"
+    # Name them. A bare count is not actionable: UC2 reported "1 still not
+    # Running" at 13:22 and the cluster was `deleting` minutes later, so which
+    # pod and why were gone before anyone could look. The teardown that follows a
+    # failed verify destroys the only evidence, exactly as deleting a project
+    # cascades away its task logs.
+    e2e_say "pods did NOT settle in ${timeout}s - ${n} still not Running:"
+    rk get pods -A --no-headers 2>/dev/null \
+      | awk '$1 ~ /^f5-/ && $4 != "Running" && $4 != "Completed" {printf "     %s/%s  %s  restarts=%s  age=%s\n",$1,$2,$4,$5,$6}' >&2
+    # Why, not just what: Reason/Message carry ImagePullBackOff, Insufficient
+    # memory, unbound PVC - the difference between a flake and a real defect.
+    while read -r _ns _pod; do
+      [[ -z "$_pod" ]] && continue
+      e2e_say "  --- $_ns/$_pod ---"
+      rk get pod "$_pod" -n "$_ns" -o jsonpath='{range .status.conditions[*]}{"     cond "}{.type}{"="}{.status}{" "}{.reason}{" "}{.message}{"\n"}{end}' 2>/dev/null >&2
+      rk get pod "$_pod" -n "$_ns" -o jsonpath='{range .status.containerStatuses[*]}{"     ctr  "}{.name}{" ready="}{.ready}{" "}{.state.waiting.reason}{" "}{.state.waiting.message}{"\n"}{end}' 2>/dev/null >&2
+    done < <(rk get pods -A --no-headers 2>/dev/null \
+             | awk '$1 ~ /^f5-/ && $4 != "Running" && $4 != "Completed" {print $1, $2}')
   return 1
 }
 # Containers in the BNK namespaces NOT served by the private mirror. The
