@@ -27,7 +27,13 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 set -a; . "$HERE/../demos/.env"; set +a
 LOG="$HERE/logs"; mkdir -p "$LOG"
-MAX_CYCLES="${1:-5}"
+MAX_CYCLES="${1:-40}"
+# How many CLEAN cycles are required before this exits successfully. Unattended
+# runs want repeatability, not a single lucky pass: one green cycle proves the
+# path works, five prove it is not flaky. UC2 failed once on a stuck pod that
+# passed on the next attempt -- exactly the class of thing a single cycle hides.
+TARGET_CLEAN="${TARGET_CLEAN:-5}"
+CLEAN=0
 HEARTBEAT="${HEARTBEAT:-$LOG/cycle-heartbeat.txt}"
 RESULTS="$LOG/cycle-results.txt"
 
@@ -177,11 +183,20 @@ while (( CYCLE < MAX_CYCLES )); do
   SKIP_UC1=0
 
   if (( ! failed )); then
-    say "════════ CYCLE $CYCLE PASSED CLEAN — all four use cases ════════"
-    set_phase passed; exit 0
+    CLEAN=$(( CLEAN + 1 ))
+    say "════════ CYCLE $CYCLE PASSED CLEAN — $CLEAN/$TARGET_CLEAN ════════"
+    printf '%s CLEAN_CYCLE %s of %s (cycle=%s)\n' "$(date -u +%FT%TZ)" "$CLEAN" "$TARGET_CLEAN" "$CYCLE" >> "$RESULTS"
+    if (( CLEAN >= TARGET_CLEAN )); then
+      say "════════ $TARGET_CLEAN CLEAN CYCLES — DONE ════════"
+      set_phase passed; exit 0
+    fi
+    say "continuing: $(( TARGET_CLEAN - CLEAN )) more clean cycle(s) required"
+    continue
   fi
+  (( CLEAN > 0 )) && say "streak broken at $CLEAN clean cycle(s) — restarting the count"
+  CLEAN=0
   say "cycle $CYCLE had failures; state torn down, retrying"
 done
 
-say "no clean cycle in $MAX_CYCLES attempts — see $RESULTS"
+say "only $CLEAN/$TARGET_CLEAN clean cycles in $MAX_CYCLES attempts — see $RESULTS"
 exit 1
