@@ -87,8 +87,13 @@ e2e_say "project $PID, modules: $MODS"
 # it collided with the v3 run's own install on the same cluster. Structure beats
 # a flag: a module that does not exist cannot be dispatched.
 FIRST=$(echo "$MODS" | awk '{print $1}')
-REST=$(echo "$MODS" | cut -d' ' -f2-)
-[[ -z "$REST" ]] || die "bare blueprint returned more than one module ($MODS) - it must carry only cluster-create"
+# Count WORDS, do not try to slice a tail off. `cut -d' ' -f2-` returns the WHOLE
+# string when the delimiter is absent -- without -s, cut prints unmatched lines
+# entire -- so a correct single-module result ("85") produced REST="85" and this
+# guard rejected every valid bare blueprint. Five consecutive cycles died here in
+# under 8 seconds, each after ~50 minutes of UC1, before anyone read the message.
+NMODS=$(wc -w <<<"$MODS")
+(( NMODS == 1 )) || die "bare blueprint returned $NMODS modules ($MODS) - it must carry only cluster-create"
 
 forge_enable_module "$FIRST"
 forge_api PUT "/api/projects/$PID" "{\"credential_template_id\": $FORGE_CREDENTIAL_TEMPLATE_ID}" >/dev/null
