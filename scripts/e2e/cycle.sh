@@ -140,6 +140,52 @@ while (( CYCLE < MAX_CYCLES )); do
   say "════════ CYCLE $CYCLE / $MAX_CYCLES ════════"
   failed=0
 
+  # Do not spend a cycle while Forge is unreachable. On 2026-08-22 Forge briefly
+  # returned non-JSON from /api/auth/login; every phase then failed in under a
+  # second and the loop burned cycles 1-4 in EIGHTEEN SECONDS. A longer outage
+  # would exhaust all 40 attempts in minutes and end an unattended run that had
+  # nothing wrong with it.
+  #
+  # Wait for Forge instead. A cycle costs ~4 hours, so spending up to 30 minutes
+  # confirming the target is alive is free by comparison.
+  _wait_forge() {
+    local i tok
+    for i in $(seq 1 60); do
+      tok=$(curl -sk --max-time 20 -X POST "$FORGE_URL/api/auth/login" \
+              -H 'Content-Type: application/json' \
+              -d "{\"username\":\"$FORGE_USER\",\"password\":\"$FORGE_PASSWORD\"}" 2>/dev/null \
+            | jq -r '.token // empty' 2>/dev/null)
+      [[ -n "$tok" ]] && { (( i > 1 )) && say "Forge reachable again after $(( (i-1) * 30 ))s"; return 0; }
+      (( i == 1 )) && say "Forge is not authenticating — holding this cycle rather than burning it"
+      command sleep 30
+    done
+    say "Forge still unreachable after 30m — proceeding anyway so the failure is recorded"
+    return 1
+  }
+  _wait_forge || true
+
+  # RECLAIM before building. A project left behind by a failed teardown blocks
+  # every later cycle: `POST /api/stacks/releases/<n>/projects` returns
+  # "A project with this name already exists" and the phase dies in ~11 seconds.
+  #
+  # That is not hypothetical. Cycle 7's cluster-up timed out (exit 124), its
+  # teardown then failed deleting a subnet because the half-built cluster still
+  # held it, and the project was correctly NOT deleted -- a destroy that did not
+  # finish must never be followed by a DELETE, or the cascade orphans whatever it
+  # still holds (bnk-forge#125). But nothing ever cleared it afterwards, so cycles
+  # 8 and 9 both died on the leftover name having each spent ~50 minutes on UC1
+  # first.
+  #
+  # teardown-project.sh is idempotent: a project that is already gone exits 0, and
+  # one whose modules will not destroy still refuses to delete. So this is safe to
+  # run unconditionally, and it converts a permanently wedged run into one lost
+  # cycle.
+  for _p in f5e2e-v1-new-connected f5e2e-v3-existing-conn f5e2e-bare-connected \
+            f5e2e-v2-new-disco f5e2e-v4-existing-disco f5e2e-bare-disconnected; do
+    "$HERE/teardown-project.sh" "$_p" >> "$LOG/cycle$CYCLE-reclaim.log" 2>&1 || \
+      say "reclaim: $_p did not clear — see cycle$CYCLE-reclaim.log"
+  done
+
   # Order respects the Transit Gateway quota: UC1 creates a gateway, UC2 creates
   # the next, and the first is released before the second is made. The bare
   # clusters adopt the shared bnkci-testing gateway (existing_transit_gateway),
