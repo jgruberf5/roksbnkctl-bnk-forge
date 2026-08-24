@@ -387,7 +387,7 @@
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_TRUSTED_PROFILE_ROLES. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_TRUSTED_PROFILE_ROLES. Blank applies the terraform default [\"Viewer\", \"Editor\"] (tfvar trusted_profile_roles)."
       },
       {
         "name": "vlan_prefixlen",
@@ -401,14 +401,14 @@
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_EXTERNAL. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_EXTERNAL. Blank applies the terraform default 0 (tfvar cneinstance_vlan_prefixlen_external)."
       },
       {
         "name": "vlan_prefixlen_internal",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_INTERNAL. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_INTERNAL. Blank applies the terraform default 0 (tfvar cneinstance_vlan_prefixlen_internal)."
       },
       {
         "name": "gtm_url",
@@ -422,7 +422,7 @@
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_GTM_USERNAME. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_GTM_USERNAME. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_gtm_username)."
       },
       {
         "name": "gtm_password",
@@ -430,7 +430,7 @@
         "source": "user",
         "sensitive": true,
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_GTM_PASSWORD. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_GTM_PASSWORD. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_gtm_password)."
       },
       {
         "name": "flo_namespace",
@@ -444,7 +444,7 @@
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_FLO_UTILS_NAMESPACE. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_FLO_UTILS_NAMESPACE. Blank applies the terraform default \"f5-utils\" (tfvar flo_utils_namespace)."
       },
       {
         "name": "cneinstance_size",
@@ -472,70 +472,70 @@
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_WATCH_NAMESPACES. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_WATCH_NAMESPACES. Blank applies the terraform default [\"All\"] (tfvar cneinstance_watch_namespaces)."
       },
       {
         "name": "tmm_anti_affinity",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY. Blank applies the terraform default true (tfvar cneinstance_tmm_anti_affinity)."
       },
       {
         "name": "tmm_anti_affinity_topology_key",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY_TOPOLOGY_KEY. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY_TOPOLOGY_KEY. Blank applies the terraform default \"kubernetes.io/hostname\" (tfvar cneinstance_tmm_anti_affinity_topology_key)."
       },
       {
         "name": "tmm_zone_spread",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_SPREAD. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_SPREAD. Blank applies the terraform default true (tfvar cneinstance_tmm_zone_spread)."
       },
       {
         "name": "tmm_zone_topology_key",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_TOPOLOGY_KEY. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_TOPOLOGY_KEY. Blank applies the terraform default \"topology.kubernetes.io/zone\" (tfvar cneinstance_tmm_zone_topology_key)."
       },
       {
         "name": "tmm_zone_max_skew",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_MAX_SKEW. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_MAX_SKEW. Blank applies the terraform default 1 (tfvar cneinstance_tmm_zone_max_skew)."
       },
       {
         "name": "tmm_zone_when_unsatisfiable",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_WHEN_UNSATISFIABLE. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_WHEN_UNSATISFIABLE. Blank applies the terraform default \"DoNotSchedule\" (tfvar cneinstance_tmm_zone_when_unsatisfiable)."
       },
       {
         "name": "tmm_pod_label",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_POD_LABEL. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_POD_LABEL. Blank applies the terraform default \"f5-tmm\" (tfvar cneinstance_tmm_pod_label)."
       },
       {
         "name": "tmm_rolling_update",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ROLLING_UPDATE. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ROLLING_UPDATE. Blank applies the terraform default true (tfvar cneinstance_tmm_rolling_update)."
       },
       {
         "name": "external_bigip",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP. Blank applies the terraform default false (tfvar cneinstance_external_bigip)."
       },
       {
         "name": "external_bigip_login_secret",
@@ -543,35 +543,35 @@
         "source": "user",
         "sensitive": true,
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP_LOGIN_SECRET. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP_LOGIN_SECRET. Blank applies the terraform default \"f5-bigip-ctlr-login\" (tfvar cneinstance_external_bigip_login_secret)."
       },
       {
         "name": "cluster_identifier",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_IDENTIFIER. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_IDENTIFIER. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_cluster_identifier)."
       },
       {
         "name": "gateway_api_version",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_API_VERSION. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_API_VERSION. Blank applies the terraform default \"1.5.0\" (tfvar cneinstance_gateway_api_version)."
       },
       {
         "name": "demo_mode",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_DEMO_MODE. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_DEMO_MODE. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_demo_mode)."
       },
       {
         "name": "whole_cluster",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_WHOLE_CLUSTER. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_WHOLE_CLUSTER. Blank applies the terraform default true (tfvar cneinstance_whole_cluster)."
       },
       {
         "name": "cert_manager_create",
@@ -585,14 +585,14 @@
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_REGISTRY_COS_CREATE. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_REGISTRY_COS_CREATE. Blank applies the terraform default true (tfvar create_roks_registry_cos_instance)."
       },
       {
         "name": "cluster_jumphosts_create",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_JUMPHOSTS_CREATE. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_JUMPHOSTS_CREATE. Blank applies the terraform default false (tfvar testing_create_cluster_jumphosts)."
       },
       {
         "name": "hugepages",
@@ -606,14 +606,14 @@
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_HUGEPAGES_SIZE. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_HUGEPAGES_SIZE. Blank applies the terraform default \"2M\" (tfvar cneinstance_hugepages_size)."
       },
       {
         "name": "hugepages_count",
         "type": "string",
         "source": "user",
         "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_HUGEPAGES_COUNT. Blank uses the roksbnkctl/terraform default."
+        "description": "roksbnkctl setting ROKSBNKCTL_HUGEPAGES_COUNT. Blank applies the terraform default 2048 (tfvar cneinstance_hugepages_count)."
       },
       {
         "name": "gateway_class_name",
