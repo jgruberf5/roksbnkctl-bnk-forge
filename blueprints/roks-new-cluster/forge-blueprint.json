@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-bnk-roksbnkctl",
-    "version": "5.11.0",
+    "version": "5.12.0",
     "name": "BNK on a NEW IBM ROKS cluster (created end to end)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct \u2014 no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -442,6 +442,328 @@
         "description": "Comma-separated CIDRs permitted inbound to the cluster's security group. Blank keeps the tool default, which before roksbnkctl v1.50.0 was hard-coded 0.0.0.0/0 \u2014 set your operator and client ranges rather than leaving a cluster open to the Internet.",
         "default": "",
         "order": 98
+      },
+      {
+        "name": "cluster_network_mode",
+        "type": "string",
+        "label": "Cluster network mode",
+        "description": "How the worker nodes are attached. Blank = single-nic, which is every cluster built so far. multi-nic needs BNK 2.4+; CREATE-time only and enforced.",
+        "default": "",
+        "order": 200
+      },
+      {
+        "name": "trusted_profile_sa",
+        "type": "string",
+        "label": "Trusted profile sa",
+        "description": "The IBM Cloud Trusted Profile the CNE controller assumes to manage its own VPC. Blank derives the account FLO actually creates \u2014 leave it blank unless you can also make FLO name that account differently.",
+        "default": "",
+        "order": 201
+      },
+      {
+        "name": "trusted_profile_roles",
+        "type": "string",
+        "label": "Trusted profile roles",
+        "description": "roksbnkctl setting ROKSBNKCTL_TRUSTED_PROFILE_ROLES. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 202
+      },
+      {
+        "name": "vlan_prefixlen",
+        "type": "string",
+        "label": "Vlan prefixlen",
+        "description": "TMM self-IP masks. INDEPENDENT of the VLAN CIDRs and never derived from them: a mask that deliberately disagrees with its subnet, plus static routes, is how a specific traffic pattern is forced. The per-VLAN pair overrides the shared value; blank inherits.",
+        "default": "",
+        "order": 203
+      },
+      {
+        "name": "vlan_prefixlen_external",
+        "type": "string",
+        "label": "Vlan prefixlen external",
+        "description": "roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_EXTERNAL. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 204
+      },
+      {
+        "name": "vlan_prefixlen_internal",
+        "type": "string",
+        "label": "Vlan prefixlen internal",
+        "description": "roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_INTERNAL. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 205
+      },
+      {
+        "name": "gtm_url",
+        "type": "string",
+        "label": "Gtm url",
+        "description": "The BIG-IP DNS / GTM the GSLB datacenter registers WITH. Without the URL the datacenter name is a label pointing at nothing. The PASSWORD is credential- grade and is routed to the Secret, not the ConfigMap \u2014 see SECRET_KEYS.",
+        "default": "",
+        "order": 206
+      },
+      {
+        "name": "gtm_username",
+        "type": "string",
+        "label": "Gtm username",
+        "description": "roksbnkctl setting ROKSBNKCTL_GTM_USERNAME. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 207
+      },
+      {
+        "name": "gtm_password",
+        "type": "string",
+        "label": "Gtm password",
+        "description": "roksbnkctl setting ROKSBNKCTL_GTM_PASSWORD. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 208,
+        "sensitive": true
+      },
+      {
+        "name": "flo_namespace",
+        "type": "string",
+        "label": "Flo namespace",
+        "description": "Default f5-bnk and f5-utils. Set BOTH to the same value to install into ONE namespace instead of two \u2014 verified working against BNK 2.3. Fewer RBAC surfaces, one NetworkPolicy target, one thing to grant a team. These are an allowlist entry as much as a setting: bnk-env is built from the keys declared in THIS file, so a variable missing here never reaches a workflow no matter what you export.",
+        "default": "",
+        "order": 209
+      },
+      {
+        "name": "flo_utils_namespace",
+        "type": "string",
+        "label": "Flo utils namespace",
+        "description": "roksbnkctl setting ROKSBNKCTL_FLO_UTILS_NAMESPACE. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 210
+      },
+      {
+        "name": "cneinstance_size",
+        "type": "string",
+        "label": "Cneinstance size",
+        "description": "Deployment size for the CNEInstance (Tiny / Small / Medium / \u2026). Blank uses the terraform default. The legal set is a property of the BNK manifest rather than of this tool, so a bad value is rejected by the operator on the cluster rather than here \u2014 deliberately, since hardcoding a list would go stale the first time F5 adds a size.",
+        "default": "",
+        "order": 211
+      },
+      {
+        "name": "gateway_api_mtls",
+        "type": "string",
+        "label": "Gateway api mtls",
+        "description": "true installs the Gateway API 1.5.0 standard bundle BNK 2.4 needs for mTLS. Doing so requires deleting the OpenShift ingress-operator's Gateway API ValidatingAdmissionPolicy and its binding, which the platform recreates \u2014 the race roksbnkctl's admission sweep exists to win. Blank/false is right for a base install: 2.4's crd-installer logs a graceful skip and leaves the cluster on the bundle OpenShift ships. Ignored on 2.3, where the sweep always runs because the crd-installer IS blocked without it.",
+        "default": "",
+        "order": 212
+      },
+      {
+        "name": "tmm_replicas",
+        "type": "string",
+        "label": "Tmm replicas",
+        "description": "All 2.4-only. Left empty, terraform applies F5's reference value, so an empty value here is \"use the reference\" rather than \"unset\". TMM placement is what REPLACED the node-labeler on 2.4: the labeler was removed as unnecessary and this is the mechanism that took over. The topology keys are the IBM ROKS node labels, surfaced rather than hard-coded.",
+        "default": "",
+        "order": 213
+      },
+      {
+        "name": "watch_namespaces",
+        "type": "string",
+        "label": "Watch namespaces",
+        "description": "roksbnkctl setting ROKSBNKCTL_WATCH_NAMESPACES. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 214
+      },
+      {
+        "name": "tmm_anti_affinity",
+        "type": "string",
+        "label": "Tmm anti affinity",
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 215
+      },
+      {
+        "name": "tmm_anti_affinity_topology_key",
+        "type": "string",
+        "label": "Tmm anti affinity topology key",
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY_TOPOLOGY_KEY. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 216
+      },
+      {
+        "name": "tmm_zone_spread",
+        "type": "string",
+        "label": "Tmm zone spread",
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_SPREAD. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 217
+      },
+      {
+        "name": "tmm_zone_topology_key",
+        "type": "string",
+        "label": "Tmm zone topology key",
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_TOPOLOGY_KEY. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 218
+      },
+      {
+        "name": "tmm_zone_max_skew",
+        "type": "string",
+        "label": "Tmm zone max skew",
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_MAX_SKEW. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 219
+      },
+      {
+        "name": "tmm_zone_when_unsatisfiable",
+        "type": "string",
+        "label": "Tmm zone when unsatisfiable",
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_WHEN_UNSATISFIABLE. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 220
+      },
+      {
+        "name": "tmm_pod_label",
+        "type": "string",
+        "label": "Tmm pod label",
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_POD_LABEL. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 221
+      },
+      {
+        "name": "tmm_rolling_update",
+        "type": "string",
+        "label": "Tmm rolling update",
+        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ROLLING_UPDATE. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 222
+      },
+      {
+        "name": "external_bigip",
+        "type": "string",
+        "label": "External bigip",
+        "description": "roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 223
+      },
+      {
+        "name": "external_bigip_login_secret",
+        "type": "string",
+        "label": "External bigip login secret",
+        "description": "roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP_LOGIN_SECRET. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 224,
+        "sensitive": true
+      },
+      {
+        "name": "cluster_identifier",
+        "type": "string",
+        "label": "Cluster identifier",
+        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_IDENTIFIER. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 225
+      },
+      {
+        "name": "gateway_api_version",
+        "type": "string",
+        "label": "Gateway api version",
+        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_API_VERSION. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 226
+      },
+      {
+        "name": "demo_mode",
+        "type": "string",
+        "label": "Demo mode",
+        "description": "roksbnkctl setting ROKSBNKCTL_DEMO_MODE. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 227
+      },
+      {
+        "name": "whole_cluster",
+        "type": "string",
+        "label": "Whole cluster",
+        "description": "roksbnkctl setting ROKSBNKCTL_WHOLE_CLUSTER. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 228
+      },
+      {
+        "name": "cert_manager_create",
+        "type": "string",
+        "label": "Cert manager create",
+        "description": "Adopt what the cluster already has, rather than creating it. An adopted customer cluster very often already runs cert-manager; without this, bnk up fails with \"namespaces cert-manager already exists\".",
+        "default": "",
+        "order": 229
+      },
+      {
+        "name": "registry_cos_create",
+        "type": "string",
+        "label": "Registry cos create",
+        "description": "roksbnkctl setting ROKSBNKCTL_REGISTRY_COS_CREATE. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 230
+      },
+      {
+        "name": "cluster_jumphosts_create",
+        "type": "string",
+        "label": "Cluster jumphosts create",
+        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_JUMPHOSTS_CREATE. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 231
+      },
+      {
+        "name": "hugepages",
+        "type": "string",
+        "label": "Hugepages",
+        "description": "Allocate hugepages on the worker pool. OFF by default: enabling it sets a bootloader kernel argument, so the Machine Config Operator DRAINS AND REBOOTS every matching worker. deploymentSize Tiny needs none; Small wants 4Gi.",
+        "default": "",
+        "order": 232
+      },
+      {
+        "name": "hugepages_size",
+        "type": "string",
+        "label": "Hugepages size",
+        "description": "roksbnkctl setting ROKSBNKCTL_HUGEPAGES_SIZE. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 233
+      },
+      {
+        "name": "hugepages_count",
+        "type": "string",
+        "label": "Hugepages count",
+        "description": "roksbnkctl setting ROKSBNKCTL_HUGEPAGES_COUNT. Blank uses the roksbnkctl/terraform default.",
+        "default": "",
+        "order": 234
+      },
+      {
+        "name": "gateway_class_name",
+        "type": "string",
+        "label": "Gateway class name",
+        "description": "GatewayClass is CLUSTER-scoped, so two BNK installs sharing a cluster cannot share the name. Blank \u2192 \"gateway-class\", which is right for one install per cluster and wrong for a matrix that stands two up side by side.",
+        "default": "",
+        "order": 235
+      },
+      {
+        "name": "gateway_controller_name",
+        "type": "string",
+        "label": "Gateway controller name",
+        "description": "The string the CNE controller matches ITSELF against. LEAVE THIS BLANK: blank derives \"f5.com/<flo_namespace>-f5-cne-controller\", which is what a controller this deployment installed calls itself, and it follows a changed ROKSBNKCTL_FLO_NAMESPACE automatically. Set it only to aim the GatewayClass at a controller deployed by something else. A wrong value fails SILENTLY \u2014 the apply succeeds, the GatewayClass is never Accepted, and no traffic flows.",
+        "default": "",
+        "order": 236
+      },
+      {
+        "name": "gateway_route_examples",
+        "type": "string",
+        "label": "Gateway route examples",
+        "description": "Extra route kinds to create WORKING examples of, alongside the HTTPRoute the gateway phase always creates. Comma-separated. Blank leaves an existing deployment byte-identical. On BNK 2.3 the only valid values are GRPCRoute and L4Route, and that is not arbitrary: 2.3 pins Gateway API 1.4.1 STANDARD, which contains no TCPRoute, TLSRoute or UDPRoute at all. BNK provides L4Route (gateway.k8s.f5net.com/v1) for TCP instead. Anything else is refused at plan time rather than creating an object no controller will ever claim. Setting L4Route also adds a TCP listener to the Gateway, because an L4Route cannot attach to an HTTP listener.",
+        "default": "",
+        "order": 237
+      },
+      {
+        "name": "gateway_l4_listener_port",
+        "type": "string",
+        "label": "Gateway l4 listener port",
+        "description": "Port for that TCP listener. Blank \u2192 8080.",
+        "default": "",
+        "order": 238
+      },
+      {
+        "name": "worker_flavor",
+        "type": "string",
+        "label": "Worker node profile",
+        "description": "Exact IBM Cloud worker profile, e.g. cx3d.8x20. Blank auto-selects, and the auto-select only ever considers the bx2 family \u2014 F5's approved reference cluster runs cx3d.8x20, which auto-select cannot produce at any minimum. Set it explicitly to reproduce the reference.",
+        "default": "",
+        "order": 250
       }
     ]
   },
@@ -449,7 +771,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.11.0",
+      "version": "5.12.0",
       "name": "roksbnkctl Cluster Create",
       "description": "Create the VPC, ROKS cluster and Transit Gateway, then register the cluster with BNK Forge \u2014 registration runs first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -472,13 +794,14 @@
         "cluster_vpc_id": "${cluster_vpc_id}",
         "existing_subnet_ids": "${existing_subnet_ids}",
         "bnkforge_ca_b64": "${bnkforge_ca_b64}",
-        "cluster_http_allowed_cidrs": "${cluster_http_allowed_cidrs}"
+        "cluster_http_allowed_cidrs": "${cluster_http_allowed_cidrs}",
+        "worker_flavor": "${worker_flavor}"
       }
     },
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.11.0",
+      "version": "5.12.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,
@@ -526,7 +849,46 @@
         "bnkforge_insecure": "${bnkforge_insecure}",
         "cluster_vpc_id": "",
         "ibmcloud_api_key": "${ibmcloud_api_key}",
-        "bnkforge_ca_b64": "${bnkforge_ca_b64}"
+        "bnkforge_ca_b64": "${bnkforge_ca_b64}",
+        "cluster_network_mode": "${cluster_network_mode}",
+        "trusted_profile_sa": "${trusted_profile_sa}",
+        "trusted_profile_roles": "${trusted_profile_roles}",
+        "vlan_prefixlen": "${vlan_prefixlen}",
+        "vlan_prefixlen_external": "${vlan_prefixlen_external}",
+        "vlan_prefixlen_internal": "${vlan_prefixlen_internal}",
+        "gtm_url": "${gtm_url}",
+        "gtm_username": "${gtm_username}",
+        "gtm_password": "${gtm_password}",
+        "flo_namespace": "${flo_namespace}",
+        "flo_utils_namespace": "${flo_utils_namespace}",
+        "cneinstance_size": "${cneinstance_size}",
+        "gateway_api_mtls": "${gateway_api_mtls}",
+        "tmm_replicas": "${tmm_replicas}",
+        "watch_namespaces": "${watch_namespaces}",
+        "tmm_anti_affinity": "${tmm_anti_affinity}",
+        "tmm_anti_affinity_topology_key": "${tmm_anti_affinity_topology_key}",
+        "tmm_zone_spread": "${tmm_zone_spread}",
+        "tmm_zone_topology_key": "${tmm_zone_topology_key}",
+        "tmm_zone_max_skew": "${tmm_zone_max_skew}",
+        "tmm_zone_when_unsatisfiable": "${tmm_zone_when_unsatisfiable}",
+        "tmm_pod_label": "${tmm_pod_label}",
+        "tmm_rolling_update": "${tmm_rolling_update}",
+        "external_bigip": "${external_bigip}",
+        "external_bigip_login_secret": "${external_bigip_login_secret}",
+        "cluster_identifier": "${cluster_identifier}",
+        "gateway_api_version": "${gateway_api_version}",
+        "demo_mode": "${demo_mode}",
+        "whole_cluster": "${whole_cluster}",
+        "cert_manager_create": "${cert_manager_create}",
+        "registry_cos_create": "${registry_cos_create}",
+        "cluster_jumphosts_create": "${cluster_jumphosts_create}",
+        "hugepages": "${hugepages}",
+        "hugepages_size": "${hugepages_size}",
+        "hugepages_count": "${hugepages_count}",
+        "gateway_class_name": "${gateway_class_name}",
+        "gateway_controller_name": "${gateway_controller_name}",
+        "gateway_route_examples": "${gateway_route_examples}",
+        "gateway_l4_listener_port": "${gateway_l4_listener_port}"
       }
     }
   ],

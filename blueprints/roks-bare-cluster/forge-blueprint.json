@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-bare-cluster-roksbnkctl",
-    "version": "5.11.0",
+    "version": "5.12.0",
     "name": "IBM ROKS cluster only \u2014 no BNK installed",
     "description": "Create a ROKS cluster and stop. BNK is never installed, and this blueprint carries no bnk-install module to install it with. That is the whole point: variants that ADOPT an existing cluster need one with no BNK on it, and BNK cannot be removed afterwards \u2014 destroying bnk-install cascades into cluster-create and takes the cluster with it. Previously the only way to get such a cluster was to deploy a full new-cluster blueprint and disable its bnk-install module before Forge's dependency graph dispatched it, which is fragile: enabling a module recomputes dependencies, and a module left merely undispatched runs by itself the moment cluster-create finishes. Set 'Public egress gateway' false to build the air-gapped equivalent \u2014 that flag is the ONLY difference between the connected and disconnected cluster-create."
   },
@@ -213,6 +213,14 @@
         "description": "true builds a connected cluster whose workers reach the internet directly. false builds the air-gapped equivalent, with no public gateway on the subnets \u2014 use that when the cluster will later be adopted by a disconnected install served from a private mirror and F5 License Proxy.",
         "default": "true",
         "order": 15
+      },
+      {
+        "name": "worker_flavor",
+        "type": "string",
+        "label": "Worker node profile",
+        "description": "Exact IBM Cloud worker profile, e.g. cx3d.8x20. Blank auto-selects, and the auto-select only ever considers the bx2 family \u2014 F5's approved reference cluster runs cx3d.8x20, which auto-select cannot produce at any minimum. Set it explicitly to reproduce the reference.",
+        "default": "",
+        "order": 250
       }
     ]
   },
@@ -220,7 +228,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.11.0",
+      "version": "5.12.0",
       "name": "roksbnkctl Cluster Create (no BNK)",
       "description": "init -> cluster up -> kubeconfig fetch -> bnkforge register. Creates the VPC, subnets, worker pool and cluster, and stops there.",
       "optional": false,
@@ -243,7 +251,8 @@
         "cluster_vpc_id": "${cluster_vpc_id}",
         "existing_subnet_ids": "${existing_subnet_ids}",
         "bnkforge_ca_b64": "${bnkforge_ca_b64}",
-        "cluster_http_allowed_cidrs": "${cluster_http_allowed_cidrs}"
+        "cluster_http_allowed_cidrs": "${cluster_http_allowed_cidrs}",
+        "worker_flavor": "${worker_flavor}"
       }
     }
   ],

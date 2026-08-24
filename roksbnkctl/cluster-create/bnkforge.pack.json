@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-cluster-create",
     "path": "roksbnkctl/cluster-create",
-    "version": "5.11.0",
+    "version": "5.12.0",
     "category": "infra",
     "description": "Provision a NEW IBM ROKS cluster (named after the prefix) with its own VPC and Transit Gateway, then register it with BNK Forge. The counterpart to cluster-registry, which adopts a cluster you already own.",
     "estimated_time_minutes": 40
@@ -184,6 +184,14 @@
         "label": "CIDRs allowed to reach the cluster over HTTP/HTTPS",
         "description": "Comma-separated CIDRs permitted inbound to the cluster's security group (roksbnkctl v1.50.0+). Blank keeps the tool's default, which before v1.50.0 was hard-coded 0.0.0.0/0 \u2014 set this to your operator and client ranges rather than leaving a demo cluster open to the Internet.",
         "order": 98
+      },
+      {
+        "name": "worker_flavor",
+        "type": "string",
+        "label": "Worker node profile",
+        "description": "Exact IBM Cloud worker profile, e.g. cx3d.8x20. Blank auto-selects, and the auto-select only ever considers the bx2 family \u2014 F5's approved reference cluster runs cx3d.8x20, which auto-select cannot produce at any minimum. Set it explicitly to reproduce the reference.",
+        "default": "",
+        "order": 250
       }
     ]
   },

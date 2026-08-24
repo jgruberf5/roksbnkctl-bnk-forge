@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-create",
-  "version": "5.11.0",
+  "version": "5.12.0",
   "kind": "container_image",
   "description": "Create a ROKS cluster, its VPC and its Transit Gateway with roksbnkctl, then register it with BNK Forge.",
   "container_image": {
@@ -51,7 +51,8 @@
           "ROKSBNKCTL_CLUSTER_VPC_ID": "{{inputs.cluster_vpc_id}}",
           "ROKSBNKCTL_EXISTING_SUBNET_IDS": "{{inputs.existing_subnet_ids}}",
           "ROKSBNKCTL_BNKFORGE_CA_B64": "{{inputs.bnkforge_ca_b64}}",
-          "ROKSBNKCTL_CLUSTER_HTTP_ALLOWED_CIDRS": "{{inputs.cluster_http_allowed_cidrs}}"
+          "ROKSBNKCTL_CLUSTER_HTTP_ALLOWED_CIDRS": "{{inputs.cluster_http_allowed_cidrs}}",
+          "ROKSBNKCTL_WORKER_FLAVOR": "{{inputs.worker_flavor}}"
         },
         "args": [
           "roksbnkctl",
@@ -385,6 +386,14 @@
         "label": "CIDRs allowed to reach the cluster over HTTP/HTTPS",
         "description": "Comma-separated CIDRs permitted inbound to the cluster's security group (roksbnkctl v1.50.0+). Blank keeps the tool's default, which before v1.50.0 was hard-coded 0.0.0.0/0 \u2014 set this to your operator and client ranges rather than leaving a demo cluster open to the Internet.",
         "order": 98
+      },
+      {
+        "name": "worker_flavor",
+        "type": "string",
+        "label": "Worker node profile",
+        "description": "Exact IBM Cloud worker profile, e.g. cx3d.8x20. Blank auto-selects, and the auto-select only ever considers the bx2 family \u2014 F5's approved reference cluster runs cx3d.8x20, which auto-select cannot produce at any minimum. Set it explicitly to reproduce the reference.",
+        "default": "",
+        "order": 250
       }
     ]
   },
