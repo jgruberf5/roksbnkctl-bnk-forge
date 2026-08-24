@@ -95,6 +95,26 @@ for pack_path in sorted(ROOT.glob("**/bnkforge.pack.json")):
         for n in sorted(pack_inputs - art_inputs):
             problems.append(f"{mod}: input {n!r} in pack.json but not in artifact")
 
+# Forge REJECTS a pack whose optional input lacks `source`, with
+# "Optional input missing 'source' field" at manifest_parse_validate — the module
+# is then silently not updated ("9 found, 0 updated") while this checker passed.
+# 39 new inputs were written without it and the catalog looked healthy locally.
+for mod, meta in modules.items():
+    pack_path = meta["path"]
+    try:
+        pack_raw = json.loads(pack_path.read_text())
+    except Exception:
+        continue
+    for group, items in (pack_raw.get("inputs") or {}).items():
+        if not isinstance(items, list):
+            continue
+        for entry in items:
+            if isinstance(entry, dict) and "source" not in entry:
+                problems.append(
+                    f"{mod}: pack input {entry.get('name')!r} in {group!r} has no 'source' "
+                    f"— Forge rejects the pack and silently does not update the module"
+                )
+
 digests = {m["digest"] for m in modules.values() if m["digest"]}
 if len(digests) > 1:
     problems.append(f"modules pin {len(digests)} different runner digests: {sorted(digests)}")

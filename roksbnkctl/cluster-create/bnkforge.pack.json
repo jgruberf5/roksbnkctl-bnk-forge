@@ -188,10 +188,9 @@
       {
         "name": "worker_flavor",
         "type": "string",
-        "label": "Worker node profile",
-        "description": "Exact IBM Cloud worker profile, e.g. cx3d.8x20. Blank auto-selects, and the auto-select only ever considers the bx2 family \u2014 F5's approved reference cluster runs cx3d.8x20, which auto-select cannot produce at any minimum. Set it explicitly to reproduce the reference.",
+        "source": "user",
         "default": "",
-        "order": 250
+        "description": "Exact IBM Cloud worker profile, e.g. cx3d.8x20. Blank auto-selects, and the auto-select only ever considers the bx2 family \u2014 F5's approved reference cluster runs cx3d.8x20, which auto-select cannot produce at any minimum. Set it explicitly to reproduce the reference."
       }
     ]
   },
