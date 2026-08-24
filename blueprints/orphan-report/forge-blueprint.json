@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-orphan-report-roksbnkctl",
-    "version": "5.11.0",
+    "version": "5.13.0",
     "name": "Find orphaned IBM Cloud resources (read-only)",
     "description": "List the IBM Cloud resources a failed teardown stranded \u2014 jumphosts, security groups, floating IPs, subnets, VPCs, the Transit Gateway, the registry COS instance, the ROKS cluster and the BNK trusted profile \u2014 for one resource prefix. This blueprint DELETES NOTHING; it runs roksbnkctl's own `cleanup --dry-run`. Run it to find out what is still being paid for, then use 'Remove orphaned IBM Cloud resources' if the answer needs acting on."
   },
@@ -92,7 +92,7 @@
     {
       "id": "roksbnkctl-orphan-scan",
       "module": "roksbnkctl/orphan-scan",
-      "version": "5.11.0",
+      "version": "5.13.0",
       "name": "roksbnkctl Orphan Scan",
       "description": "roksbnkctl cleanup --dry-run against the workspace prefix. Read-only.",
       "optional": false,

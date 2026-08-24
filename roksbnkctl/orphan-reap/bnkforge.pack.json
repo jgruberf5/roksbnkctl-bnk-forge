@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-orphan-reap",
     "path": "roksbnkctl/orphan-reap",
-    "version": "5.11.0",
+    "version": "5.13.0",
     "category": "infra",
     "description": "Delete the IBM Cloud resources named <prefix>-* that a failed teardown stranded. DESTRUCTIVE: wraps `roksbnkctl cleanup --auto`. It always lists what it found first, and the deleting step runs only when confirm_delete is set.",
     "estimated_time_minutes": 25

@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-bnk-install",
-  "version": "5.12.0",
+  "version": "5.13.0",
   "kind": "container_image",
   "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:76301cb41dab9923bb2e1620362d2b7e71350d35efb2fcfee992148a28ad8f2d"
+    "digest": "sha256:06e333b2c52582417acd0858159e2d2749e1408946bbbf5f0448918f0f157b18"
   },
   "lifecycle": {
     "supports_apply": true,
