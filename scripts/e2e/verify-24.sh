@@ -17,6 +17,8 @@
 #   * `ibmcloud ks worker ls` reports the profile as `.flavor`, not
 #     `.machineType`; the latter reads empty and makes a correct cluster look wrong.
 set -uo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+[[ -f "$HERE/../demos/.env" ]] && { set -a; . "$HERE/../demos/.env"; set +a; }
 CLUSTER="${1:-}"
 PASS=0; FAIL=0
 ok(){   printf '  \033[32mPASS\033[0m  %-34s %s\n' "$1" "$2"; PASS=$((PASS+1)); }
@@ -49,7 +51,23 @@ TMM=$(timeout 90 kubectl get pods -n f5-bnk --no-headers 2>/dev/null | grep -c '
 cmp_ "f5-tmm pods" "$TMM" "3"
 
 if [[ -n "$CLUSTER" ]]; then
+  # RE-AUTHENTICATE before believing an empty answer. An expired `ibmcloud`
+  # session returns nothing for every query and prints "Log in to the IBM Cloud
+  # CLI" only on stderr, so a correct cx3d.8x20 cluster reports `unknown` and the
+  # check fails a healthy install. That happened on this very check, and twice
+  # before on cluster-state queries where an expired session read as "gone" for a
+  # live 6-worker cluster.
+  #
+  # This is the same shape as two other failures in this project: the FAR registry
+  # answers 404 for an UNENTITLED tag rather than 403, and a Forge sync reports
+  # "0 created" for a REJECTED pack rather than failing. An auth problem that
+  # presents as an empty result is the most expensive kind to read.
   FL=$(timeout 120 ibmcloud ks worker-pool ls --cluster "$CLUSTER" 2>/dev/null | awk 'NR==3{print $3}')
+  if [[ -z "$FL" && -n "${IBMCLOUD_API_KEY:-}" ]]; then
+    timeout 180 ibmcloud login --apikey "$IBMCLOUD_API_KEY" -r "${REGION:-us-east}" -q >/dev/null 2>&1
+    FL=$(timeout 120 ibmcloud ks worker-pool ls --cluster "$CLUSTER" 2>/dev/null | awk 'NR==3{print $3}')
+    [[ -n "$FL" ]] && echo "  (re-authenticated: the first query failed on an expired session, not a wrong flavour)"
+  fi
   cmp_ "worker profile" "${FL:-unknown}" "cx3d.8x20"
 fi
 
