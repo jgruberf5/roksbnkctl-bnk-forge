@@ -115,6 +115,48 @@ for mod, meta in modules.items():
                     f"— Forge rejects the pack and silently does not update the module"
                 )
 
+# Line-specific fields must SAY which line they belong to.
+#
+# roksbnkctl drives 2.3 and 2.4 from one build, selected solely by
+# manifest_version — there is deliberately no separate line field, because a
+# second way to say which release this is can disagree with the manifest being
+# installed. Forge follows that: one set of modules, one set of blueprints.
+#
+# The cost is that 22 of ~217 settings do nothing on the other line, and a flat
+# list of inputs cannot show that. So every field roksbnkctl marks 2.3-only or
+# 2.4-only carries the line in its description. This check fails if one does not,
+# which is what stops the labelling rotting the first time a field is added.
+LINE_FIELDS = ROOT / "scripts" / "bnk-line-fields.json"
+if LINE_FIELDS.exists():
+    lf = json.loads(LINE_FIELDS.read_text())
+
+    def line_of(name: str) -> str | None:
+        if name in lf.get("2.4", []):
+            return "2.4"
+        if name in lf.get("2.3", []):
+            return "2.3"
+        # zone1_int_vlan_cidr and friends are the per-zone form of a 2.3-only base.
+        # Match on a _ boundary so `ibmcloud_api_key` cannot end-match `api_key`.
+        if any(name == b or name.endswith("_" + b) for b in lf.get("2.3", [])):
+            return "2.3"
+        return None
+
+    for bp_path2 in sorted(ROOT.glob("blueprints/*/forge-blueprint.json")):
+        d2 = load(bp_path2)
+        if d2 is None:
+            continue
+        for group in (d2.get("inputs") or {}).values():
+            if not isinstance(group, list):
+                continue
+            for item in group:
+                nm = item.get("name")
+                want = line_of(nm) if nm else None
+                if want and not (item.get("description") or "").startswith(f"[BNK {want} only]"):
+                    problems.append(
+                        f"{bp_path2.parent.name}: input {nm!r} is {want}-only per roksbnkctl "
+                        f"but its description does not say so"
+                    )
+
 digests = {m["digest"] for m in modules.values() if m["digest"]}
 if len(digests) > 1:
     problems.append(f"modules pin {len(digests)} different runner digests: {sorted(digests)}")

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-register-cluster-roksbnkctl",
-    "version": "5.13.0",
+    "version": "5.14.0",
     "name": "Register an existing IBM ROKS cluster (no BNK install)",
     "description": "Adopt a ROKS cluster you already own into a roksbnkctl workspace and register it with BNK Forge \u2014 and stop there. Nothing is created, nothing is installed: the cluster, its VPC and its worker pool are left exactly as found, and BNK is never touched. Use it to bring a cluster under management so it is visible on the Kubernetes page, to fetch a kubeconfig into a shared deployment workspace, or to attach the cluster's VPC to a Transit Gateway ahead of a disconnected install. The BNK install blueprints do this same registration as their first step, so this is that step on its own."
   },
@@ -224,7 +224,7 @@
     {
       "id": "roksbnkctl-cluster-registry",
       "module": "roksbnkctl/cluster-registry",
-      "version": "5.13.0",
+      "version": "5.14.0",
       "name": "roksbnkctl Cluster Registry",
       "description": "init -> cluster register -> kubeconfig fetch -> bnkforge register, against a cluster that already exists. Creates no infrastructure.",
       "optional": false,

@@ -1,0 +1,28 @@
+{
+ "2.4": [
+  "gateway_api_mtls",
+  "tmm_replicas",
+  "watch_namespaces",
+  "tmm_anti_affinity",
+  "tmm_anti_affinity_topology_key",
+  "tmm_zone_spread",
+  "tmm_zone_topology_key",
+  "tmm_zone_max_skew",
+  "tmm_zone_when_unsatisfiable",
+  "tmm_pod_label",
+  "tmm_rolling_update",
+  "external_bigip",
+  "external_bigip_login_secret",
+  "cluster_identifier",
+  "gateway_api_version",
+  "gateway_api_bundle_url"
+ ],
+ "2.3": [
+  "vlan_prefixlen",
+  "vlan_prefixlen_external",
+  "vlan_prefixlen_internal",
+  "int_vlan_cidr",
+  "external_selfip",
+  "internal_selfip"
+ ]
+}

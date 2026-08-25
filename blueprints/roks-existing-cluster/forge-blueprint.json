@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-existing-bnk-roksbnkctl",
-    "version": "5.13.0",
+    "version": "5.14.0",
     "name": "BNK on an existing IBM ROKS cluster (existing Transit Gateway)",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` \u2014 it is never created, and a teardown removes only the BNK layer, never the cluster."
   },
@@ -187,8 +187,8 @@
       {
         "name": "zone1_int_vlan_cidr",
         "type": "string",
-        "label": "Zone1 Int Vlan Cidr",
-        "description": "Zone 1: internal VLAN CIDR (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
+        "label": "Zone1 Int Vlan Cidr (2.3)",
+        "description": "[BNK 2.3 only] Zone 1: internal VLAN CIDR (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 17,
         "example": "10.254.99.0/24"
@@ -214,8 +214,8 @@
       {
         "name": "zone1_external_selfip",
         "type": "string",
-        "label": "Zone1 External Selfip",
-        "description": "Zone 1: external self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
+        "label": "Zone1 External Selfip (2.3)",
+        "description": "[BNK 2.3 only] Zone 1: external self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 20,
         "example": "10.155.15.101"
@@ -223,8 +223,8 @@
       {
         "name": "zone1_internal_selfip",
         "type": "string",
-        "label": "Zone1 Internal Selfip",
-        "description": "Zone 1: internal self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
+        "label": "Zone1 Internal Selfip (2.3)",
+        "description": "[BNK 2.3 only] Zone 1: internal self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 21,
         "example": "10.254.99.101"
@@ -241,8 +241,8 @@
       {
         "name": "zone2_int_vlan_cidr",
         "type": "string",
-        "label": "Zone2 Int Vlan Cidr",
-        "description": "Zone 2: internal VLAN CIDR (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
+        "label": "Zone2 Int Vlan Cidr (2.3)",
+        "description": "[BNK 2.3 only] Zone 2: internal VLAN CIDR (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 23,
         "example": "10.254.100.0/24"
@@ -268,8 +268,8 @@
       {
         "name": "zone2_external_selfip",
         "type": "string",
-        "label": "Zone2 External Selfip",
-        "description": "Zone 2: external self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
+        "label": "Zone2 External Selfip (2.3)",
+        "description": "[BNK 2.3 only] Zone 2: external self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 26,
         "example": "10.156.16.101"
@@ -277,8 +277,8 @@
       {
         "name": "zone2_internal_selfip",
         "type": "string",
-        "label": "Zone2 Internal Selfip",
-        "description": "Zone 2: internal self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
+        "label": "Zone2 Internal Selfip (2.3)",
+        "description": "[BNK 2.3 only] Zone 2: internal self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 27,
         "example": "10.254.100.101"
@@ -295,8 +295,8 @@
       {
         "name": "zone3_int_vlan_cidr",
         "type": "string",
-        "label": "Zone3 Int Vlan Cidr",
-        "description": "Zone 3: internal VLAN CIDR (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
+        "label": "Zone3 Int Vlan Cidr (2.3)",
+        "description": "[BNK 2.3 only] Zone 3: internal VLAN CIDR (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 29,
         "example": "10.254.101.0/24"
@@ -322,8 +322,8 @@
       {
         "name": "zone3_external_selfip",
         "type": "string",
-        "label": "Zone3 External Selfip",
-        "description": "Zone 3: external self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
+        "label": "Zone3 External Selfip (2.3)",
+        "description": "[BNK 2.3 only] Zone 3: external self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 32,
         "example": "10.157.17.101"
@@ -331,8 +331,8 @@
       {
         "name": "zone3_internal_selfip",
         "type": "string",
-        "label": "Zone3 Internal Selfip",
-        "description": "Zone 3: internal self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
+        "label": "Zone3 Internal Selfip (2.3)",
+        "description": "[BNK 2.3 only] Zone 3: internal self-IP (all 6 zone fields required for the zone to apply). Leave blank to use roksbnkctl's default.",
         "default": "",
         "order": 33,
         "example": "10.254.101.101"
@@ -434,24 +434,24 @@
       {
         "name": "vlan_prefixlen",
         "type": "string",
-        "label": "Vlan prefixlen",
-        "description": "TMM self-IP masks. INDEPENDENT of the VLAN CIDRs and never derived from them: a mask that deliberately disagrees with its subnet, plus static routes, is how a specific traffic pattern is forced. The per-VLAN pair overrides the shared value; blank inherits.",
+        "label": "Vlan prefixlen (2.3)",
+        "description": "[BNK 2.3 only] TMM self-IP masks. INDEPENDENT of the VLAN CIDRs and never derived from them: a mask that deliberately disagrees with its subnet, plus static routes, is how a specific traffic pattern is forced. The per-VLAN pair overrides the shared value; blank inherits.",
         "default": "",
         "order": 203
       },
       {
         "name": "vlan_prefixlen_external",
         "type": "string",
-        "label": "Vlan prefixlen external",
-        "description": "roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_EXTERNAL. Blank applies the terraform default 0 (tfvar cneinstance_vlan_prefixlen_external).",
+        "label": "Vlan prefixlen external (2.3)",
+        "description": "[BNK 2.3 only] roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_EXTERNAL. Blank applies the terraform default 0 (tfvar cneinstance_vlan_prefixlen_external).",
         "default": "",
         "order": 204
       },
       {
         "name": "vlan_prefixlen_internal",
         "type": "string",
-        "label": "Vlan prefixlen internal",
-        "description": "roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_INTERNAL. Blank applies the terraform default 0 (tfvar cneinstance_vlan_prefixlen_internal).",
+        "label": "Vlan prefixlen internal (2.3)",
+        "description": "[BNK 2.3 only] roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_INTERNAL. Blank applies the terraform default 0 (tfvar cneinstance_vlan_prefixlen_internal).",
         "default": "",
         "order": 205
       },
@@ -507,104 +507,104 @@
       {
         "name": "gateway_api_mtls",
         "type": "string",
-        "label": "Gateway api mtls",
-        "description": "true installs the Gateway API 1.5.0 standard bundle BNK 2.4 needs for mTLS. Doing so requires deleting the OpenShift ingress-operator's Gateway API ValidatingAdmissionPolicy and its binding, which the platform recreates \u2014 the race roksbnkctl's admission sweep exists to win. Blank/false is right for a base install: 2.4's crd-installer logs a graceful skip and leaves the cluster on the bundle OpenShift ships. Ignored on 2.3, where the sweep always runs because the crd-installer IS blocked without it.",
+        "label": "Gateway api mtls (2.4)",
+        "description": "[BNK 2.4 only] true installs the Gateway API 1.5.0 standard bundle BNK 2.4 needs for mTLS. Doing so requires deleting the OpenShift ingress-operator's Gateway API ValidatingAdmissionPolicy and its binding, which the platform recreates \u2014 the race roksbnkctl's admission sweep exists to win. Blank/false is right for a base install: 2.4's crd-installer logs a graceful skip and leaves the cluster on the bundle OpenShift ships. Ignored on 2.3, where the sweep always runs because the crd-installer IS blocked without it.",
         "default": "",
         "order": 212
       },
       {
         "name": "tmm_replicas",
         "type": "string",
-        "label": "Tmm replicas",
-        "description": "All 2.4-only. Left empty, terraform applies F5's reference value, so an empty value here is \"use the reference\" rather than \"unset\". TMM placement is what REPLACED the node-labeler on 2.4: the labeler was removed as unnecessary and this is the mechanism that took over. The topology keys are the IBM ROKS node labels, surfaced rather than hard-coded.",
+        "label": "Tmm replicas (2.4)",
+        "description": "[BNK 2.4 only] All 2.4-only. Left empty, terraform applies F5's reference value, so an empty value here is \"use the reference\" rather than \"unset\". TMM placement is what REPLACED the node-labeler on 2.4: the labeler was removed as unnecessary and this is the mechanism that took over. The topology keys are the IBM ROKS node labels, surfaced rather than hard-coded.",
         "default": "",
         "order": 213
       },
       {
         "name": "watch_namespaces",
         "type": "string",
-        "label": "Watch namespaces",
-        "description": "roksbnkctl setting ROKSBNKCTL_WATCH_NAMESPACES. Blank applies the terraform default [\"All\"] (tfvar cneinstance_watch_namespaces).",
+        "label": "Watch namespaces (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_WATCH_NAMESPACES. Blank applies the terraform default [\"All\"] (tfvar cneinstance_watch_namespaces).",
         "default": "",
         "order": 214
       },
       {
         "name": "tmm_anti_affinity",
         "type": "string",
-        "label": "Tmm anti affinity",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY. Blank applies the terraform default true (tfvar cneinstance_tmm_anti_affinity).",
+        "label": "Tmm anti affinity (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY. Blank applies the terraform default true (tfvar cneinstance_tmm_anti_affinity).",
         "default": "",
         "order": 215
       },
       {
         "name": "tmm_anti_affinity_topology_key",
         "type": "string",
-        "label": "Tmm anti affinity topology key",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY_TOPOLOGY_KEY. Blank applies the terraform default \"kubernetes.io/hostname\" (tfvar cneinstance_tmm_anti_affinity_topology_key).",
+        "label": "Tmm anti affinity topology key (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_TMM_ANTI_AFFINITY_TOPOLOGY_KEY. Blank applies the terraform default \"kubernetes.io/hostname\" (tfvar cneinstance_tmm_anti_affinity_topology_key).",
         "default": "",
         "order": 216
       },
       {
         "name": "tmm_zone_spread",
         "type": "string",
-        "label": "Tmm zone spread",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_SPREAD. Blank applies the terraform default true (tfvar cneinstance_tmm_zone_spread).",
+        "label": "Tmm zone spread (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_TMM_ZONE_SPREAD. Blank applies the terraform default true (tfvar cneinstance_tmm_zone_spread).",
         "default": "",
         "order": 217
       },
       {
         "name": "tmm_zone_topology_key",
         "type": "string",
-        "label": "Tmm zone topology key",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_TOPOLOGY_KEY. Blank applies the terraform default \"topology.kubernetes.io/zone\" (tfvar cneinstance_tmm_zone_topology_key).",
+        "label": "Tmm zone topology key (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_TMM_ZONE_TOPOLOGY_KEY. Blank applies the terraform default \"topology.kubernetes.io/zone\" (tfvar cneinstance_tmm_zone_topology_key).",
         "default": "",
         "order": 218
       },
       {
         "name": "tmm_zone_max_skew",
         "type": "string",
-        "label": "Tmm zone max skew",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_MAX_SKEW. Blank applies the terraform default 1 (tfvar cneinstance_tmm_zone_max_skew).",
+        "label": "Tmm zone max skew (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_TMM_ZONE_MAX_SKEW. Blank applies the terraform default 1 (tfvar cneinstance_tmm_zone_max_skew).",
         "default": "",
         "order": 219
       },
       {
         "name": "tmm_zone_when_unsatisfiable",
         "type": "string",
-        "label": "Tmm zone when unsatisfiable",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ZONE_WHEN_UNSATISFIABLE. Blank applies the terraform default \"DoNotSchedule\" (tfvar cneinstance_tmm_zone_when_unsatisfiable).",
+        "label": "Tmm zone when unsatisfiable (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_TMM_ZONE_WHEN_UNSATISFIABLE. Blank applies the terraform default \"DoNotSchedule\" (tfvar cneinstance_tmm_zone_when_unsatisfiable).",
         "default": "",
         "order": 220
       },
       {
         "name": "tmm_pod_label",
         "type": "string",
-        "label": "Tmm pod label",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_POD_LABEL. Blank applies the terraform default \"f5-tmm\" (tfvar cneinstance_tmm_pod_label).",
+        "label": "Tmm pod label (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_TMM_POD_LABEL. Blank applies the terraform default \"f5-tmm\" (tfvar cneinstance_tmm_pod_label).",
         "default": "",
         "order": 221
       },
       {
         "name": "tmm_rolling_update",
         "type": "string",
-        "label": "Tmm rolling update",
-        "description": "roksbnkctl setting ROKSBNKCTL_TMM_ROLLING_UPDATE. Blank applies the terraform default true (tfvar cneinstance_tmm_rolling_update).",
+        "label": "Tmm rolling update (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_TMM_ROLLING_UPDATE. Blank applies the terraform default true (tfvar cneinstance_tmm_rolling_update).",
         "default": "",
         "order": 222
       },
       {
         "name": "external_bigip",
         "type": "string",
-        "label": "External bigip",
-        "description": "roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP. Blank applies the terraform default false (tfvar cneinstance_external_bigip).",
+        "label": "External bigip (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP. Blank applies the terraform default false (tfvar cneinstance_external_bigip).",
         "default": "",
         "order": 223
       },
       {
         "name": "external_bigip_login_secret",
         "type": "string",
-        "label": "External bigip login secret",
-        "description": "roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP_LOGIN_SECRET. Blank applies the terraform default \"f5-bigip-ctlr-login\" (tfvar cneinstance_external_bigip_login_secret).",
+        "label": "External bigip login secret (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_EXTERNAL_BIGIP_LOGIN_SECRET. Blank applies the terraform default \"f5-bigip-ctlr-login\" (tfvar cneinstance_external_bigip_login_secret).",
         "default": "",
         "order": 224,
         "sensitive": true
@@ -612,16 +612,16 @@
       {
         "name": "cluster_identifier",
         "type": "string",
-        "label": "Cluster identifier",
-        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_IDENTIFIER. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_cluster_identifier).",
+        "label": "Cluster identifier (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_CLUSTER_IDENTIFIER. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_cluster_identifier).",
         "default": "",
         "order": 225
       },
       {
         "name": "gateway_api_version",
         "type": "string",
-        "label": "Gateway api version",
-        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_API_VERSION. Blank applies the terraform default \"1.5.0\" (tfvar cneinstance_gateway_api_version).",
+        "label": "Gateway api version (2.4)",
+        "description": "[BNK 2.4 only] roksbnkctl setting ROKSBNKCTL_GATEWAY_API_VERSION. Blank applies the terraform default \"1.5.0\" (tfvar cneinstance_gateway_api_version).",
         "default": "",
         "order": 226
       },
@@ -727,7 +727,7 @@
     {
       "id": "roksbnkctl-cluster-registry",
       "module": "roksbnkctl/cluster-registry",
-      "version": "5.13.0",
+      "version": "5.14.0",
       "name": "roksbnkctl Cluster Registry",
       "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -778,7 +778,7 @@
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.13.0",
+      "version": "5.14.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,
@@ -871,7 +871,7 @@
     {
       "id": "roksbnkctl-cwc-guard",
       "module": "roksbnkctl/cwc-guard",
-      "version": "5.13.0",
+      "version": "5.14.0",
       "name": "cwc Multi-Attach guard",
       "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled \u2014 on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
       "optional": false,
