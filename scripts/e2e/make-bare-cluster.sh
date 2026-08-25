@@ -51,6 +51,7 @@ e2e_say "blueprint release $REL"
 
 VARS=$(E2E_PREFIX="$PREFIX" E2E_REGION="$REGION" E2E_RG="$RESOURCE_GROUP" \
   E2E_OCP="${OPENSHIFT_VERSION:-4.20}" E2E_WPZ="${WORKERS_PER_ZONE:-2}" E2E_CIDR="$CIDR" \
+  E2E_FLAVOR="${WORKER_FLAVOR:-}" \
   E2E_TGW="$TRANSIT_GATEWAY" E2E_PUBGW="$PUBGW" \
   E2E_FURL="$FORGE_URL" E2E_FUSER="$FORGE_USER" E2E_FPASS="$FORGE_PASSWORD" \
   E2E_FPROJ="$PROJECT" E2E_FINSEC="${FORGE_INSECURE:+true}" \
@@ -60,6 +61,7 @@ e = os.environ
 print(json.dumps({
  "prefix":e["E2E_PREFIX"], "region":e["E2E_REGION"], "resource_group":e["E2E_RG"],
  "openshift_version":e["E2E_OCP"], "workers_per_zone":e["E2E_WPZ"],
+ "worker_flavor":e["E2E_FLAVOR"],
  "cluster_vpc_cidr":e["E2E_CIDR"], "existing_transit_gateway":e["E2E_TGW"],
  "public_gateway":e["E2E_PUBGW"],
  "bnkforge_url":e["E2E_FURL"], "bnkforge_username":e["E2E_FUSER"],
