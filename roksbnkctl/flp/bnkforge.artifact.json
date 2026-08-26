@@ -51,7 +51,6 @@
           "ROKSBNKCTL_FLP_VSI_PROFILE": "{{inputs.flp_vsi_profile}}",
           "ROKSBNKCTL_FLP_VSI_SSH_KEY": "{{inputs.flp_vsi_ssh_key}}",
           "ROKSBNKCTL_FLP_VSI_BOOT_SIZE_GB": "{{inputs.flp_vsi_boot_size_gb}}",
-          "ROKSBNKCTL_FLP_VSI_REACH": "{{inputs.flp_vsi_reach}}",
           "ROKSBNKCTL_FLP_VSI_FLOATING_IP": "{{inputs.flp_vsi_floating_ip}}",
           "ROKSBNKCTL_FLP_VSI_MANAGEMENT_ALLOWED_CIDRS": "{{inputs.flp_management_allowed_cidrs}}",
           "ROKSBNKCTL_FLP_VSI_LICENSING_ALLOWED_CIDRS": "{{inputs.flp_licensing_allowed_cidrs}}",
@@ -227,12 +226,6 @@
         "type": "string",
         "source": "user",
         "description": "Boot volume size in GB. Blank = 100 (clears the FLP's >80 GB requirement)."
-      },
-      {
-        "name": "flp_vsi_reach",
-        "type": "string",
-        "source": "user",
-        "description": "Address the consuming cluster's CWC dials: private (default) or floating."
       },
       {
         "name": "flp_vsi_floating_ip",

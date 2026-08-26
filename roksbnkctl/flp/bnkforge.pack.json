@@ -117,12 +117,6 @@
         "description": "Boot volume size in GB. Blank = 100 (clears the FLP's >80 GB requirement)."
       },
       {
-        "name": "flp_vsi_reach",
-        "type": "string",
-        "source": "user",
-        "description": "Address the consuming cluster's CWC dials: private (default) or floating."
-      },
-      {
         "name": "flp_vsi_floating_ip",
         "type": "boolean",
         "source": "user",

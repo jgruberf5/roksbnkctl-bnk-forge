@@ -169,14 +169,6 @@
         "order": 9
       },
       {
-        "name": "flp_vsi_reach",
-        "type": "string",
-        "label": "CWC reach",
-        "description": "Address the consuming cluster's CWC dials: private (default, the VSI's VPC IP) or floating.",
-        "default": "",
-        "order": 10
-      },
-      {
         "name": "flp_management_allowed_cidrs",
         "type": "string",
         "label": "Management allowed CIDRs",
@@ -308,7 +300,6 @@
         "flp_vsi_ssh_key": "${flp_vsi_ssh_key}",
         "flp_vsi_boot_size_gb": "${flp_vsi_boot_size_gb}",
         "flp_vsi_floating_ip": "${flp_vsi_floating_ip}",
-        "flp_vsi_reach": "${flp_vsi_reach}",
         "flp_management_allowed_cidrs": "${flp_management_allowed_cidrs}",
         "flp_licensing_allowed_cidrs": "${flp_licensing_allowed_cidrs}",
         "flp_status_image": "${flp_status_image}",
