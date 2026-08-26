@@ -174,6 +174,48 @@ for mod, meta in modules.items():
             f"silently does not create the module"
         )
 
+# Structural agreement with a known-good pack.
+#
+# Forge validates a pack field by field and rejects the whole thing on the first
+# mismatch, but the SYNC still succeeds — it reports the other modules created and
+# silently omits the rejected one. Adding one module cost three push-and-sync
+# cycles that way: no `source` on optional inputs, then no `module.category`, then
+# `dependencies` written as a list where Forge wants an object. Each was invisible
+# locally and each looked identical from here: "N found, N-1 created".
+#
+# So compare every pack's top-level shape against a reference pack that Forge has
+# actually accepted. This does not encode Forge's schema — it encodes "differs in
+# shape from something known to work", which is what a hand-assembled new module
+# gets wrong.
+REFERENCE_PACK = ROOT / "roksbnkctl" / "flp" / "bnkforge.pack.json"
+if REFERENCE_PACK.exists():
+    try:
+        ref_raw = json.loads(REFERENCE_PACK.read_text())
+    except Exception:
+        ref_raw = None
+    if ref_raw:
+        for mod, meta in modules.items():
+            if meta["path"] == REFERENCE_PACK:
+                continue
+            try:
+                pack_raw = json.loads(meta["path"].read_text())
+            except Exception:
+                continue
+            for key, ref_val in ref_raw.items():
+                if key not in pack_raw:
+                    problems.append(f"{mod}: pack has no {key!r}, which the reference pack carries")
+                    continue
+                if isinstance(ref_val, dict) and not isinstance(pack_raw[key], dict):
+                    problems.append(
+                        f"{mod}: pack {key!r} is {type(pack_raw[key]).__name__}, "
+                        f"but Forge expects an object as in the reference pack"
+                    )
+                elif isinstance(ref_val, list) and not isinstance(pack_raw[key], list):
+                    problems.append(
+                        f"{mod}: pack {key!r} is {type(pack_raw[key]).__name__}, "
+                        f"but Forge expects a list as in the reference pack"
+                    )
+
 digests = {m["digest"] for m in modules.values() if m["digest"]}
 if len(digests) > 1:
     problems.append(f"modules pin {len(digests)} different runner digests: {sorted(digests)}")

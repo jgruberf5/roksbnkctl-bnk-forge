@@ -21,7 +21,10 @@
     },
     "entrypoints": {}
   },
-  "dependencies": [],
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
   "inputs": {
     "required": [
       {
