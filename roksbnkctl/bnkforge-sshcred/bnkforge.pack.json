@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
   "module": {
-    "path": "roksbnkctl/bnkforge-sshcred",
     "name": "roksbnkctl-bnkforge-sshcred",
+    "path": "roksbnkctl/bnkforge-sshcred",
     "version": "5.15.0",
+    "category": "bnk",
     "description": "Give BNK Forge the SSH PRIVATE key for an appliance this deployment built, and attach it to the project so Forge can reach the appliance itself."
   },
   "deployment_pack": {

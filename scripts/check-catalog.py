@@ -157,6 +157,23 @@ if LINE_FIELDS.exists():
                         f"but its description does not say so"
                     )
 
+# Forge requires module.category on every pack and rejects the pack without it —
+# "Missing or invalid required field 'module.category'" at manifest_parse_validate.
+# As with the missing `source` field, the sync does NOT fail: it reports the other
+# modules created and silently omits the rejected one, so a new module can be
+# committed, pushed and simply absent from Forge while this checker says the
+# catalog is fine.
+for mod, meta in modules.items():
+    try:
+        pack_raw = json.loads(meta["path"].read_text())
+    except Exception:
+        continue
+    if not (pack_raw.get("module") or {}).get("category"):
+        problems.append(
+            f"{mod}: pack has no module.category — Forge rejects the pack and "
+            f"silently does not create the module"
+        )
+
 digests = {m["digest"] for m in modules.values() if m["digest"]}
 if len(digests) > 1:
     problems.append(f"modules pin {len(digests)} different runner digests: {sorted(digests)}")
