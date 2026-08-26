@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "module": {
+    "path": "roksbnkctl/bnkforge-sshcred",
+    "name": "roksbnkctl-bnkforge-sshcred",
+    "version": "5.15.0",
+    "description": "Give BNK Forge the SSH PRIVATE key for an appliance this deployment built, and attach it to the project so Forge can reach the appliance itself."
+  },
+  "deployment_pack": {
+    "engine": "container",
+    "runner_profile": "container-default",
+    "working_directory": ".",
+    "lifecycle": {
+      "supports_init": false,
+      "supports_plan": false,
+      "supports_apply": true,
+      "supports_destroy": true,
+      "supports_refresh": false,
+      "supports_drift": false
+    },
+    "entrypoints": {}
+  },
+  "dependencies": [],
+  "inputs": {
+    "required": [
+      {
+        "name": "ssh_private_key_secret",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "Name of the BNK Forge PROJECT SECRET holding the appliance's PRIVATE key, unencrypted. Forge materializes it into the run workspace as a file; it is never passed on the command line. Forge stores the key and cannot prompt, so an encrypted key cannot be used."
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "BNK Forge URL to store the credential in."
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "BNK Forge login username."
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "source": "user",
+        "sensitive": true,
+        "default": "",
+        "description": "BNK Forge password. Passed as an environment variable only, never on the command line."
+      }
+    ],
+    "optional": [
+      {
+        "name": "appliance_host",
+        "type": "string",
+        "source": "module",
+        "from_module": "flp",
+        "from_output": "floating_ip",
+        "default": "",
+        "description": "The address FORGE must reach the appliance on \u2014 the FLOATING IP, not the private endpoint the appliance reports. An FLP publishes https://10.243.1.4:8443, which is inside the services VPC that Forge sits outside of, so a credential built from it can never connect. Wired from the flp module's floating_ip output when an flp is in this deployment; set it yourself otherwise, e.g. for a harbor VSI."
+      },
+      {
+        "name": "ssh_username",
+        "type": "string",
+        "source": "user",
+        "default": "ubuntu",
+        "description": "SSH user on the appliance. ubuntu for the FLP and Harbor VSI images."
+      },
+      {
+        "name": "credential_name",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "Name for the credential in Forge. Blank uses <project>-ssh."
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "BNK Forge project to attach the credential to. Blank uses this project."
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "source": "user",
+        "default": "false",
+        "description": "Set true only for a Forge with a self-signed certificate. Prefer bnkforge_ca_b64."
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "Base64 PEM of the CA that issued Forge's certificate, pinning the call."
+      }
+    ]
+  },
+  "outputs": {
+    "key_outputs": []
+  }
+}

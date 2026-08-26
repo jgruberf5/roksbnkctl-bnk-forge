@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-bare-cluster-roksbnkctl",
-    "version": "5.14.0",
+    "version": "5.15.0",
     "name": "IBM ROKS cluster only \u2014 no BNK installed",
     "description": "Create a ROKS cluster and stop. BNK is never installed, and this blueprint carries no bnk-install module to install it with. That is the whole point: variants that ADOPT an existing cluster need one with no BNK on it, and BNK cannot be removed afterwards \u2014 destroying bnk-install cascades into cluster-create and takes the cluster with it. Previously the only way to get such a cluster was to deploy a full new-cluster blueprint and disable its bnk-install module before Forge's dependency graph dispatched it, which is fragile: enabling a module recomputes dependencies, and a module left merely undispatched runs by itself the moment cluster-create finishes. Set 'Public egress gateway' false to build the air-gapped equivalent \u2014 that flag is the ONLY difference between the connected and disconnected cluster-create."
   },
@@ -228,7 +228,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.14.0",
+      "version": "5.15.0",
       "name": "roksbnkctl Cluster Create (no BNK)",
       "description": "init -> cluster up -> kubeconfig fetch -> bnkforge register. Creates the VPC, subnets, worker pool and cluster, and stops there.",
       "optional": false,

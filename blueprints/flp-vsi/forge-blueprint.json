@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-flp-vsi-roksbnkctl",
-    "version": "5.14.0",
+    "version": "5.15.0",
     "name": "Deploying F5 License Proxy as an IBM Cloud VSI",
     "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC \u2014 no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
   },
@@ -91,6 +91,39 @@
         "label": "COS bucket",
         "description": "COS bucket holding the FAR supply chain. Blank = bnk-artifacts.",
         "order": 20
+      },
+      {
+        "name": "ssh_private_key_secret",
+        "type": "string",
+        "label": "Ssh private key secret",
+        "description": "Name of the BNK Forge PROJECT SECRET holding the appliance's PRIVATE key, unencrypted. Forge materializes it into the run workspace as a file; it is never passed on the command line. Forge stores the key and cannot prompt, so an encrypted key cannot be used.",
+        "default": "",
+        "order": 1
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "label": "Bnkforge url",
+        "description": "BNK Forge URL to store the credential in.",
+        "default": "",
+        "order": 2
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "label": "Bnkforge username",
+        "description": "BNK Forge login username.",
+        "default": "",
+        "order": 3
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "label": "Bnkforge password",
+        "description": "BNK Forge password. Passed as an environment variable only, never on the command line.",
+        "default": "",
+        "order": 4,
+        "sensitive": true
       }
     ],
     "optional": [
@@ -275,6 +308,54 @@
         "example": "acme-flp",
         "default": "",
         "order": 23
+      },
+      {
+        "name": "appliance_host",
+        "type": "string",
+        "label": "Appliance host",
+        "description": "The address FORGE must reach the appliance on \u2014 the FLOATING IP, not the private endpoint the appliance reports. An FLP publishes https://10.243.1.4:8443, which is inside the services VPC that Forge sits outside of, so a credential built from it can never connect. Wired from the flp module's floating_ip output when an flp is in this deployment; set it yourself otherwise, e.g. for a harbor VSI.",
+        "default": "",
+        "order": 5
+      },
+      {
+        "name": "ssh_username",
+        "type": "string",
+        "label": "Ssh username",
+        "description": "SSH user on the appliance. ubuntu for the FLP and Harbor VSI images.",
+        "default": "ubuntu",
+        "order": 6
+      },
+      {
+        "name": "credential_name",
+        "type": "string",
+        "label": "Credential name",
+        "description": "Name for the credential in Forge. Blank uses <project>-ssh.",
+        "default": "",
+        "order": 7
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "label": "Bnkforge project",
+        "description": "BNK Forge project to attach the credential to. Blank uses this project.",
+        "default": "",
+        "order": 8
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "label": "Bnkforge insecure",
+        "description": "Set true only for a Forge with a self-signed certificate. Prefer bnkforge_ca_b64.",
+        "default": "false",
+        "order": 9
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "label": "Bnkforge ca b64",
+        "description": "Base64 PEM of the CA that issued Forge's certificate, pinning the call.",
+        "default": "",
+        "order": 10
       }
     ]
   },
@@ -282,7 +363,7 @@
     {
       "id": "roksbnkctl-flp",
       "module": "roksbnkctl/flp",
-      "version": "5.14.0",
+      "version": "5.15.0",
       "name": "roksbnkctl FLP (VSI)",
       "description": "roksbnkctl flp up in vsi mode \u2014 a standalone F5 License Proxy appliance in an existing VPC.",
       "optional": false,
@@ -314,6 +395,29 @@
         "flp_namespace": "${flp_namespace}",
         "ibmcloud_api_key": "${ibmcloud_api_key}",
         "flp_vsi_name_prefix": "${flp_vsi_name_prefix}"
+      }
+    },
+    {
+      "id": "roksbnkctl-bnkforge-sshcred",
+      "module": "roksbnkctl/bnkforge-sshcred",
+      "version": "5.15.0",
+      "name": "Register the appliance's SSH key with Forge",
+      "description": "Stores the appliance's PRIVATE key in Forge and attaches it to the project, so Forge can reach the VSI itself. Optional: skip it and Forge reports infrastructure_access_status recovery_required.",
+      "optional": true,
+      "depends_on": [
+        "roksbnkctl-flp"
+      ],
+      "inputs": {
+        "ssh_private_key_secret": "${ssh_private_key_secret}",
+        "bnkforge_url": "${bnkforge_url}",
+        "bnkforge_username": "${bnkforge_username}",
+        "bnkforge_password": "${bnkforge_password}",
+        "appliance_host": "${appliance_host}",
+        "ssh_username": "${ssh_username}",
+        "credential_name": "${credential_name}",
+        "bnkforge_project": "${bnkforge_project}",
+        "bnkforge_insecure": "${bnkforge_insecure}",
+        "bnkforge_ca_b64": "${bnkforge_ca_b64}"
       }
     }
   ],

@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "kind": "container_image",
+  "name": "roksbnkctl-bnkforge-sshcred",
+  "version": "5.15.0",
+  "description": "Give BNK Forge the SSH PRIVATE key for an appliance this deployment built, and attach it to the project so Forge can reach the appliance itself.",
+  "container_image": {
+    "registry_host": "ghcr.io",
+    "repository": "jgruberf5/roksbnkctl-tools-runner",
+    "digest": "sha256:4993d2e3161b501e021975b076437175a821e4efa8f542fc608a8488979d3823"
+  },
+  "execution": {
+    "engine": "container",
+    "limits": {
+      "cpus": "2",
+      "memory": "2g"
+    }
+  },
+  "credentials": {
+    "cloud": "ibmcloud"
+  },
+  "lifecycle": {
+    "supports_apply": true,
+    "supports_destroy": false
+  },
+  "secret_files": [
+    {
+      "secret_name": "{{inputs.ssh_private_key_secret}}",
+      "path": "ssh/appliance_key"
+    }
+  ],
+  "inputs": {
+    "required": [
+      {
+        "name": "ssh_private_key_secret",
+        "type": "string",
+        "label": "Ssh private key secret",
+        "description": "Name of the BNK Forge PROJECT SECRET holding the appliance's PRIVATE key, unencrypted. Forge materializes it into the run workspace as a file; it is never passed on the command line. Forge stores the key and cannot prompt, so an encrypted key cannot be used.",
+        "default": "",
+        "order": 1
+      },
+      {
+        "name": "bnkforge_url",
+        "type": "string",
+        "label": "Bnkforge url",
+        "description": "BNK Forge URL to store the credential in.",
+        "default": "",
+        "order": 2
+      },
+      {
+        "name": "bnkforge_username",
+        "type": "string",
+        "label": "Bnkforge username",
+        "description": "BNK Forge login username.",
+        "default": "",
+        "order": 3
+      },
+      {
+        "name": "bnkforge_password",
+        "type": "string",
+        "label": "Bnkforge password",
+        "description": "BNK Forge password. Passed as an environment variable only, never on the command line.",
+        "default": "",
+        "order": 4,
+        "sensitive": true
+      }
+    ],
+    "optional": [
+      {
+        "name": "appliance_host",
+        "type": "string",
+        "label": "Appliance host",
+        "source": "module",
+        "from_module": "flp",
+        "from_output": "floating_ip",
+        "description": "The address FORGE must reach the appliance on \u2014 the FLOATING IP, not the private endpoint the appliance reports. An FLP publishes https://10.243.1.4:8443, which is inside the services VPC that Forge sits outside of, so a credential built from it can never connect. Wired from the flp module's floating_ip output when an flp is in this deployment; set it yourself otherwise, e.g. for a harbor VSI.",
+        "default": "",
+        "order": 5
+      },
+      {
+        "name": "ssh_username",
+        "type": "string",
+        "label": "Ssh username",
+        "description": "SSH user on the appliance. ubuntu for the FLP and Harbor VSI images.",
+        "default": "ubuntu",
+        "order": 6
+      },
+      {
+        "name": "credential_name",
+        "type": "string",
+        "label": "Credential name",
+        "description": "Name for the credential in Forge. Blank uses <project>-ssh.",
+        "default": "",
+        "order": 7
+      },
+      {
+        "name": "bnkforge_project",
+        "type": "string",
+        "label": "Bnkforge project",
+        "description": "BNK Forge project to attach the credential to. Blank uses this project.",
+        "default": "",
+        "order": 8
+      },
+      {
+        "name": "bnkforge_insecure",
+        "type": "string",
+        "label": "Bnkforge insecure",
+        "description": "Set true only for a Forge with a self-signed certificate. Prefer bnkforge_ca_b64.",
+        "default": "false",
+        "order": 9
+      },
+      {
+        "name": "bnkforge_ca_b64",
+        "type": "string",
+        "label": "Bnkforge ca b64",
+        "description": "Base64 PEM of the CA that issued Forge's certificate, pinning the call.",
+        "default": "",
+        "order": 10
+      }
+    ]
+  },
+  "steps": {
+    "apply": [
+      {
+        "name": "bnkforge-ssh-credential",
+        "env": {
+          "HOME": "/home/runner",
+          "BNK_FORGE_PASSWORD": "{{inputs.bnkforge_password}}"
+        },
+        "args": [
+          "roksbnkctl",
+          "-w",
+          "flp",
+          "bnkforge",
+          "ssh-credential",
+          "--url",
+          "{{inputs.bnkforge_url}}",
+          "--username",
+          "{{inputs.bnkforge_username}}",
+          "--project",
+          "{{inputs.bnkforge_project}}",
+          "--host",
+          "{{inputs.appliance_host}}",
+          "--ssh-username",
+          "{{inputs.ssh_username}}",
+          "--key",
+          "ssh/appliance_key",
+          "--name",
+          "{{inputs.credential_name}}"
+        ],
+        "timeout_seconds": 300
+      }
+    ]
+  },
+  "state": {
+    "mount_path": "/work",
+    "outputs_file": ".roksbnkctl/flp/flp-outputs.json",
+    "home_env": {
+      "HOME": "/home/runner",
+      "ROKSBNKCTL_HOME": "/work/.roksbnkctl"
+    },
+    "scope": "deployment"
+  }
+}
