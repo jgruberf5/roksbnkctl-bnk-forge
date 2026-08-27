@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-existing-bnk-roksbnkctl",
-    "version": "5.15.0",
+    "version": "5.16.0",
     "name": "BNK on an existing IBM ROKS cluster (existing Transit Gateway)",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster you already own, reached over a Transit Gateway you already own. roksbnkctl adopts the cluster with `cluster register` \u2014 it is never created, and a teardown removes only the BNK layer, never the cluster."
   },
@@ -456,31 +456,6 @@
         "order": 205
       },
       {
-        "name": "gtm_url",
-        "type": "string",
-        "label": "Gtm url",
-        "description": "The BIG-IP DNS / GTM the GSLB datacenter registers WITH. Without the URL the datacenter name is a label pointing at nothing. The PASSWORD is credential- grade and is routed to the Secret, not the ConfigMap \u2014 see SECRET_KEYS.",
-        "default": "",
-        "order": 206
-      },
-      {
-        "name": "gtm_username",
-        "type": "string",
-        "label": "Gtm username",
-        "description": "roksbnkctl setting ROKSBNKCTL_GTM_USERNAME. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_gtm_username).",
-        "default": "",
-        "order": 207
-      },
-      {
-        "name": "gtm_password",
-        "type": "string",
-        "label": "Gtm password",
-        "description": "roksbnkctl setting ROKSBNKCTL_GTM_PASSWORD. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_gtm_password).",
-        "default": "",
-        "order": 208,
-        "sensitive": true
-      },
-      {
         "name": "flo_namespace",
         "type": "string",
         "label": "Flo namespace",
@@ -727,7 +702,7 @@
     {
       "id": "roksbnkctl-cluster-registry",
       "module": "roksbnkctl/cluster-registry",
-      "version": "5.15.0",
+      "version": "5.16.0",
       "name": "roksbnkctl Cluster Registry",
       "description": "Adopt the existing cluster and register it with BNK Forge \u2014 first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -778,7 +753,7 @@
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.15.0",
+      "version": "5.16.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,
@@ -833,9 +808,6 @@
         "vlan_prefixlen": "${vlan_prefixlen}",
         "vlan_prefixlen_external": "${vlan_prefixlen_external}",
         "vlan_prefixlen_internal": "${vlan_prefixlen_internal}",
-        "gtm_url": "${gtm_url}",
-        "gtm_username": "${gtm_username}",
-        "gtm_password": "${gtm_password}",
         "flo_namespace": "${flo_namespace}",
         "flo_utils_namespace": "${flo_utils_namespace}",
         "cneinstance_size": "${cneinstance_size}",
@@ -871,7 +843,7 @@
     {
       "id": "roksbnkctl-cwc-guard",
       "module": "roksbnkctl/cwc-guard",
-      "version": "5.15.0",
+      "version": "5.16.0",
       "name": "cwc Multi-Attach guard",
       "description": "Runs in PARALLEL with the BNK install, not before it: the Deployment it fixes only exists once the F5 Lifecycle Operator creates it, part-way through the install. Depends on the cluster registration for the kubeconfig. Leave it enabled \u2014 on a cluster that does not need it the patch reports 'no change' and the module is a few seconds of no-ops.",
       "optional": false,

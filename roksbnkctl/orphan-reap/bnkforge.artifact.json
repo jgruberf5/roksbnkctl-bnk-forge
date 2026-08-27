@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-orphan-reap",
-  "version": "5.15.0",
+  "version": "5.16.0",
   "kind": "container_image",
   "description": "Delete the IBM Cloud resources named <prefix>-* that a failed teardown stranded. Wraps 'roksbnkctl cleanup --auto'. Always lists first, and the destructive step runs only when confirm_delete is set.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:4993d2e3161b501e021975b076437175a821e4efa8f542fc608a8488979d3823"
+    "digest": "sha256:244d32042f5e06bbc383ec5a4908cb16bb357901d0db9091c0945863be80c517"
   },
   "lifecycle": {
     "supports_apply": true,

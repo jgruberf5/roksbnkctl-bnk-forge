@@ -2,12 +2,12 @@
   "schema_version": 1,
   "kind": "container_image",
   "name": "roksbnkctl-bnkforge-sshcred",
-  "version": "5.15.0",
+  "version": "5.16.0",
   "description": "Give BNK Forge the SSH PRIVATE key for an appliance this deployment built, and attach it to the project so Forge can reach the appliance itself.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:4993d2e3161b501e021975b076437175a821e4efa8f542fc608a8488979d3823"
+    "digest": "sha256:244d32042f5e06bbc383ec5a4908cb16bb357901d0db9091c0945863be80c517"
   },
   "execution": {
     "engine": "container",

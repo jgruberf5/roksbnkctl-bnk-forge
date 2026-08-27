@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-bnk-install",
     "path": "roksbnkctl/bnk-install",
-    "version": "5.15.0",
+    "version": "5.16.0",
     "category": "bnk",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
     "estimated_time_minutes": 17
@@ -409,28 +409,6 @@
         "source": "user",
         "default": "",
         "description": "[BNK 2.3 only] roksbnkctl setting ROKSBNKCTL_VLAN_PREFIXLEN_INTERNAL. Blank applies the terraform default 0 (tfvar cneinstance_vlan_prefixlen_internal)."
-      },
-      {
-        "name": "gtm_url",
-        "type": "string",
-        "source": "user",
-        "default": "",
-        "description": "The BIG-IP DNS / GTM the GSLB datacenter registers WITH. Without the URL the datacenter name is a label pointing at nothing. The PASSWORD is credential- grade and is routed to the Secret, not the ConfigMap \u2014 see SECRET_KEYS."
-      },
-      {
-        "name": "gtm_username",
-        "type": "string",
-        "source": "user",
-        "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_GTM_USERNAME. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_gtm_username)."
-      },
-      {
-        "name": "gtm_password",
-        "type": "string",
-        "source": "user",
-        "sensitive": true,
-        "default": "",
-        "description": "roksbnkctl setting ROKSBNKCTL_GTM_PASSWORD. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_gtm_password)."
       },
       {
         "name": "flo_namespace",

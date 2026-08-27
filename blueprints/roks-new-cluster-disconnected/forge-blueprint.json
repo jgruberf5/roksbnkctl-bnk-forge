@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-disconnected-bnk-roksbnkctl",
-    "version": "5.15.0",
+    "version": "5.16.0",
     "name": "BNK on a NEW disconnected IBM ROKS cluster (private registry + F5 License Proxy)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway and NO worker Internet egress, then install BIG-IP Next for Kubernetes onto it from a private registry you have already mirrored, licensed through an F5 License Proxy. Build the mirror and the proxy first with the Harbor and FLP blueprints. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -594,31 +594,6 @@
         "order": 205
       },
       {
-        "name": "gtm_url",
-        "type": "string",
-        "label": "Gtm url",
-        "description": "The BIG-IP DNS / GTM the GSLB datacenter registers WITH. Without the URL the datacenter name is a label pointing at nothing. The PASSWORD is credential- grade and is routed to the Secret, not the ConfigMap \u2014 see SECRET_KEYS.",
-        "default": "",
-        "order": 206
-      },
-      {
-        "name": "gtm_username",
-        "type": "string",
-        "label": "Gtm username",
-        "description": "roksbnkctl setting ROKSBNKCTL_GTM_USERNAME. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_gtm_username).",
-        "default": "",
-        "order": 207
-      },
-      {
-        "name": "gtm_password",
-        "type": "string",
-        "label": "Gtm password",
-        "description": "roksbnkctl setting ROKSBNKCTL_GTM_PASSWORD. Blank applies the terraform default \"\" (empty) (tfvar cneinstance_gtm_password).",
-        "default": "",
-        "order": 208,
-        "sensitive": true
-      },
-      {
         "name": "flo_namespace",
         "type": "string",
         "label": "Flo namespace",
@@ -873,7 +848,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.15.0",
+      "version": "5.16.0",
       "name": "roksbnkctl Cluster Create",
       "description": "Create the VPC and ROKS cluster with no worker egress, attach it to the existing Transit Gateway, then register the cluster with BNK Forge \u2014 registration runs first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -903,7 +878,7 @@
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.15.0",
+      "version": "5.16.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, pulling from the mirror and licensing via the FLP.",
       "optional": false,
@@ -971,9 +946,6 @@
         "vlan_prefixlen": "${vlan_prefixlen}",
         "vlan_prefixlen_external": "${vlan_prefixlen_external}",
         "vlan_prefixlen_internal": "${vlan_prefixlen_internal}",
-        "gtm_url": "${gtm_url}",
-        "gtm_username": "${gtm_username}",
-        "gtm_password": "${gtm_password}",
         "flo_namespace": "${flo_namespace}",
         "flo_utils_namespace": "${flo_utils_namespace}",
         "cneinstance_size": "${cneinstance_size}",
