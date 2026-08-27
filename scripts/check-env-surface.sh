@@ -43,6 +43,19 @@ print('\n'.join(sorted(s)))")
 
 # ROKSBNKCTL_HOME configures the CLI's own workspace root, not a workspace
 # setting, so it is legitimately absent from `config env`.
+#
+# DELIBERATELY NOT SURFACED, so the informational count is not mistaken for a gap:
+#   tf_source.*   (v1.59.0) selects which Terraform the binary applies. The
+#                 default `embedded` tree is, in roksbnkctl's own words, "the only
+#                 version matched to it"; github and local are for testing a fork.
+#                 Exposing it would let an operator repoint terraform at a tree the
+#                 pinned runner digest does not determine, which is the whole
+#                 reason these modules pin by digest rather than tag.
+#   TESTING_*, CLIENT_VPC_*, TGW_JUMPHOST_*  configure the test client these
+#                 blueprints do not drive.
+#   BNKFORGE_*    already first-class blueprint inputs; a second route to one
+#                 setting is a second thing that can disagree.
+#   API_KEY_*, COPIED_SSH_KEY_FILES  supplied by the credential template.
 DEAD=$(comm -23 <(printf '%s\n' "$OURS") <(printf '%s\n' "$KNOWN") | grep -v '^ROKSBNKCTL_HOME$' || true)
 if [[ -n "$DEAD" ]]; then
   echo "  FAIL — set by our modules, not read by this runner:"

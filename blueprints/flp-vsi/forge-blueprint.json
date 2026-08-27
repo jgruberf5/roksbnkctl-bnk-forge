@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-flp-vsi-roksbnkctl",
-    "version": "5.17.0",
+    "version": "5.18.0",
     "name": "Deploying F5 License Proxy as an IBM Cloud VSI",
     "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC \u2014 no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
   },
@@ -427,7 +427,7 @@
     {
       "id": "roksbnkctl-flp",
       "module": "roksbnkctl/flp",
-      "version": "5.17.0",
+      "version": "5.18.0",
       "name": "roksbnkctl FLP (VSI)",
       "description": "roksbnkctl flp up in vsi mode \u2014 a standalone F5 License Proxy appliance in an existing VPC.",
       "optional": false,
@@ -472,7 +472,7 @@
     {
       "id": "roksbnkctl-bnkforge-sshcred",
       "module": "roksbnkctl/bnkforge-sshcred",
-      "version": "5.17.0",
+      "version": "5.18.0",
       "name": "Register the appliance's SSH key with Forge",
       "description": "Stores the appliance's PRIVATE key in Forge and attaches it to the project, so Forge can reach the VSI itself. Optional: skip it and Forge reports infrastructure_access_status recovery_required.",
       "optional": true,

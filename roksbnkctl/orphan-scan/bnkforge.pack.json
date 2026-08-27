@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-orphan-scan",
     "path": "roksbnkctl/orphan-scan",
-    "version": "5.17.0",
+    "version": "5.18.0",
     "category": "infra",
     "description": "List IBM Cloud resources named <prefix>-* that a failed teardown stranded \u2014 jumphosts, security groups, floating IPs, subnets, VPCs, the Transit Gateway, the registry COS instance, the ROKS cluster and the BNK trusted profile. Read-only: wraps `roksbnkctl cleanup --dry-run`.",
     "estimated_time_minutes": 3

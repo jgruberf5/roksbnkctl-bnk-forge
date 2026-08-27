@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-bnkforge-sshcred",
     "path": "roksbnkctl/bnkforge-sshcred",
-    "version": "5.17.0",
+    "version": "5.18.0",
     "category": "bnk",
     "description": "Give BNK Forge the SSH PRIVATE key for an appliance this deployment built, and attach it to the project so Forge can reach the appliance itself."
   },
