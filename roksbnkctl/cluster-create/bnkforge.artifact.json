@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-cluster-create",
-  "version": "5.16.0",
+  "version": "5.17.0",
   "kind": "container_image",
   "description": "Create a ROKS cluster, its VPC and its Transit Gateway with roksbnkctl, then register it with BNK Forge.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:244d32042f5e06bbc383ec5a4908cb16bb357901d0db9091c0945863be80c517"
+    "digest": "sha256:44f7b47b0c58ea1f8b7784fe6f91fc55b8dd054751dd7d70d829312cdd94f71c"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -52,7 +52,15 @@
           "ROKSBNKCTL_EXISTING_SUBNET_IDS": "{{inputs.existing_subnet_ids}}",
           "ROKSBNKCTL_BNKFORGE_CA_B64": "{{inputs.bnkforge_ca_b64}}",
           "ROKSBNKCTL_CLUSTER_HTTP_ALLOWED_CIDRS": "{{inputs.cluster_http_allowed_cidrs}}",
-          "ROKSBNKCTL_WORKER_FLAVOR": "{{inputs.worker_flavor}}"
+          "ROKSBNKCTL_WORKER_FLAVOR": "{{inputs.worker_flavor}}",
+          "ROKSBNKCTL_CLIENT_REGION": "{{inputs.client_region}}",
+          "ROKSBNKCTL_CLUSTER_JUMPHOSTS_EXISTING": "{{inputs.cluster_jumphosts_existing}}",
+          "ROKSBNKCTL_CLUSTER_VPC_CREATE": "{{inputs.cluster_vpc_create}}",
+          "ROKSBNKCTL_CLUSTER_VPC_DEFAULT_SG_INBOUND_CIDRS": "{{inputs.cluster_vpc_default_sg_inbound_cidrs}}",
+          "ROKSBNKCTL_MIN_WORKER_MEMORY_GB": "{{inputs.min_worker_memory_gb}}",
+          "ROKSBNKCTL_MIN_WORKER_VCPU_COUNT": "{{inputs.min_worker_vcpu_count}}",
+          "ROKSBNKCTL_REGISTRY_COS_EXISTING": "{{inputs.registry_cos_existing}}",
+          "ROKSBNKCTL_TRANSIT_GATEWAY_CREATE": "{{inputs.transit_gateway_create}}"
         },
         "args": [
           "roksbnkctl",
@@ -394,6 +402,70 @@
         "description": "Exact IBM Cloud worker profile, e.g. cx3d.8x20. Blank auto-selects, and the auto-select only ever considers the bx2 family \u2014 F5's approved reference cluster runs cx3d.8x20, which auto-select cannot produce at any minimum. Set it explicitly to reproduce the reference.",
         "default": "",
         "order": 250
+      },
+      {
+        "name": "client_region",
+        "type": "string",
+        "label": "Client region",
+        "description": "The region the testing client (TGW jumphost + client VPC) is installed in. Maps to config.yaml resources.client_region.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "cluster_jumphosts_existing",
+        "type": "string",
+        "label": "Cluster jumphosts existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.cluster_jumphosts.existing.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "cluster_vpc_create",
+        "type": "string",
+        "label": "Cluster vpc create",
+        "description": "-> resources.bnk.create, resources.cert_manager.create, resources.client_vpc.create, resources.cluster_jumphosts.create, resources.cluster_vpc.create, resources.registry_cos.create, resources.tgw_jumphost.create, resources.transit_gateway.create",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "cluster_vpc_default_sg_inbound_cidrs",
+        "type": "string",
+        "label": "Cluster vpc default sg inbound cidrs",
+        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_VPC_DEFAULT_SG_INBOUND_CIDRS. Maps to config.yaml resources.cluster_vpc_default_sg_inbound_cidrs[0].",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "min_worker_memory_gb",
+        "type": "string",
+        "label": "Min worker memory gb",
+        "description": "The memory floor for the same auto-select. Maps to config.yaml cluster.min_worker_memory_gb.",
+        "default": "",
+        "order": 404
+      },
+      {
+        "name": "min_worker_vcpu_count",
+        "type": "string",
+        "label": "Min worker vcpu count",
+        "description": "The vCPU floor for the worker-flavor auto-select: the cluster module picks the smallest bx2 profile meeting this and MinWorkerMemoryGB. Maps to config.yaml cluster.min_worker_vcpu_count.",
+        "default": "",
+        "order": 405
+      },
+      {
+        "name": "registry_cos_existing",
+        "type": "string",
+        "label": "Registry cos existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.registry_cos.existing.",
+        "default": "",
+        "order": 406
+      },
+      {
+        "name": "transit_gateway_create",
+        "type": "string",
+        "label": "Transit gateway create",
+        "description": "-> resources.bnk.create, resources.cert_manager.create, resources.client_vpc.create, resources.cluster_jumphosts.create, resources.cluster_vpc.create, resources.registry_cos.create, resources.tgw_jumphost.create, resources.transit_gateway.create",
+        "default": "",
+        "order": 407
       }
     ]
   },

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-flp-vsi-roksbnkctl",
-    "version": "5.16.0",
+    "version": "5.17.0",
     "name": "Deploying F5 License Proxy as an IBM Cloud VSI",
     "description": "Stand up the F5 License Proxy (FLP) as a standalone IBM Cloud VSI appliance in an existing VPC \u2014 no cluster required. BNK installs in other clusters license through it privately over the VPC or a Transit Gateway, so only this appliance needs egress to F5."
   },
@@ -356,6 +356,70 @@
         "description": "Base64 PEM of the CA that issued Forge's certificate, pinning the call.",
         "default": "",
         "order": 10
+      },
+      {
+        "name": "flp_chart_version",
+        "type": "string",
+        "label": "Flp chart version",
+        "description": "ChartVersion pins the f5-license-proxy chart. Maps to config.yaml bnk.flp.chart_version.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "flp_node_port_access",
+        "type": "string",
+        "label": "Flp node port access",
+        "description": "NodePortAccess exposes the proxy OUTSIDE its own cluster, so a BNK install in a DIFFERENT cluster (same VPC, or across a transit gateway) can licen... Maps to config.yaml bnk.flp.node_port_access.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "flp_node_port_source_cidrs",
+        "type": "string",
+        "label": "Flp node port source cidrs",
+        "description": "roksbnkctl setting ROKSBNKCTL_FLP_NODE_PORT_SOURCE_CIDRS. Maps to config.yaml bnk.flp.node_port_source_cidrs[0].",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "flp_storage_class",
+        "type": "string",
+        "label": "Flp storage class",
+        "description": "The dynamic StorageClass for the FLP's PVCs (rendered as flp_storage_class). Maps to config.yaml bnk.flp.storage_class.",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "flp_vsi_allowed_cidrs",
+        "type": "string",
+        "label": "Flp vsi allowed cidrs",
+        "description": "roksbnkctl setting ROKSBNKCTL_FLP_VSI_ALLOWED_CIDRS. Maps to config.yaml bnk.flp.vsi.allowed_cidrs[0].",
+        "default": "",
+        "order": 404
+      },
+      {
+        "name": "flp_vsi_forward_proxy_host",
+        "type": "string",
+        "label": "Flp vsi forward proxy host",
+        "description": "The forward proxy's address. Maps to config.yaml bnk.flp.vsi.forward_proxy.host.",
+        "default": "",
+        "order": 405
+      },
+      {
+        "name": "flp_vsi_forward_proxy_port",
+        "type": "string",
+        "label": "Flp vsi forward proxy port",
+        "description": "The forward proxy's port. Maps to config.yaml bnk.flp.vsi.forward_proxy.port.",
+        "default": "",
+        "order": 406
+      },
+      {
+        "name": "flp_vsi_forward_proxy_protocol",
+        "type": "string",
+        "label": "Flp vsi forward proxy protocol",
+        "description": "http (default) | https Maps to config.yaml bnk.flp.vsi.forward_proxy.protocol.",
+        "default": "",
+        "order": 407
       }
     ]
   },
@@ -363,7 +427,7 @@
     {
       "id": "roksbnkctl-flp",
       "module": "roksbnkctl/flp",
-      "version": "5.16.0",
+      "version": "5.17.0",
       "name": "roksbnkctl FLP (VSI)",
       "description": "roksbnkctl flp up in vsi mode \u2014 a standalone F5 License Proxy appliance in an existing VPC.",
       "optional": false,
@@ -394,13 +458,21 @@
         "subscription_jwt_file": "${subscription_jwt_file}",
         "flp_namespace": "${flp_namespace}",
         "ibmcloud_api_key": "${ibmcloud_api_key}",
-        "flp_vsi_name_prefix": "${flp_vsi_name_prefix}"
+        "flp_vsi_name_prefix": "${flp_vsi_name_prefix}",
+        "flp_chart_version": "${flp_chart_version}",
+        "flp_node_port_access": "${flp_node_port_access}",
+        "flp_node_port_source_cidrs": "${flp_node_port_source_cidrs}",
+        "flp_storage_class": "${flp_storage_class}",
+        "flp_vsi_allowed_cidrs": "${flp_vsi_allowed_cidrs}",
+        "flp_vsi_forward_proxy_host": "${flp_vsi_forward_proxy_host}",
+        "flp_vsi_forward_proxy_port": "${flp_vsi_forward_proxy_port}",
+        "flp_vsi_forward_proxy_protocol": "${flp_vsi_forward_proxy_protocol}"
       }
     },
     {
       "id": "roksbnkctl-bnkforge-sshcred",
       "module": "roksbnkctl/bnkforge-sshcred",
-      "version": "5.16.0",
+      "version": "5.17.0",
       "name": "Register the appliance's SSH key with Forge",
       "description": "Stores the appliance's PRIVATE key in Forge and attaches it to the project, so Forge can reach the VSI itself. Optional: skip it and Forge reports infrastructure_access_status recovery_required.",
       "optional": true,

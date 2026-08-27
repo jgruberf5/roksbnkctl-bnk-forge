@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-bare-cluster-roksbnkctl",
-    "version": "5.16.0",
+    "version": "5.17.0",
     "name": "IBM ROKS cluster only \u2014 no BNK installed",
     "description": "Create a ROKS cluster and stop. BNK is never installed, and this blueprint carries no bnk-install module to install it with. That is the whole point: variants that ADOPT an existing cluster need one with no BNK on it, and BNK cannot be removed afterwards \u2014 destroying bnk-install cascades into cluster-create and takes the cluster with it. Previously the only way to get such a cluster was to deploy a full new-cluster blueprint and disable its bnk-install module before Forge's dependency graph dispatched it, which is fragile: enabling a module recomputes dependencies, and a module left merely undispatched runs by itself the moment cluster-create finishes. Set 'Public egress gateway' false to build the air-gapped equivalent \u2014 that flag is the ONLY difference between the connected and disconnected cluster-create."
   },
@@ -221,6 +221,70 @@
         "description": "Exact IBM Cloud worker profile, e.g. cx3d.8x20. Blank auto-selects, and the auto-select only ever considers the bx2 family \u2014 F5's approved reference cluster runs cx3d.8x20, which auto-select cannot produce at any minimum. Set it explicitly to reproduce the reference.",
         "default": "",
         "order": 250
+      },
+      {
+        "name": "client_region",
+        "type": "string",
+        "label": "Client region",
+        "description": "The region the testing client (TGW jumphost + client VPC) is installed in. Maps to config.yaml resources.client_region.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "cluster_jumphosts_existing",
+        "type": "string",
+        "label": "Cluster jumphosts existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.cluster_jumphosts.existing.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "cluster_vpc_create",
+        "type": "string",
+        "label": "Cluster vpc create",
+        "description": "-> resources.bnk.create, resources.cert_manager.create, resources.client_vpc.create, resources.cluster_jumphosts.create, resources.cluster_vpc.create, resources.registry_cos.create, resources.tgw_jumphost.create, resources.transit_gateway.create",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "cluster_vpc_default_sg_inbound_cidrs",
+        "type": "string",
+        "label": "Cluster vpc default sg inbound cidrs",
+        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_VPC_DEFAULT_SG_INBOUND_CIDRS. Maps to config.yaml resources.cluster_vpc_default_sg_inbound_cidrs[0].",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "min_worker_memory_gb",
+        "type": "string",
+        "label": "Min worker memory gb",
+        "description": "The memory floor for the same auto-select. Maps to config.yaml cluster.min_worker_memory_gb.",
+        "default": "",
+        "order": 404
+      },
+      {
+        "name": "min_worker_vcpu_count",
+        "type": "string",
+        "label": "Min worker vcpu count",
+        "description": "The vCPU floor for the worker-flavor auto-select: the cluster module picks the smallest bx2 profile meeting this and MinWorkerMemoryGB. Maps to config.yaml cluster.min_worker_vcpu_count.",
+        "default": "",
+        "order": 405
+      },
+      {
+        "name": "registry_cos_existing",
+        "type": "string",
+        "label": "Registry cos existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.registry_cos.existing.",
+        "default": "",
+        "order": 406
+      },
+      {
+        "name": "transit_gateway_create",
+        "type": "string",
+        "label": "Transit gateway create",
+        "description": "-> resources.bnk.create, resources.cert_manager.create, resources.client_vpc.create, resources.cluster_jumphosts.create, resources.cluster_vpc.create, resources.registry_cos.create, resources.tgw_jumphost.create, resources.transit_gateway.create",
+        "default": "",
+        "order": 407
       }
     ]
   },
@@ -228,7 +292,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.16.0",
+      "version": "5.17.0",
       "name": "roksbnkctl Cluster Create (no BNK)",
       "description": "init -> cluster up -> kubeconfig fetch -> bnkforge register. Creates the VPC, subnets, worker pool and cluster, and stops there.",
       "optional": false,
@@ -252,7 +316,15 @@
         "existing_subnet_ids": "${existing_subnet_ids}",
         "bnkforge_ca_b64": "${bnkforge_ca_b64}",
         "cluster_http_allowed_cidrs": "${cluster_http_allowed_cidrs}",
-        "worker_flavor": "${worker_flavor}"
+        "worker_flavor": "${worker_flavor}",
+        "client_region": "${client_region}",
+        "cluster_jumphosts_existing": "${cluster_jumphosts_existing}",
+        "cluster_vpc_create": "${cluster_vpc_create}",
+        "cluster_vpc_default_sg_inbound_cidrs": "${cluster_vpc_default_sg_inbound_cidrs}",
+        "min_worker_memory_gb": "${min_worker_memory_gb}",
+        "min_worker_vcpu_count": "${min_worker_vcpu_count}",
+        "registry_cos_existing": "${registry_cos_existing}",
+        "transit_gateway_create": "${transit_gateway_create}"
       }
     }
   ],

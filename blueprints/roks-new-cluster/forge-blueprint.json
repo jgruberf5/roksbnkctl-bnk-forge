@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-roks-new-bnk-roksbnkctl",
-    "version": "5.16.0",
+    "version": "5.17.0",
     "name": "BNK on a NEW IBM ROKS cluster (created end to end)",
     "description": "Provision a NEW IBM ROKS cluster with its own VPC and Transit Gateway, then install BIG-IP Next for Kubernetes onto it. The cluster's workers have Internet egress, so images come from F5's registry and licensing goes direct \u2014 no private mirror or License Proxy required. Registers the cluster with BNK Forge as it is created, so you can watch BNK install onto it. The cwc-guard module is deliberately absent: F5's f5-spk-cwc Multi-Attach deadlock only arises on a cluster that has already run BNK, which a freshly created cluster never has."
   },
@@ -739,6 +739,230 @@
         "description": "Exact IBM Cloud worker profile, e.g. cx3d.8x20. Blank auto-selects, and the auto-select only ever considers the bx2 family \u2014 F5's approved reference cluster runs cx3d.8x20, which auto-select cannot produce at any minimum. Set it explicitly to reproduce the reference.",
         "default": "",
         "order": 250
+      },
+      {
+        "name": "client_region",
+        "type": "string",
+        "label": "Client region",
+        "description": "The region the testing client (TGW jumphost + client VPC) is installed in. Maps to config.yaml resources.client_region.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "cluster_jumphosts_existing",
+        "type": "string",
+        "label": "Cluster jumphosts existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.cluster_jumphosts.existing.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "cluster_vpc_create",
+        "type": "string",
+        "label": "Cluster vpc create",
+        "description": "-> resources.bnk.create, resources.cert_manager.create, resources.client_vpc.create, resources.cluster_jumphosts.create, resources.cluster_vpc.create, resources.registry_cos.create, resources.tgw_jumphost.create, resources.transit_gateway.create",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "cluster_vpc_default_sg_inbound_cidrs",
+        "type": "string",
+        "label": "Cluster vpc default sg inbound cidrs",
+        "description": "roksbnkctl setting ROKSBNKCTL_CLUSTER_VPC_DEFAULT_SG_INBOUND_CIDRS. Maps to config.yaml resources.cluster_vpc_default_sg_inbound_cidrs[0].",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "min_worker_memory_gb",
+        "type": "string",
+        "label": "Min worker memory gb",
+        "description": "The memory floor for the same auto-select. Maps to config.yaml cluster.min_worker_memory_gb.",
+        "default": "",
+        "order": 404
+      },
+      {
+        "name": "min_worker_vcpu_count",
+        "type": "string",
+        "label": "Min worker vcpu count",
+        "description": "The vCPU floor for the worker-flavor auto-select: the cluster module picks the smallest bx2 profile meeting this and MinWorkerMemoryGB. Maps to config.yaml cluster.min_worker_vcpu_count.",
+        "default": "",
+        "order": 405
+      },
+      {
+        "name": "registry_cos_existing",
+        "type": "string",
+        "label": "Registry cos existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.registry_cos.existing.",
+        "default": "",
+        "order": 406
+      },
+      {
+        "name": "transit_gateway_create",
+        "type": "string",
+        "label": "Transit gateway create",
+        "description": "-> resources.bnk.create, resources.cert_manager.create, resources.client_vpc.create, resources.cluster_jumphosts.create, resources.cluster_vpc.create, resources.registry_cos.create, resources.tgw_jumphost.create, resources.transit_gateway.create",
+        "default": "",
+        "order": 407
+      },
+      {
+        "name": "bnk_existing",
+        "type": "string",
+        "label": "Bnk existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.bnk.existing.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "cert_manager_existing",
+        "type": "string",
+        "label": "Cert manager existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.cert_manager.existing.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "cert_manager_namespace",
+        "type": "string",
+        "label": "Cert manager namespace",
+        "description": "Namespace cert-manager installs into (rendered as cert_manager_namespace). Maps to config.yaml bnk.cert_manager.namespace.",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "cert_manager_version",
+        "type": "string",
+        "label": "Cert manager version",
+        "description": "Version pins the cert-manager Helm chart (rendered as cert_manager_version). Maps to config.yaml bnk.cert_manager.version.",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "far_auth_local_file",
+        "type": "string",
+        "label": "Far auth local file",
+        "description": "FarAuthLocalFile / SubscriptionJWTLocalFile point at LOCAL files instead of COS objects. Maps to config.yaml bnk.far_auth_local_file.",
+        "default": "",
+        "order": 404
+      },
+      {
+        "name": "far_repo_url",
+        "type": "string",
+        "label": "Far repo url",
+        "description": "The F5 Artifact Repository charts are pulled from. Maps to config.yaml bnk.far_repo_url.",
+        "default": "",
+        "order": 405
+      },
+      {
+        "name": "gateway_app_namespace",
+        "type": "string",
+        "label": "Gateway app namespace",
+        "description": "The namespace the example application and its Gateway resources are created in. Maps to config.yaml gateway.app_namespace.",
+        "default": "",
+        "order": 406
+      },
+      {
+        "name": "gateway_backend_port",
+        "type": "string",
+        "label": "Gateway backend port",
+        "description": "The port on that Service. Maps to config.yaml gateway.backend_port.",
+        "default": "",
+        "order": 407
+      },
+      {
+        "name": "gateway_backend_service",
+        "type": "string",
+        "label": "Gateway backend service",
+        "description": "The Kubernetes Service the example HTTPRoute forwards to. Maps to config.yaml gateway.backend_service.",
+        "default": "",
+        "order": 408
+      },
+      {
+        "name": "gateway_client_subnet_local",
+        "type": "string",
+        "label": "Gateway client subnet local",
+        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_CLIENT_SUBNET_LOCAL. Maps to config.yaml gateway.client_subnet_local[0].",
+        "default": "",
+        "order": 409
+      },
+      {
+        "name": "gateway_client_subnet_remote",
+        "type": "string",
+        "label": "Gateway client subnet remote",
+        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_CLIENT_SUBNET_REMOTE. Maps to config.yaml gateway.client_subnet_remote[0].",
+        "default": "",
+        "order": 410
+      },
+      {
+        "name": "gateway_egress_mode",
+        "type": "string",
+        "label": "Gateway egress mode",
+        "description": "EgressMode selects how return traffic is source-addressed: \"snatpool\", \"automap\", or \"both\". Maps to config.yaml gateway.egress_mode.",
+        "default": "",
+        "order": 411
+      },
+      {
+        "name": "gateway_vxlan_port",
+        "type": "string",
+        "label": "Gateway vxlan port",
+        "description": "The UDP port for the VXLAN overlay between TMM and the nodes. Maps to config.yaml gateway.vxlan_port.",
+        "default": "",
+        "order": 412
+      },
+      {
+        "name": "gslb_datacenter_name",
+        "type": "string",
+        "label": "Gslb datacenter name",
+        "description": "GSLBDatacenterName sets the optional CNEInstance GSLB datacenter name (rendered as cneinstance_gslb_datacenter_name). Maps to config.yaml bnk.gslb_datacenter_name.",
+        "default": "",
+        "order": 413
+      },
+      {
+        "name": "hugepages_node_role",
+        "type": "string",
+        "label": "Hugepages node role",
+        "description": "The machineconfiguration.openshift.io/role the profile applies to. Maps to config.yaml bnk.hugepages.node_role.",
+        "default": "",
+        "order": 414
+      },
+      {
+        "name": "hugepages_profile_name",
+        "type": "string",
+        "label": "Hugepages profile name",
+        "description": "ProfileName names the Tuned profile and CR. Maps to config.yaml bnk.hugepages.profile_name.",
+        "default": "",
+        "order": 415
+      },
+      {
+        "name": "storage_class_name",
+        "type": "string",
+        "label": "Storage class name",
+        "description": "The StorageClass the CNEInstance's persistent volumes use, TMM's included. Maps to config.yaml bnk.storage_class_name.",
+        "default": "",
+        "order": 416
+      },
+      {
+        "name": "subscription_jwt_local_file",
+        "type": "string",
+        "label": "Subscription jwt local file",
+        "description": "The F5 subscription JWT as a LOCAL file, the companion to FarAuthLocalFile above. Maps to config.yaml bnk.subscription_jwt_local_file.",
+        "default": "",
+        "order": 417
+      },
+      {
+        "name": "tcp_settings_name",
+        "type": "string",
+        "label": "Tcp settings name",
+        "description": "The F5BigTcpSetting to write. Maps to config.yaml bnk.tcp_settings_name.",
+        "default": "",
+        "order": 418
+      },
+      {
+        "name": "tmm_k8s_routes",
+        "type": "string",
+        "label": "Tmm k8s routes",
+        "description": "The Kubernetes pod CIDR TMM installs a route toward (advanced.tmm.env TMM_K8S_ROUTES), so TMM can reach backend pods on the internal data path. Maps to config.yaml bnk.network.tmm_k8s_routes.",
+        "default": "",
+        "order": 419
       }
     ]
   },
@@ -746,7 +970,7 @@
     {
       "id": "roksbnkctl-cluster-create",
       "module": "roksbnkctl/cluster-create",
-      "version": "5.16.0",
+      "version": "5.17.0",
       "name": "roksbnkctl Cluster Create",
       "description": "Create the VPC, ROKS cluster and Transit Gateway, then register the cluster with BNK Forge \u2014 registration runs first, so it is visible and monitorable while BNK installs.",
       "optional": false,
@@ -770,13 +994,21 @@
         "existing_subnet_ids": "${existing_subnet_ids}",
         "bnkforge_ca_b64": "${bnkforge_ca_b64}",
         "cluster_http_allowed_cidrs": "${cluster_http_allowed_cidrs}",
-        "worker_flavor": "${worker_flavor}"
+        "worker_flavor": "${worker_flavor}",
+        "client_region": "${client_region}",
+        "cluster_jumphosts_existing": "${cluster_jumphosts_existing}",
+        "cluster_vpc_create": "${cluster_vpc_create}",
+        "cluster_vpc_default_sg_inbound_cidrs": "${cluster_vpc_default_sg_inbound_cidrs}",
+        "min_worker_memory_gb": "${min_worker_memory_gb}",
+        "min_worker_vcpu_count": "${min_worker_vcpu_count}",
+        "registry_cos_existing": "${registry_cos_existing}",
+        "transit_gateway_create": "${transit_gateway_create}"
       }
     },
     {
       "id": "roksbnkctl-bnk-install",
       "module": "roksbnkctl/bnk-install",
-      "version": "5.16.0",
+      "version": "5.17.0",
       "name": "roksbnkctl BNK Install",
       "description": "init -> cluster register -> bnk up -> bnk status, against an existing cluster.",
       "optional": false,
@@ -860,7 +1092,27 @@
         "gateway_class_name": "${gateway_class_name}",
         "gateway_controller_name": "${gateway_controller_name}",
         "gateway_route_examples": "${gateway_route_examples}",
-        "gateway_l4_listener_port": "${gateway_l4_listener_port}"
+        "gateway_l4_listener_port": "${gateway_l4_listener_port}",
+        "bnk_existing": "${bnk_existing}",
+        "cert_manager_existing": "${cert_manager_existing}",
+        "cert_manager_namespace": "${cert_manager_namespace}",
+        "cert_manager_version": "${cert_manager_version}",
+        "far_auth_local_file": "${far_auth_local_file}",
+        "far_repo_url": "${far_repo_url}",
+        "gateway_app_namespace": "${gateway_app_namespace}",
+        "gateway_backend_port": "${gateway_backend_port}",
+        "gateway_backend_service": "${gateway_backend_service}",
+        "gateway_client_subnet_local": "${gateway_client_subnet_local}",
+        "gateway_client_subnet_remote": "${gateway_client_subnet_remote}",
+        "gateway_egress_mode": "${gateway_egress_mode}",
+        "gateway_vxlan_port": "${gateway_vxlan_port}",
+        "gslb_datacenter_name": "${gslb_datacenter_name}",
+        "hugepages_node_role": "${hugepages_node_role}",
+        "hugepages_profile_name": "${hugepages_profile_name}",
+        "storage_class_name": "${storage_class_name}",
+        "subscription_jwt_local_file": "${subscription_jwt_local_file}",
+        "tcp_settings_name": "${tcp_settings_name}",
+        "tmm_k8s_routes": "${tmm_k8s_routes}"
       }
     }
   ],

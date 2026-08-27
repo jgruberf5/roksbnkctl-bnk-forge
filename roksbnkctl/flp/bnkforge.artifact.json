@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-flp",
-  "version": "5.16.0",
+  "version": "5.17.0",
   "kind": "container_image",
   "description": "Deploy the F5 License Proxy as a standalone IBM Cloud VSI appliance (no cluster) with roksbnkctl's flp phase. Procedural container_image artifact run by the container engine.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:244d32042f5e06bbc383ec5a4908cb16bb357901d0db9091c0945863be80c517"
+    "digest": "sha256:44f7b47b0c58ea1f8b7784fe6f91fc55b8dd054751dd7d70d829312cdd94f71c"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -66,7 +66,15 @@
           "HOME": "/home/runner",
           "ROKSBNKCTL_FLP_NAMESPACE": "{{inputs.flp_namespace}}",
           "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
-          "ROKSBNKCTL_FLP_VSI_NAME_PREFIX": "{{inputs.flp_vsi_name_prefix}}"
+          "ROKSBNKCTL_FLP_VSI_NAME_PREFIX": "{{inputs.flp_vsi_name_prefix}}",
+          "ROKSBNKCTL_FLP_CHART_VERSION": "{{inputs.flp_chart_version}}",
+          "ROKSBNKCTL_FLP_NODE_PORT_ACCESS": "{{inputs.flp_node_port_access}}",
+          "ROKSBNKCTL_FLP_NODE_PORT_SOURCE_CIDRS": "{{inputs.flp_node_port_source_cidrs}}",
+          "ROKSBNKCTL_FLP_STORAGE_CLASS": "{{inputs.flp_storage_class}}",
+          "ROKSBNKCTL_FLP_VSI_ALLOWED_CIDRS": "{{inputs.flp_vsi_allowed_cidrs}}",
+          "ROKSBNKCTL_FLP_VSI_FORWARD_PROXY_HOST": "{{inputs.flp_vsi_forward_proxy_host}}",
+          "ROKSBNKCTL_FLP_VSI_FORWARD_PROXY_PORT": "{{inputs.flp_vsi_forward_proxy_port}}",
+          "ROKSBNKCTL_FLP_VSI_FORWARD_PROXY_PROTOCOL": "{{inputs.flp_vsi_forward_proxy_protocol}}"
         },
         "args": [
           "roksbnkctl",
@@ -314,6 +322,70 @@
         "description": "Prefix for the appliance's IBM Cloud resource names (roksbnkctl v1.47.0+). Blank keeps the legacy unprefixed names \u2014 flp-vsi, flp-vsi-subnet, flp-vsi-sg and so on \u2014 which is the default so that upgrading does not rename and therefore REPLACE a running proxy. Set it to run more than one standalone proxy in an account (the literal names collide otherwise), and to make the appliance visible to the orphan blueprints, which sweep by <prefix>-* and cannot see an unprefixed flp-vsi.",
         "order": 23,
         "default": ""
+      },
+      {
+        "name": "flp_chart_version",
+        "type": "string",
+        "label": "Flp chart version",
+        "description": "ChartVersion pins the f5-license-proxy chart. Maps to config.yaml bnk.flp.chart_version.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "flp_node_port_access",
+        "type": "string",
+        "label": "Flp node port access",
+        "description": "NodePortAccess exposes the proxy OUTSIDE its own cluster, so a BNK install in a DIFFERENT cluster (same VPC, or across a transit gateway) can licen... Maps to config.yaml bnk.flp.node_port_access.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "flp_node_port_source_cidrs",
+        "type": "string",
+        "label": "Flp node port source cidrs",
+        "description": "roksbnkctl setting ROKSBNKCTL_FLP_NODE_PORT_SOURCE_CIDRS. Maps to config.yaml bnk.flp.node_port_source_cidrs[0].",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "flp_storage_class",
+        "type": "string",
+        "label": "Flp storage class",
+        "description": "The dynamic StorageClass for the FLP's PVCs (rendered as flp_storage_class). Maps to config.yaml bnk.flp.storage_class.",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "flp_vsi_allowed_cidrs",
+        "type": "string",
+        "label": "Flp vsi allowed cidrs",
+        "description": "roksbnkctl setting ROKSBNKCTL_FLP_VSI_ALLOWED_CIDRS. Maps to config.yaml bnk.flp.vsi.allowed_cidrs[0].",
+        "default": "",
+        "order": 404
+      },
+      {
+        "name": "flp_vsi_forward_proxy_host",
+        "type": "string",
+        "label": "Flp vsi forward proxy host",
+        "description": "The forward proxy's address. Maps to config.yaml bnk.flp.vsi.forward_proxy.host.",
+        "default": "",
+        "order": 405
+      },
+      {
+        "name": "flp_vsi_forward_proxy_port",
+        "type": "string",
+        "label": "Flp vsi forward proxy port",
+        "description": "The forward proxy's port. Maps to config.yaml bnk.flp.vsi.forward_proxy.port.",
+        "default": "",
+        "order": 406
+      },
+      {
+        "name": "flp_vsi_forward_proxy_protocol",
+        "type": "string",
+        "label": "Flp vsi forward proxy protocol",
+        "description": "http (default) | https Maps to config.yaml bnk.flp.vsi.forward_proxy.protocol.",
+        "default": "",
+        "order": 407
       }
     ]
   },

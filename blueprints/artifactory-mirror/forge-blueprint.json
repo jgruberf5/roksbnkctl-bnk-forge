@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "artifactory-far-mirror-roksbnkctl",
-    "version": "5.16.0",
+    "version": "5.17.0",
     "name": "Mirror the BNK supply chain into JFrog Artifactory",
     "description": "Replicate the F5 Artifact Repository into a JFrog Artifactory you already run, then verify every artifact against the BOM. Nothing is created in IBM Cloud and no cluster is needed \u2014 replication copies registry-to-registry, so the mirror can be seeded as a supply-chain step long before an air-gapped cluster exists. Follows Appendix B of the roksbnkctl book; requires roksbnkctl v1.49.0+."
   },
@@ -212,6 +212,47 @@
         "default": "",
         "sensitive": true,
         "order": 19
+      },
+      {
+        "name": "icr_host",
+        "type": "string",
+        "label": "Icr host",
+        "description": "ICRHost overrides the IBM Container Registry host for target=icr (e.g. Maps to config.yaml registry.icr_host.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "icr_namespace",
+        "type": "string",
+        "label": "Icr namespace",
+        "description": "The ICR namespace artifacts nest under for target=icr. Maps to config.yaml registry.icr_namespace.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "registry_include_deps",
+        "type": "string",
+        "label": "Registry include deps",
+        "description": "IncludeDeps unions the non-F5 dependency artifacts (Jetstack cert-manager chart + images, the bitnami/kubectl node-labeler image) into the BOM. Maps to config.yaml registry.include_deps.",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "registry_namespace",
+        "type": "string",
+        "label": "Registry namespace",
+        "description": "The mirror project the artifacts land in. Maps to config.yaml registry.namespace.",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "source_service_account_b64",
+        "type": "string",
+        "label": "Source service account b64",
+        "description": "The FAR `_json_key_base64` service-account JSON, base64-encoded, used as the replication SOURCE credential for repo.f5.com. Maps to config.yaml registry.source_service_account_b64.",
+        "default": "",
+        "order": 404,
+        "sensitive": true
       }
     ]
   },
@@ -219,7 +260,7 @@
     {
       "id": "roksbnkctl-FAR-mirror",
       "module": "roksbnkctl/far-mirror",
-      "version": "5.16.0",
+      "version": "5.17.0",
       "name": "roksbnkctl FAR Mirror",
       "description": "init -> registry replicate --target generic -> registry verify, against your Artifactory. Creates no infrastructure.",
       "optional": false,
@@ -242,7 +283,12 @@
         "far_auth_file": "${far_auth_file}",
         "subscription_jwt_file": "${subscription_jwt_file}",
         "delete_artifacts_on_destroy": "${delete_artifacts_on_destroy}",
-        "ibmcloud_api_key": "${ibmcloud_api_key}"
+        "ibmcloud_api_key": "${ibmcloud_api_key}",
+        "icr_host": "${icr_host}",
+        "icr_namespace": "${icr_namespace}",
+        "registry_include_deps": "${registry_include_deps}",
+        "registry_namespace": "${registry_namespace}",
+        "source_service_account_b64": "${source_service_account_b64}"
       }
     }
   ],

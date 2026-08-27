@@ -3,7 +3,7 @@
   "module": {
     "name": "roksbnkctl-bnk-install",
     "path": "roksbnkctl/bnk-install",
-    "version": "5.16.0",
+    "version": "5.17.0",
     "category": "bnk",
     "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
     "estimated_time_minutes": 17
@@ -627,6 +627,146 @@
         "source": "user",
         "default": "",
         "description": "[BNK 2.4 only] Where the Gateway API standard-install bundle is FETCHED from when the workspace has no registry mirror recorded (2.4 + gateway_api_mtls). Empty derives the upstream release asset for cneinstance_gateway_api_version. Terraform installs nothing from this. roksbnkctl fetches the bundle, checks it against the sha256 it pins for that version, and server-side-applies it inside the window where the gateway-api admission-policy sweep is running \u2014 which is the only window in which the apply survives the OpenShift ingress operator recreating its policy. It is declared here so terraform REJECTS a malfor"
+      },
+      {
+        "name": "bnk_existing",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.bnk.existing."
+      },
+      {
+        "name": "cert_manager_existing",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.cert_manager.existing."
+      },
+      {
+        "name": "cert_manager_namespace",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "Namespace cert-manager installs into (rendered as cert_manager_namespace). Maps to config.yaml bnk.cert_manager.namespace."
+      },
+      {
+        "name": "cert_manager_version",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "Version pins the cert-manager Helm chart (rendered as cert_manager_version). Maps to config.yaml bnk.cert_manager.version."
+      },
+      {
+        "name": "far_auth_local_file",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "FarAuthLocalFile / SubscriptionJWTLocalFile point at LOCAL files instead of COS objects. Maps to config.yaml bnk.far_auth_local_file."
+      },
+      {
+        "name": "far_repo_url",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The F5 Artifact Repository charts are pulled from. Maps to config.yaml bnk.far_repo_url."
+      },
+      {
+        "name": "gateway_app_namespace",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The namespace the example application and its Gateway resources are created in. Maps to config.yaml gateway.app_namespace."
+      },
+      {
+        "name": "gateway_backend_port",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The port on that Service. Maps to config.yaml gateway.backend_port."
+      },
+      {
+        "name": "gateway_backend_service",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The Kubernetes Service the example HTTPRoute forwards to. Maps to config.yaml gateway.backend_service."
+      },
+      {
+        "name": "gateway_client_subnet_local",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_CLIENT_SUBNET_LOCAL. Maps to config.yaml gateway.client_subnet_local[0]."
+      },
+      {
+        "name": "gateway_client_subnet_remote",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_CLIENT_SUBNET_REMOTE. Maps to config.yaml gateway.client_subnet_remote[0]."
+      },
+      {
+        "name": "gateway_egress_mode",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "EgressMode selects how return traffic is source-addressed: \"snatpool\", \"automap\", or \"both\". Maps to config.yaml gateway.egress_mode."
+      },
+      {
+        "name": "gateway_vxlan_port",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The UDP port for the VXLAN overlay between TMM and the nodes. Maps to config.yaml gateway.vxlan_port."
+      },
+      {
+        "name": "gslb_datacenter_name",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "GSLBDatacenterName sets the optional CNEInstance GSLB datacenter name (rendered as cneinstance_gslb_datacenter_name). Maps to config.yaml bnk.gslb_datacenter_name."
+      },
+      {
+        "name": "hugepages_node_role",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The machineconfiguration.openshift.io/role the profile applies to. Maps to config.yaml bnk.hugepages.node_role."
+      },
+      {
+        "name": "hugepages_profile_name",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "ProfileName names the Tuned profile and CR. Maps to config.yaml bnk.hugepages.profile_name."
+      },
+      {
+        "name": "storage_class_name",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The StorageClass the CNEInstance's persistent volumes use, TMM's included. Maps to config.yaml bnk.storage_class_name."
+      },
+      {
+        "name": "subscription_jwt_local_file",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The F5 subscription JWT as a LOCAL file, the companion to FarAuthLocalFile above. Maps to config.yaml bnk.subscription_jwt_local_file."
+      },
+      {
+        "name": "tcp_settings_name",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The F5BigTcpSetting to write. Maps to config.yaml bnk.tcp_settings_name."
+      },
+      {
+        "name": "tmm_k8s_routes",
+        "type": "string",
+        "source": "user",
+        "default": "",
+        "description": "The Kubernetes pod CIDR TMM installs a route toward (advanced.tmm.env TMM_K8S_ROUTES), so TMM can reach backend pods on the internal data path. Maps to config.yaml bnk.network.tmm_k8s_routes."
       }
     ]
   },

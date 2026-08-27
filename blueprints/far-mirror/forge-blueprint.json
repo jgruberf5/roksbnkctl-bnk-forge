@@ -2,7 +2,7 @@
   "schema_version": 1,
   "blueprint": {
     "id": "ibm-far-mirror",
-    "version": "5.16.0",
+    "version": "5.17.0",
     "name": "Mirror F5 artifacts from FAR into a private registry",
     "description": "Replicate the BIG-IP Next for Kubernetes supply chain out of F5's Artifact Registry into a private OCI registry, then verify every artifact by digest. Needs no cluster: this is the step that makes a disconnected install possible, and it can run long before one. Point it at any registry you already run, or deploy one with the Harbor blueprint \u2014 when Harbor is part of the same deployment the registry address and its CA are wired in automatically."
   },
@@ -190,6 +190,47 @@
         "label": "IBM Cloud API key",
         "description": "Resolved from the project's credential template when the project is created. Not entered by hand.",
         "order": 99
+      },
+      {
+        "name": "icr_host",
+        "type": "string",
+        "label": "Icr host",
+        "description": "ICRHost overrides the IBM Container Registry host for target=icr (e.g. Maps to config.yaml registry.icr_host.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "icr_namespace",
+        "type": "string",
+        "label": "Icr namespace",
+        "description": "The ICR namespace artifacts nest under for target=icr. Maps to config.yaml registry.icr_namespace.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "registry_include_deps",
+        "type": "string",
+        "label": "Registry include deps",
+        "description": "IncludeDeps unions the non-F5 dependency artifacts (Jetstack cert-manager chart + images, the bitnami/kubectl node-labeler image) into the BOM. Maps to config.yaml registry.include_deps.",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "registry_namespace",
+        "type": "string",
+        "label": "Registry namespace",
+        "description": "The mirror project the artifacts land in. Maps to config.yaml registry.namespace.",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "source_service_account_b64",
+        "type": "string",
+        "label": "Source service account b64",
+        "description": "The FAR `_json_key_base64` service-account JSON, base64-encoded, used as the replication SOURCE credential for repo.f5.com. Maps to config.yaml registry.source_service_account_b64.",
+        "default": "",
+        "order": 404,
+        "sensitive": true
       }
     ]
   },
@@ -197,7 +238,7 @@
     {
       "id": "roksbnkctl-FAR-mirror",
       "module": "roksbnkctl/far-mirror",
-      "version": "5.16.0",
+      "version": "5.17.0",
       "name": "roksbnkctl FAR Mirror",
       "description": "Replicate FAR -> private registry, then verify every artifact by digest.",
       "optional": false,
@@ -220,7 +261,12 @@
         "manifest_version": "${manifest_version}",
         "prefix": "${prefix}",
         "delete_artifacts_on_destroy": "true",
-        "ibmcloud_api_key": "${ibmcloud_api_key}"
+        "ibmcloud_api_key": "${ibmcloud_api_key}",
+        "icr_host": "${icr_host}",
+        "icr_namespace": "${icr_namespace}",
+        "registry_include_deps": "${registry_include_deps}",
+        "registry_namespace": "${registry_namespace}",
+        "source_service_account_b64": "${source_service_account_b64}"
       }
     }
   ],

@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-FAR-mirror",
-  "version": "5.16.0",
+  "version": "5.17.0",
   "kind": "container_image",
   "description": "Replicate the BNK supply chain (F5's artifact registry) into a private OCI registry, then verify it \u2014 the mirror half of a disconnected install. Host-side registry-to-registry copy; no cluster required.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:244d32042f5e06bbc383ec5a4908cb16bb357901d0db9091c0945863be80c517"
+    "digest": "sha256:44f7b47b0c58ea1f8b7784fe6f91fc55b8dd054751dd7d70d829312cdd94f71c"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -56,7 +56,12 @@
           "HOME": "/home/runner",
           "ROKSBNKCTL_GENERIC_CA_B64": "{{inputs.registry_ca_b64}}",
           "ROKSBNKCTL_GENERIC_CA_SHA256": "{{inputs.registry_ca_sha256}}",
-          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}"
+          "IBMCLOUD_API_KEY": "{{inputs.ibmcloud_api_key}}",
+          "ROKSBNKCTL_ICR_HOST": "{{inputs.icr_host}}",
+          "ROKSBNKCTL_ICR_NAMESPACE": "{{inputs.icr_namespace}}",
+          "ROKSBNKCTL_REGISTRY_INCLUDE_DEPS": "{{inputs.registry_include_deps}}",
+          "ROKSBNKCTL_REGISTRY_NAMESPACE": "{{inputs.registry_namespace}}",
+          "ROKSBNKCTL_SOURCE_SERVICE_ACCOUNT_B64": "{{inputs.source_service_account_b64}}"
         },
         "args": [
           "roksbnkctl",
@@ -252,6 +257,47 @@
         "type": "string",
         "source": "user",
         "description": "Set true to delete every replicated artifact from the target registry when this module is destroyed. Leave empty when the registry is destroyed with it \u2014 emptying a registry that is about to be deleted only risks hanging the teardown."
+      },
+      {
+        "name": "icr_host",
+        "type": "string",
+        "label": "Icr host",
+        "description": "ICRHost overrides the IBM Container Registry host for target=icr (e.g. Maps to config.yaml registry.icr_host.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "icr_namespace",
+        "type": "string",
+        "label": "Icr namespace",
+        "description": "The ICR namespace artifacts nest under for target=icr. Maps to config.yaml registry.icr_namespace.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "registry_include_deps",
+        "type": "string",
+        "label": "Registry include deps",
+        "description": "IncludeDeps unions the non-F5 dependency artifacts (Jetstack cert-manager chart + images, the bitnami/kubectl node-labeler image) into the BOM. Maps to config.yaml registry.include_deps.",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "registry_namespace",
+        "type": "string",
+        "label": "Registry namespace",
+        "description": "The mirror project the artifacts land in. Maps to config.yaml registry.namespace.",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "source_service_account_b64",
+        "type": "string",
+        "label": "Source service account b64",
+        "description": "The FAR `_json_key_base64` service-account JSON, base64-encoded, used as the replication SOURCE credential for repo.f5.com. Maps to config.yaml registry.source_service_account_b64.",
+        "default": "",
+        "order": 404,
+        "sensitive": true
       }
     ]
   },

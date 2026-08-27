@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "name": "roksbnkctl-bnk-install",
-  "version": "5.16.0",
+  "version": "5.17.0",
   "kind": "container_image",
   "description": "Install BIG-IP Next for Kubernetes onto a ROKS cluster already adopted and registered by roksbnkctl-cluster-registry, over the shared deployment workspace. Removes only the BNK layer on destroy \u2014 never the cluster.",
   "container_image": {
     "registry_host": "ghcr.io",
     "repository": "jgruberf5/roksbnkctl-tools-runner",
-    "digest": "sha256:244d32042f5e06bbc383ec5a4908cb16bb357901d0db9091c0945863be80c517"
+    "digest": "sha256:44f7b47b0c58ea1f8b7784fe6f91fc55b8dd054751dd7d70d829312cdd94f71c"
   },
   "lifecycle": {
     "supports_apply": true,
@@ -121,7 +121,27 @@
           "ROKSBNKCTL_GATEWAY_CONTROLLER_NAME": "{{inputs.gateway_controller_name}}",
           "ROKSBNKCTL_GATEWAY_ROUTE_EXAMPLES": "{{inputs.gateway_route_examples}}",
           "ROKSBNKCTL_GATEWAY_L4_LISTENER_PORT": "{{inputs.gateway_l4_listener_port}}",
-          "ROKSBNKCTL_GATEWAY_API_BUNDLE_URL": "{{inputs.gateway_api_bundle_url}}"
+          "ROKSBNKCTL_GATEWAY_API_BUNDLE_URL": "{{inputs.gateway_api_bundle_url}}",
+          "ROKSBNKCTL_BNK_EXISTING": "{{inputs.bnk_existing}}",
+          "ROKSBNKCTL_CERT_MANAGER_EXISTING": "{{inputs.cert_manager_existing}}",
+          "ROKSBNKCTL_CERT_MANAGER_NAMESPACE": "{{inputs.cert_manager_namespace}}",
+          "ROKSBNKCTL_CERT_MANAGER_VERSION": "{{inputs.cert_manager_version}}",
+          "ROKSBNKCTL_FAR_AUTH_LOCAL_FILE": "{{inputs.far_auth_local_file}}",
+          "ROKSBNKCTL_FAR_REPO_URL": "{{inputs.far_repo_url}}",
+          "ROKSBNKCTL_GATEWAY_APP_NAMESPACE": "{{inputs.gateway_app_namespace}}",
+          "ROKSBNKCTL_GATEWAY_BACKEND_PORT": "{{inputs.gateway_backend_port}}",
+          "ROKSBNKCTL_GATEWAY_BACKEND_SERVICE": "{{inputs.gateway_backend_service}}",
+          "ROKSBNKCTL_GATEWAY_CLIENT_SUBNET_LOCAL": "{{inputs.gateway_client_subnet_local}}",
+          "ROKSBNKCTL_GATEWAY_CLIENT_SUBNET_REMOTE": "{{inputs.gateway_client_subnet_remote}}",
+          "ROKSBNKCTL_GATEWAY_EGRESS_MODE": "{{inputs.gateway_egress_mode}}",
+          "ROKSBNKCTL_GATEWAY_VXLAN_PORT": "{{inputs.gateway_vxlan_port}}",
+          "ROKSBNKCTL_GSLB_DATACENTER_NAME": "{{inputs.gslb_datacenter_name}}",
+          "ROKSBNKCTL_HUGEPAGES_NODE_ROLE": "{{inputs.hugepages_node_role}}",
+          "ROKSBNKCTL_HUGEPAGES_PROFILE_NAME": "{{inputs.hugepages_profile_name}}",
+          "ROKSBNKCTL_STORAGE_CLASS_NAME": "{{inputs.storage_class_name}}",
+          "ROKSBNKCTL_SUBSCRIPTION_JWT_LOCAL_FILE": "{{inputs.subscription_jwt_local_file}}",
+          "ROKSBNKCTL_TCP_SETTINGS_NAME": "{{inputs.tcp_settings_name}}",
+          "ROKSBNKCTL_TMM_K8S_ROUTES": "{{inputs.tmm_k8s_routes}}"
         },
         "args": [
           "roksbnkctl",
@@ -893,6 +913,166 @@
         "description": "[BNK 2.4 only] Where the Gateway API standard-install bundle is FETCHED from when the workspace has no registry mirror recorded (2.4 + gateway_api_mtls). Empty derives the upstream release asset for cneinstance_gateway_api_version. Terraform installs nothing from this. roksbnkctl fetches the bundle, checks it against the sha256 it pins for that version, and server-side-applies it inside the window where the gateway-api admission-policy sweep is running \u2014 which is the only window in which the apply survives the OpenShift ingress operator recreating its policy. It is declared here so terraform REJECTS a malfor",
         "default": "",
         "order": 240
+      },
+      {
+        "name": "bnk_existing",
+        "type": "string",
+        "label": "Bnk existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.bnk.existing.",
+        "default": "",
+        "order": 400
+      },
+      {
+        "name": "cert_manager_existing",
+        "type": "string",
+        "label": "Cert manager existing",
+        "description": "The name or ID of the resource to adopt when Create is false. Maps to config.yaml resources.cert_manager.existing.",
+        "default": "",
+        "order": 401
+      },
+      {
+        "name": "cert_manager_namespace",
+        "type": "string",
+        "label": "Cert manager namespace",
+        "description": "Namespace cert-manager installs into (rendered as cert_manager_namespace). Maps to config.yaml bnk.cert_manager.namespace.",
+        "default": "",
+        "order": 402
+      },
+      {
+        "name": "cert_manager_version",
+        "type": "string",
+        "label": "Cert manager version",
+        "description": "Version pins the cert-manager Helm chart (rendered as cert_manager_version). Maps to config.yaml bnk.cert_manager.version.",
+        "default": "",
+        "order": 403
+      },
+      {
+        "name": "far_auth_local_file",
+        "type": "string",
+        "label": "Far auth local file",
+        "description": "FarAuthLocalFile / SubscriptionJWTLocalFile point at LOCAL files instead of COS objects. Maps to config.yaml bnk.far_auth_local_file.",
+        "default": "",
+        "order": 404
+      },
+      {
+        "name": "far_repo_url",
+        "type": "string",
+        "label": "Far repo url",
+        "description": "The F5 Artifact Repository charts are pulled from. Maps to config.yaml bnk.far_repo_url.",
+        "default": "",
+        "order": 405
+      },
+      {
+        "name": "gateway_app_namespace",
+        "type": "string",
+        "label": "Gateway app namespace",
+        "description": "The namespace the example application and its Gateway resources are created in. Maps to config.yaml gateway.app_namespace.",
+        "default": "",
+        "order": 406
+      },
+      {
+        "name": "gateway_backend_port",
+        "type": "string",
+        "label": "Gateway backend port",
+        "description": "The port on that Service. Maps to config.yaml gateway.backend_port.",
+        "default": "",
+        "order": 407
+      },
+      {
+        "name": "gateway_backend_service",
+        "type": "string",
+        "label": "Gateway backend service",
+        "description": "The Kubernetes Service the example HTTPRoute forwards to. Maps to config.yaml gateway.backend_service.",
+        "default": "",
+        "order": 408
+      },
+      {
+        "name": "gateway_client_subnet_local",
+        "type": "string",
+        "label": "Gateway client subnet local",
+        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_CLIENT_SUBNET_LOCAL. Maps to config.yaml gateway.client_subnet_local[0].",
+        "default": "",
+        "order": 409
+      },
+      {
+        "name": "gateway_client_subnet_remote",
+        "type": "string",
+        "label": "Gateway client subnet remote",
+        "description": "roksbnkctl setting ROKSBNKCTL_GATEWAY_CLIENT_SUBNET_REMOTE. Maps to config.yaml gateway.client_subnet_remote[0].",
+        "default": "",
+        "order": 410
+      },
+      {
+        "name": "gateway_egress_mode",
+        "type": "string",
+        "label": "Gateway egress mode",
+        "description": "EgressMode selects how return traffic is source-addressed: \"snatpool\", \"automap\", or \"both\". Maps to config.yaml gateway.egress_mode.",
+        "default": "",
+        "order": 411
+      },
+      {
+        "name": "gateway_vxlan_port",
+        "type": "string",
+        "label": "Gateway vxlan port",
+        "description": "The UDP port for the VXLAN overlay between TMM and the nodes. Maps to config.yaml gateway.vxlan_port.",
+        "default": "",
+        "order": 412
+      },
+      {
+        "name": "gslb_datacenter_name",
+        "type": "string",
+        "label": "Gslb datacenter name",
+        "description": "GSLBDatacenterName sets the optional CNEInstance GSLB datacenter name (rendered as cneinstance_gslb_datacenter_name). Maps to config.yaml bnk.gslb_datacenter_name.",
+        "default": "",
+        "order": 413
+      },
+      {
+        "name": "hugepages_node_role",
+        "type": "string",
+        "label": "Hugepages node role",
+        "description": "The machineconfiguration.openshift.io/role the profile applies to. Maps to config.yaml bnk.hugepages.node_role.",
+        "default": "",
+        "order": 414
+      },
+      {
+        "name": "hugepages_profile_name",
+        "type": "string",
+        "label": "Hugepages profile name",
+        "description": "ProfileName names the Tuned profile and CR. Maps to config.yaml bnk.hugepages.profile_name.",
+        "default": "",
+        "order": 415
+      },
+      {
+        "name": "storage_class_name",
+        "type": "string",
+        "label": "Storage class name",
+        "description": "The StorageClass the CNEInstance's persistent volumes use, TMM's included. Maps to config.yaml bnk.storage_class_name.",
+        "default": "",
+        "order": 416
+      },
+      {
+        "name": "subscription_jwt_local_file",
+        "type": "string",
+        "label": "Subscription jwt local file",
+        "description": "The F5 subscription JWT as a LOCAL file, the companion to FarAuthLocalFile above. Maps to config.yaml bnk.subscription_jwt_local_file.",
+        "default": "",
+        "order": 417
+      },
+      {
+        "name": "tcp_settings_name",
+        "type": "string",
+        "label": "Tcp settings name",
+        "description": "The F5BigTcpSetting to write. Maps to config.yaml bnk.tcp_settings_name.",
+        "default": "",
+        "order": 418
+      },
+      {
+        "name": "tmm_k8s_routes",
+        "type": "string",
+        "label": "Tmm k8s routes",
+        "description": "The Kubernetes pod CIDR TMM installs a route toward (advanced.tmm.env TMM_K8S_ROUTES), so TMM can reach backend pods on the internal data path. Maps to config.yaml bnk.network.tmm_k8s_routes.",
+        "default": "",
+        "order": 419
       }
     ]
   },
